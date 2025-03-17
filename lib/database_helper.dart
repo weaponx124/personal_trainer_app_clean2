@@ -1,4 +1,3 @@
-// database_helper.dart
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
@@ -18,7 +17,7 @@ class DatabaseHelper {
     final prefs = await _prefs;
     await prefs.remove(_weightUnitKey); // Reset for testing
     if (!prefs.containsKey(_weightUnitKey)) {
-      await prefs.setString(_weightUnitKey, 'lbs'); // Default to lbs
+      await prefs.setString(_weightUnitKey, 'lbs');
       print('Initialized default weight unit to lbs');
     }
     if (!prefs.containsKey(_programsKey)) {
@@ -123,12 +122,10 @@ class DatabaseHelper {
         return;
       }
 
-      // Define total sessions and deload period
       const totalRegularSessions = 36; // 12 weeks * 3 sessions per week
       const deloadSessions = 6; // 2 weeks * 3 sessions per week
       const totalProgramSessions = totalRegularSessions + deloadSessions; // 42 sessions
 
-      // Check completion *before* incrementing
       if (sessionsCompleted >= totalProgramSessions - 1) { // Complete at 42 sessions
         program['completed'] = true;
         program['currentWeek'] = 14; // Final week
@@ -137,20 +134,17 @@ class DatabaseHelper {
         programs[programIndex] = program;
         await savePrograms(programs);
         print('Program completed after deload period for program ID $programId');
-        return; // Exit to prevent further increments
+        return;
       }
 
-      // Increment session and week
       sessionsCompleted += 1;
       currentSession += 1;
 
-      // Madcow 5x5 has 3 sessions per week
       if (currentSession > 3) {
         currentSession = 1;
         currentWeek += 1;
       }
 
-      // Track deload sessions separately
       int deloadSessionsCompleted = sessionsCompleted > totalRegularSessions ? sessionsCompleted - totalRegularSessions : 0;
 
       if (sessionsCompleted > totalRegularSessions) { // Deload period (Weeks 13-14)
@@ -186,7 +180,7 @@ class DatabaseHelper {
     }
   }
 
-  static Future<void> convertProgramWeights(String oldUnit, String newUnit) async {
+  static Future<void> convertProgramWeights(String oldUnit, String unit) async { // Fixed 'newUnit' to 'unit'
     final programs = await getPrograms();
     if (programs.isEmpty) return;
 
@@ -195,33 +189,33 @@ class DatabaseHelper {
 
     for (var program in programs) {
       var details = program['details'] as Map<String, dynamic>;
-      String originalUnit = details['originalUnit'] as String? ?? oldUnit; // Fallback to oldUnit
+      String originalUnit = details['originalUnit'] as String? ?? oldUnit;
       double original1RM = details['original1RM'] as double? ?? (details['1RM'] as double? ?? 0.0);
       Map<String, dynamic> original1RMs = details['original1RMs'] as Map<String, dynamic>? ?? (details['1RMs'] as Map<String, dynamic>? ?? {});
 
-      print('Attempting to convert program ${program['id']} from $oldUnit to $newUnit, originalUnit: $originalUnit, original1RM: $original1RM, current 1RM: ${details['1RM']}');
+      print('Attempting to convert program ${program['id']} from $oldUnit to $unit, originalUnit: $originalUnit, original1RM: $original1RM, current 1RM: ${details['1RM']}');
 
-      if (oldUnit != newUnit) {
+      if (oldUnit != unit) {
         double conversionFactor;
-        if (originalUnit == 'kg' && newUnit == 'lbs') {
+        if (originalUnit == 'kg' && unit == 'lbs') {
           conversionFactor = kgToLbs;
-        } else if (originalUnit == 'lbs' && newUnit == 'kg') {
+        } else if (originalUnit == 'lbs' && unit == 'kg') {
           conversionFactor = lbsToKg;
         } else {
-          conversionFactor = 1.0; // No conversion if units mismatch unexpectedly
-          print('Warning: No valid conversion factor for program ${program['id']}: originalUnit=$originalUnit, newUnit=$newUnit');
+          conversionFactor = 1.0;
+          print('Warning: No valid conversion factor for program ${program['id']}: originalUnit=$originalUnit, unit=$unit');
         }
 
         if (details.containsKey('1RM') && conversionFactor != 1.0) {
           double current1RM = details['1RM'] as double;
           double converted1RM = original1RM * conversionFactor;
-          converted1RM = _roundWeight(converted1RM, newUnit);
+          converted1RM = _roundWeight(converted1RM, unit);
           print('Before update: 1RM=$current1RM, converted1RM=$converted1RM');
           details['1RM'] = converted1RM;
-          details['original1RM'] = converted1RM; // Update original1RM to the new value
-          details['originalUnit'] = newUnit; // Update originalUnit to the new unit
+          details['original1RM'] = converted1RM;
+          details['originalUnit'] = unit;
           print('After update: 1RM=${details['1RM']}, original1RM=${details['original1RM']}, originalUnit=${details['originalUnit']}');
-          print('Converted program ${program['id']} 1RM: $original1RM $originalUnit to $converted1RM $newUnit');
+          print('Converted program ${program['id']} 1RM: $original1RM $originalUnit to $converted1RM $unit');
         } else if (details.containsKey('1RM')) {
           print('No conversion applied for program ${program['id']} 1RM: conversionFactor=$conversionFactor');
         }
@@ -231,51 +225,51 @@ class DatabaseHelper {
           for (var lift in original1RMs.keys) {
             double value = original1RMs[lift] as double;
             double convertedValue = value * conversionFactor;
-            convertedValue = _roundWeight(convertedValue, newUnit);
+            convertedValue = _roundWeight(convertedValue, unit);
             oneRMs[lift] = convertedValue;
-            print('Converted program ${program['id']} $lift 1RM: $value $originalUnit to $convertedValue $newUnit');
+            print('Converted program ${program['id']} $lift 1RM: $value $originalUnit to $convertedValue $unit');
           }
-          details['original1RMs'] = oneRMs; // Update original1RMs
-          details['originalUnit'] = newUnit; // Update originalUnit
+          details['original1RMs'] = oneRMs;
+          details['originalUnit'] = unit;
         }
 
         if (details.containsKey('oneRMIncrement') && conversionFactor != 1.0) {
           double increment = details['oneRMIncrement'] as double;
           double convertedIncrement = increment * conversionFactor;
-          convertedIncrement = _roundWeight(convertedIncrement, newUnit);
+          convertedIncrement = _roundWeight(convertedIncrement, unit);
           details['oneRMIncrement'] = convertedIncrement;
-          print('Converted program ${program['id']} oneRMIncrement: $increment $originalUnit to $convertedIncrement $newUnit');
+          print('Converted program ${program['id']} oneRMIncrement: $increment $originalUnit to $convertedIncrement $unit');
         }
       } else {
-        print('No conversion needed for program ${program['id']}: oldUnit ($oldUnit) matches newUnit ($newUnit)');
+        print('No conversion needed for program ${program['id']}: oldUnit ($oldUnit) matches unit ($unit)');
       }
 
-      details['unit'] = newUnit;
+      details['unit'] = unit;
       program['details'] = details;
     }
 
     await savePrograms(programs);
-    print('Converted program weights from $oldUnit to $newUnit');
+    print('Converted program weights from $oldUnit to $unit');
   }
 
-  static Future<void> convertProgressWeights(String oldUnit, String newUnit) async {
+  static Future<void> convertProgressWeights(String oldUnit, String unit) async {
     final progress = await getProgress();
     if (progress.isEmpty) return;
 
     const double kgToLbs = 2.20462;
     const double lbsToKg = 1 / 2.20462;
-    double conversionFactor = oldUnit == 'kg' && newUnit == 'lbs' ? kgToLbs : lbsToKg;
+    double conversionFactor = oldUnit == 'kg' && unit == 'lbs' ? kgToLbs : lbsToKg;
 
     for (var entry in progress) {
       if (entry['weight'] != null) {
         double weight = entry['weight'] as double;
         double convertedWeight = weight * conversionFactor;
-        convertedWeight = _roundWeight(convertedWeight, newUnit);
+        convertedWeight = _roundWeight(convertedWeight, unit);
         entry['weight'] = convertedWeight;
       }
     }
     await saveProgress(progress);
-    print('Converted progress weights from $oldUnit to $newUnit');
+    print('Converted progress weights from $oldUnit to $unit');
   }
 
   static Future<List<Map<String, dynamic>>> getProgramLog(String programId) async {
@@ -287,13 +281,13 @@ class DatabaseHelper {
     final typedLog = decodedLog.map((entry) {
       final typedEntry = (entry as Map).cast<String, dynamic>();
       if (!typedEntry.containsKey('workoutName')) {
-        typedEntry['workoutName'] = 'Unknown Workout'; // Add default workoutName for legacy entries
+        typedEntry['workoutName'] = 'Unknown Workout';
       }
       if (typedEntry.containsKey('sets')) {
         final sets = (typedEntry['sets'] as List?)?.map((set) {
           final typedSet = (set as Map).cast<String, dynamic>();
           if (!typedSet.containsKey('name') || typedSet['name'] == null) {
-            typedSet['name'] = 'Unknown Exercise'; // Add default name for legacy set entries
+            typedSet['name'] = 'Unknown Exercise';
           }
           return typedSet;
         }).toList() ?? [];
@@ -302,7 +296,6 @@ class DatabaseHelper {
       return typedEntry;
     }).toList();
 
-    // Save updated log entries with workoutName and set names
     await prefs.setString(_programLogKeyPrefix + programId, jsonEncode(typedLog));
     print('Updated program log for program ID $programId with default workoutName and set names for legacy entries');
     return typedLog.cast<Map<String, dynamic>>();
@@ -329,8 +322,11 @@ class DatabaseHelper {
   static Future<void> insertWorkout(Map<String, dynamic> workout) async {
     final prefs = await _prefs;
     final workouts = await getWorkouts();
-    workouts.add(workout);
+    final workoutWithId = Map<String, dynamic>.from(workout);
+    workoutWithId['id'] = Uuid().v4();
+    workouts.add(workoutWithId);
     await prefs.setString(_workoutsKey, jsonEncode(workouts));
+    print('Inserted workout: $workoutWithId');
   }
 
   static Future<void> deleteWorkout(String workoutId) async {
@@ -338,6 +334,7 @@ class DatabaseHelper {
     final workouts = await getWorkouts();
     final updatedWorkouts = workouts.where((w) => w['id'] != workoutId).toList();
     await prefs.setString(_workoutsKey, jsonEncode(updatedWorkouts));
+    print('Deleted workout with ID: $workoutId');
   }
 
   static Future<List<Map<String, dynamic>>> getMeals() async {
@@ -395,7 +392,7 @@ class DatabaseHelper {
 
   static Future<void> setWeightUnit(String unit, {String? currentUnit}) async {
     final prefs = await _prefs;
-    final oldUnit = currentUnit ?? await getWeightUnit(); // Use provided currentUnit or fetch from prefs
+    final oldUnit = currentUnit ?? await getWeightUnit();
     print('Setting weight unit from $oldUnit to $unit (currentUnit provided: $currentUnit)');
     if (oldUnit != unit) {
       print('Converting weights from $oldUnit to $unit');

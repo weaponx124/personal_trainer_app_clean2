@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database_helper.dart';
-import 'programs_overview_screen.dart';
+import 'program_actions.dart';
 
 class ProgramSelectionScreen extends StatefulWidget {
   final String unit;
@@ -12,8 +12,8 @@ class ProgramSelectionScreen extends StatefulWidget {
 }
 
 class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
-  String selectedGoal = 'All'; // Default filter
-  String selectedLevel = 'All'; // Default filter
+  String selectedGoal = 'All';
+  String selectedLevel = 'All';
   final List<Map<String, dynamic>> programs = [
     {
       'name': '5/3/1 Program',
@@ -267,32 +267,16 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
 
   void _startProgram(String programName, bool requires1RM, List<String>? lifts) {
     print('Starting program: $programName, requires1RM: $requires1RM, lifts: $lifts');
-    if (requires1RM) {
-      print('Navigating to ProgramsOverviewScreen for 1RM input');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ProgramsOverviewScreen(
-            unit: widget.unit,
-            initialProgram: {'name': programName, 'requires1RM': requires1RM, 'lifts': lifts},
-          ),
-        ),
-      );
-    } else {
-      print('Saving program $programName directly');
-      DatabaseHelper.saveProgram(programName, {'unit': widget.unit}).then((_) {
-        print('Program saved, navigating to ProgramsOverviewScreen');
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProgramsOverviewScreen(unit: widget.unit),
-          ),
-        );
-      }).catchError((e) {
-        print('Error saving program: $e');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving program: $e')));
-      });
-    }
+    startProgram(
+      context,
+      programName,
+      true,
+      null,
+      requires1RM,
+      lifts,
+          () => setState(() {}), // Minimal refresh, sufficient for tab context
+      widget.unit,
+    );
   }
 
   @override
@@ -306,7 +290,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose Your Program'),
-        backgroundColor: Colors.orange[700],
+        backgroundColor: Colors.blue[800],
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
@@ -320,7 +304,6 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Filter by Goal
             const Text('Filter by Goal:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Wrap(
@@ -334,7 +317,6 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            // Filter by Experience Level
             const Text('Filter by Level:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Wrap(
@@ -347,7 +329,6 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            // Program List
             Expanded(
               child: ListView.builder(
                 itemCount: filteredPrograms.length,
@@ -356,7 +337,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
                   return Card(
                     elevation: 6,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    color: Colors.orange[50],
+                    color: Colors.blue[50],
                     child: ListTile(
                       leading: Icon(
                         program['category'] == 'Powerlifting'
@@ -366,11 +347,11 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
                             : program['category'] == 'General Fitness'
                             ? Icons.health_and_safety
                             : Icons.bolt,
-                        color: Colors.orange,
+                        color: Colors.blue[800],
                       ),
                       title: Text(
                         program['name'],
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue[800]),
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,14 +363,11 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
                           Text(program['description'], style: const TextStyle(fontSize: 12, color: Colors.grey)),
                         ],
                       ),
-                      onTap: () {
-                        print('Tapped on program: ${program['name']}');
-                        _startProgram(
-                          program['name'],
-                          program['requires1RM'] ?? false,
-                          program['lifts']?.cast<String>(),
-                        );
-                      },
+                      onTap: () => _startProgram(
+                        program['name'],
+                        program['requires1RM'] ?? false,
+                        program['lifts']?.cast<String>(),
+                      ),
                     ),
                   );
                 },
@@ -410,7 +388,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
           onSelected(label);
         }
       },
-      selectedColor: Colors.orange[700],
+      selectedColor: Colors.blue[800],
       labelStyle: TextStyle(
         color: selectedValue == label ? Colors.white : Colors.black,
       ),

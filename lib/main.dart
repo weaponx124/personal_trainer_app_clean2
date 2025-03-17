@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart'; // New splash screen
+import 'database_helper.dart';
+import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart' as home;
 import 'screens/program_selection_screen.dart' as programs;
 import 'screens/progress_screen.dart' as progress;
 import 'screens/diet_screen.dart' as diet;
+import 'screens/programs_overview_screen.dart';
+import 'screens/program_details_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await DatabaseHelper.initialize();
   runApp(const MyApp());
 }
 
@@ -57,7 +62,20 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
-      home: const SplashScreen(), // Start with splash
+      home: const SplashScreen(),
+      routes: {
+        '/main': (context) => const MainScreen(),
+        '/program_selection': (context) => programs.ProgramSelectionScreen(
+          unit: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?)?['unit'] as String? ?? 'lbs',
+        ),
+        '/program_details': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return ProgramDetailsScreen(
+            programId: args['programId'] as String,
+            unit: args['unit'] as String,
+          );
+        },
+      },
     );
   }
 }
@@ -74,7 +92,7 @@ class _MainScreenState extends State<MainScreen> {
 
   static final List<Widget> _screens = <Widget>[
     const home.HomeScreen(),
-    const programs.ProgramSelectionScreen(unit: 'lbs'),
+    const programs.ProgramSelectionScreen(unit: 'lbs'), // Default unit, adjust dynamically if needed
     const progress.ProgressScreen(unit: 'lbs'),
     const diet.DietScreen(),
   ];
