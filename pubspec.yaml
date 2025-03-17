@@ -1,0 +1,26 @@
+name: personal_trainer_app_clean
+description: A restored Flutter project for personal training.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=2.18.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  get_it: ^7.2.0
+  shared_preferences: ^2.0.0
+  uuid: ^3.0.7
+  cupertino_icons: ^1.0.2
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
