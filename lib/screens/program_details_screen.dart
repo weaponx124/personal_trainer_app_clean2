@@ -107,7 +107,7 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
       repsControllers: repsControllers,
       programId: widget.programId,
       onComplete: () async {
-        await _loadProgram(); // Reload program to check completion status
+        await _loadProgram();
         await _loadWorkoutLog();
         if (program['completed'] == true) {
           _showCompletionDialog();
@@ -127,7 +127,7 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              Navigator.pop(context, true); // Return to ProgramsOverviewScreen with refresh flag
+              Navigator.pop(context, true); // Return to previous screen
             },
             child: const Text('OK'),
           ),
@@ -144,17 +144,11 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(program['name'] ?? 'Program Details'),
-        backgroundColor: Colors.orange[700],
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            print('Back button pressed on ProgramDetailsScreen, popping route');
-            Navigator.pop(context);
-          },
-        ),
+        backgroundColor: Theme.of(context).colorScheme.primary, // Use theme primary
+        foregroundColor: Colors.white, // White icons/text
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
+            icon: const Icon(Icons.edit),
             onPressed: () => ProgramDetailsDialogs.showUpdate1RMDialog(
               context: context,
               program: program,
@@ -164,7 +158,7 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
             tooltip: 'Update 1RM',
           ),
           IconButton(
-            icon: const Icon(Icons.check, color: Colors.white),
+            icon: const Icon(Icons.check),
             onPressed: () => ProgramDetailsDialogs.showMarkAsCompletedDialog(
               context: context,
               program: program,
@@ -176,7 +170,7 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.orange))
+          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -215,17 +209,23 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
                 children: [
                   if (is531Program)
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[700]),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary, // Theme primary
+                        foregroundColor: Colors.white, // White text
+                      ),
                       onPressed: () => ProgramDetailsDialogs.showCompleteWeekDialog(
                         context: context,
                         programName: program['name'] as String,
                         programId: widget.programId,
                         onComplete: () => _loadProgram(),
                       ),
-                      child: const Text('Complete Week', style: TextStyle(color: Colors.white)),
+                      child: const Text('Complete Week'),
                     ),
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[700]),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary, // Theme primary
+                      foregroundColor: Colors.white, // White text
+                    ),
                     onPressed: _logic.completeSession(
                       context: context,
                       setCompleted: setCompleted,
@@ -241,12 +241,15 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
                       },
                       currentWorkout: currentWorkout,
                     ),
-                    child: const Text('Complete Session', style: TextStyle(color: Colors.white)),
+                    child: const Text('Complete Session'),
                   ),
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[700]),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary, // Theme primary
+                      foregroundColor: Colors.white, // White text
+                    ),
                     onPressed: _completeAllSets,
-                    child: const Text('Complete All Sets', style: TextStyle(color: Colors.white)),
+                    child: const Text('Complete All Sets'),
                   ),
                 ],
               ),

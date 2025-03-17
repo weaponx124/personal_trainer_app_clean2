@@ -1,4 +1,3 @@
-// program_details_widgets.dart
 import 'package:flutter/material.dart';
 import '../database_helper.dart';
 
@@ -21,6 +20,7 @@ class ProgramDetailsCard extends StatelessWidget {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Theme.of(context).colorScheme.surface, // Theme surface
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -28,55 +28,63 @@ class ProgramDetailsCard extends StatelessWidget {
           children: [
             Text(
               'Program: ${program['name']}',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary, // Theme primary
+              ),
             ),
             const SizedBox(height: 10),
             Text(
               'Start Date: ${(program['startDate'] as String?)?.toString() ?? 'Not started'}',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: 10),
             if (program['currentWeek'] != null)
               Text(
                 'Current Week: ${program['currentWeek']}',
-                style: const TextStyle(fontSize: 16),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             if (isRussianSquat && program['sessionsCompleted'] != null)
               Text(
                 'Sessions This Week: ${program['sessionsCompleted']}/3',
-                style: const TextStyle(fontSize: 16),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             if (isRussianSquat && program['currentSession'] != null)
               Text(
                 'Current Session: ${program['currentSession']}/18',
-                style: const TextStyle(fontSize: 16),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             if (program['details'] != null) ...[
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Program Details',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary, // Theme primary
+                ),
               ),
               const SizedBox(height: 10),
               if (program['details']['1RM'] != null)
                 Text(
                   '1RM: ${(program['details']['1RM'] as double?)?.toString() ?? 'Not set'} $unit',
-                  style: const TextStyle(fontSize: 16),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
               if (program['details']['1RMs'] != null)
                 ...((program['details']['1RMs'] as Map<String, dynamic>).entries.map((entry) {
                   return Text(
                     '${entry.key} 1RM: ${entry.value} $unit',
-                    style: const TextStyle(fontSize: 16),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   );
                 })),
               Text(
                 'Sets: ${(program['details']['sets'] as int?)?.toString() ?? 'N/A'}',
-                style: const TextStyle(fontSize: 16),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
               Text(
                 'Reps: ${(program['details']['reps'] as int?)?.toString() ?? 'N/A'}',
-                style: const TextStyle(fontSize: 16),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ],
@@ -123,6 +131,7 @@ class SessionSetsCard extends StatelessWidget {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Theme.of(context).colorScheme.surface, // Theme surface
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -130,7 +139,11 @@ class SessionSetsCard extends StatelessWidget {
           children: [
             Text(
               'Session $currentSession: $workoutName',
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.orange),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary, // Theme primary
+              ),
             ),
             const SizedBox(height: 10),
             ...exerciseGroups.entries.map((entry) {
@@ -154,7 +167,11 @@ class SessionSetsCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'Set ${index + 1}: $weight $unit x $reps reps',
-                            style: TextStyle(color: setCompleted[globalIndex] ? Colors.green : Colors.black),
+                            style: TextStyle(
+                              color: setCompleted[globalIndex]
+                                  ? Theme.of(context).colorScheme.secondary // Green for completed
+                                  : Theme.of(context).colorScheme.onSurface, // Default text color
+                            ),
                           ),
                         ),
                         SizedBox(
@@ -178,6 +195,7 @@ class SessionSetsCard extends StatelessWidget {
                         Checkbox(
                           value: setCompleted[globalIndex],
                           onChanged: (value) => onSetCompletedChanged(globalIndex, value),
+                          activeColor: Theme.of(context).colorScheme.secondary, // Green checkmark
                         ),
                       ],
                     ),
@@ -260,14 +278,19 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Theme.of(context).colorScheme.surface, // Theme surface
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Workout Log',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary, // Theme primary
+              ),
             ),
             const SizedBox(height: 10),
             ...widget.workoutLog.asMap().entries.map((entry) {
@@ -276,22 +299,16 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
               final date = log['date'] as String? ?? 'Unknown Date';
               final sets = (log['sets'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
-              // Calculate session number (assuming 3 sessions per week)
               final sessionNumber = logIndex + 1;
               final weekNumber = ((sessionNumber - 1) ~/ 3) + 1;
               final dayNumber = ((sessionNumber - 1) % 3) + 1;
 
-              // Get main lifts (excluding warmups), safely handle null names
               final mainLifts = sets
-                  .where((set) {
-                final name = set['name'] as String?;
-                return name != null && !name.startsWith('Warmup');
-              })
+                  .where((set) => !(set['name'] as String).startsWith('Warmup'))
                   .map((set) => set['name'] as String)
                   .toSet()
                   .join(', ');
 
-              // Calculate total volume
               double totalVolume = sets.fold(0.0, (sum, set) {
                 final weight = (set['weight'] as num? ?? 0).toDouble();
                 final completedReps = (set['completedReps'] as num? ?? 0).toDouble();
@@ -308,11 +325,11 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
                     ),
                     Text(
                       mainLifts.isNotEmpty ? mainLifts : 'No main lifts',
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                     ),
                     Text(
                       'Total Volume: ${totalVolume.toStringAsFixed(0)} ${widget.unit}',
-                      style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.grey),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic, color: Colors.grey),
                     ),
                   ],
                 ),
@@ -327,7 +344,11 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
                         final reps = set['reps'] as num? ?? 0;
                         final completedReps = set['completedReps'] as num? ?? 0;
                         final diff = completedReps - reps;
-                        final color = completedReps < reps ? Colors.red : completedReps > reps ? Colors.green : Colors.blue;
+                        final color = completedReps < reps
+                            ? Colors.red
+                            : completedReps > reps
+                            ? Theme.of(context).colorScheme.secondary // Green
+                            : Colors.blue;
                         final icon = completedReps < reps
                             ? Icons.arrow_downward
                             : completedReps > reps
@@ -347,7 +368,7 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
                                 ),
                               ),
                               SizedBox(
-                                width: 100, // Increased width for better fit
+                                width: 100,
                                 child: TextField(
                                   controller: repsControllersList.length > logIndex && repsControllersList[logIndex].length > setIndex
                                       ? repsControllersList[logIndex][setIndex]
@@ -356,10 +377,10 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
                                     labelText: 'Reps Done',
                                     border: const OutlineInputBorder(),
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                    isDense: true, // Reduces vertical padding for compactness
+                                    isDense: true,
                                   ),
                                   keyboardType: TextInputType.number,
-                                  textAlign: TextAlign.center, // Center-align text for uniformity
+                                  textAlign: TextAlign.center,
                                   onTap: () {
                                     if (repsControllersList.length > logIndex && repsControllersList[logIndex].length > setIndex) {
                                       final controller = repsControllersList[logIndex][setIndex];
@@ -371,10 +392,11 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
                                   onChanged: (value) => _updateCompletedReps(logIndex, setIndex, value),
                                 ),
                               ),
-                              SizedBox(width: 8), // Add spacing between TextField and Checkbox
+                              SizedBox(width: 8),
                               Checkbox(
-                                value: false, // Placeholder, as setCompleted isn't used here (use log data instead if needed)
+                                value: false, // Placeholder, use log data if needed
                                 onChanged: (value) {},
+                                activeColor: Theme.of(context).colorScheme.secondary, // Green
                               ),
                               if (completedReps != reps)
                                 Padding(
@@ -444,13 +466,20 @@ Widget buildProgramList({
       Card(
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: Colors.lightGreen[50],
+        color: Theme.of(context).colorScheme.surface, // Theme surface
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Current Cycles', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green[700])),
+              Text(
+                'Current Cycles',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.secondary, // Green
+                ),
+              ),
               const SizedBox(height: 10),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: 200),
@@ -478,16 +507,19 @@ Widget buildProgramList({
                     print('Rendering current program $index: 1RM: $oneRM, unit: $unit, details: $details');
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface, // Theme surface
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       child: ListTile(
-                        title: Text('${program['name']} (${startDate})', style: const TextStyle(fontSize: 16, color: Colors.green)),
-                        subtitle: Text('Started: $startDate | $oneRM', style: const TextStyle(fontSize: 12)),
+                        title: Text(
+                          '${program['name']} (${startDate})',
+                          style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.secondary), // Green
+                        ),
+                        subtitle: Text('Started: $startDate | $oneRM', style: Theme.of(context).textTheme.bodyMedium),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.play_arrow, color: Colors.green),
+                              icon: Icon(Icons.play_arrow, color: Theme.of(context).colorScheme.secondary), // Green
                               onPressed: () => startProgram(
                                 context,
                                 program['name'] as String,
@@ -532,13 +564,20 @@ Widget buildProgramList({
       Card(
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: Colors.red[50],
+        color: Theme.of(context).colorScheme.surface, // Theme surface
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Completed Cycles', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red[700])),
+              Text(
+                'Completed Cycles',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red[700], // Keep red for completed
+                ),
+              ),
               const SizedBox(height: 10),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: 200),
@@ -566,15 +605,18 @@ Widget buildProgramList({
                     print('Rendering completed program $index: 1RM: $oneRM, unit: $unit, details.unit: ${program['details']?['unit']}');
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface, // Theme surface
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       child: ListTile(
-                        title: Text('${program['name']} (${startDate})', style: const TextStyle(fontSize: 16, color: Colors.red)),
-                        subtitle: Text('Started: $startDate | $oneRM', style: const TextStyle(fontSize: 12)),
+                        title: Text(
+                          '${program['name']} (${startDate})',
+                          style: const TextStyle(fontSize: 16, color: Colors.red),
+                        ),
+                        subtitle: Text('Started: $startDate | $oneRM', style: Theme.of(context).textTheme.bodyMedium),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.check, color: Colors.green),
+                            Icon(Icons.check, color: Theme.of(context).colorScheme.secondary), // Green check
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
                               onPressed: () => editProgram(

@@ -274,7 +274,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
       null,
       requires1RM,
       lifts,
-          () => setState(() {}), // Minimal refresh, sufficient for tab context
+          () => setState(() {}),
       widget.unit,
     );
   }
@@ -290,14 +290,8 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose Your Program'),
-        backgroundColor: Colors.blue[800],
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            print('Back button pressed on ProgramSelectionScreen, popping route');
-            Navigator.pop(context);
-          },
-        ),
+        backgroundColor: Theme.of(context).colorScheme.primary, // Use theme primary
+        foregroundColor: Colors.white, // White icons/text for contrast
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -323,7 +317,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
               spacing: 8.0,
               children: [
                 _buildFilterChip('All', selectedLevel, (value) => setState(() => selectedLevel = value)),
-                _buildFilterChip('Beginner', selectedLevel, (value) => setState(() => selectedLevel = value)),
+                _buildFilterChip('Beginner', selectedLevel, (value) => setState(() => selectedGoal = value)),
                 _buildFilterChip('Intermediate', selectedLevel, (value) => setState(() => selectedLevel = value)),
                 _buildFilterChip('Advanced', selectedLevel, (value) => setState(() => selectedLevel = value)),
               ],
@@ -337,7 +331,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
                   return Card(
                     elevation: 6,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    color: Colors.blue[50],
+                    color: Theme.of(context).colorScheme.surface, // Use theme surface
                     child: ListTile(
                       leading: Icon(
                         program['category'] == 'Powerlifting'
@@ -347,20 +341,24 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
                             : program['category'] == 'General Fitness'
                             ? Icons.health_and_safety
                             : Icons.bolt,
-                        color: Colors.blue[800],
+                        color: Theme.of(context).colorScheme.primary, // Use theme primary
                       ),
                       title: Text(
                         program['name'],
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue[800]),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary, // Use theme primary
+                        ),
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Goal: ${program['category']}', style: const TextStyle(fontSize: 12)),
-                          Text('Level: ${program['level']}', style: const TextStyle(fontSize: 12)),
-                          Text('Duration: ${program['duration']}', style: const TextStyle(fontSize: 12)),
+                          Text('Goal: ${program['category']}', style: Theme.of(context).textTheme.bodyMedium),
+                          Text('Level: ${program['level']}', style: Theme.of(context).textTheme.bodyMedium),
+                          Text('Duration: ${program['duration']}', style: Theme.of(context).textTheme.bodyMedium),
                           const SizedBox(height: 4),
-                          Text(program['description'], style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          Text(program['description'], style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey)),
                         ],
                       ),
                       onTap: () => _startProgram(
@@ -388,9 +386,9 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
           onSelected(label);
         }
       },
-      selectedColor: Colors.blue[800],
+      selectedColor: Theme.of(context).colorScheme.primary, // Use theme primary
       labelStyle: TextStyle(
-        color: selectedValue == label ? Colors.white : Colors.black,
+        color: selectedValue == label ? Colors.white : Theme.of(context).colorScheme.onSurface, // Theme contrast
       ),
     );
   }
