@@ -101,7 +101,7 @@ class SessionSetsCard extends StatelessWidget {
   final List<TextEditingController> repsControllers;
   final List<bool> setCompleted;
   final String unit;
-  final Function(int, String) onRepsChanged;
+  final Function(int, int) onRepsChanged; // Changed to int for +/- buttons
   final Function(int, bool?) onSetCompletedChanged;
 
   const SessionSetsCard({
@@ -175,21 +175,43 @@ class SessionSetsCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(
-                          width: 80,
-                          child: TextField(
-                            controller: repsControllers[globalIndex],
-                            decoration: InputDecoration(
-                              labelText: 'Reps Done',
-                              border: const OutlineInputBorder(),
-                              hintText: '',
-                            ),
-                            keyboardType: TextInputType.number,
-                            onTap: () {
-                              if (repsControllers[globalIndex].text.isEmpty || repsControllers[globalIndex].text == '0') {
-                                repsControllers[globalIndex].clear();
-                              }
-                            },
-                            onChanged: (value) => onRepsChanged(globalIndex, value),
+                          width: 100,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove),
+                                onPressed: () {
+                                  final currentReps = int.tryParse(repsControllers[globalIndex].text) ?? 0;
+                                  if (currentReps > 0) onRepsChanged(globalIndex, currentReps - 1);
+                                },
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              SizedBox(
+                                width: 40,
+                                child: TextField(
+                                  controller: repsControllers[globalIndex],
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 4.0),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  textAlign: TextAlign.center,
+                                  onChanged: (value) {
+                                    final newReps = int.tryParse(value) ?? 0;
+                                    onRepsChanged(globalIndex, newReps);
+                                  },
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.add),
+                                onPressed: () {
+                                  final currentReps = int.tryParse(repsControllers[globalIndex].text) ?? 0;
+                                  onRepsChanged(globalIndex, currentReps + 1);
+                                },
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ],
                           ),
                         ),
                         Checkbox(

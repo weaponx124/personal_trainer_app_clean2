@@ -180,7 +180,7 @@ class DatabaseHelper {
     }
   }
 
-  static Future<void> convertProgramWeights(String oldUnit, String unit) async { // Fixed 'newUnit' to 'unit'
+  static Future<void> convertProgramWeights(String oldUnit, String unit) async {
     final programs = await getPrograms();
     if (programs.isEmpty) return;
 
@@ -401,5 +401,41 @@ class DatabaseHelper {
     }
     await prefs.setString(_weightUnitKey, unit);
     print('Set weight unit to: $unit');
+  }
+
+  // New method to fetch static program list with durations
+  static Future<List<Map<String, dynamic>>> getAllPrograms() async {
+    // Static list matching ProgramSelectionScreen for duration reference
+    return [
+      {'name': '5/3/1 Program', 'duration': 'Ongoing', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift', 'Overhead']},
+      {'name': 'Texas Method', 'duration': 'Ongoing', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Madcow 5x5', 'duration': '12-16 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Sheiko Beginner', 'duration': '8-12 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Sheiko Intermediate', 'duration': '8-12 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Sheiko Advanced', 'duration': '8-12 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Smolov Base Cycle', 'duration': '13 weeks', 'requires1RM': true, 'lifts': ['Squat']},
+      {'name': 'Smolov Jr. (Bench)', 'duration': '3-4 weeks', 'requires1RM': true, 'lifts': ['Bench']},
+      {'name': 'Candito 6-Week Program', 'duration': '6 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Push/Pull/Legs (PPL)', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'Arnold Split', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'Bro Split', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'PHUL', 'duration': 'Ongoing', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'PHAT', 'duration': 'Ongoing', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'German Volume Training', 'duration': '4-6 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Starting Strength', 'duration': '3-6 months', 'requires1RM': false},
+      {'name': 'StrongLifts 5x5', 'duration': '3-6 months', 'requires1RM': false},
+      {'name': 'Greyskull LP', 'duration': '3-6 months', 'requires1RM': false},
+      {'name': 'Full Body 3x/Week', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'Couch to 5K', 'duration': '9 weeks', 'requires1RM': false},
+      {'name': 'Bodyweight Fitness', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'Russian Squat Program', 'duration': '6 weeks', 'requires1RM': true, 'lifts': ['Squat']},
+      {'name': 'Super Squats', 'duration': '6 weeks', 'requires1RM': true, 'lifts': ['Squat']},
+      {'name': '30-Day Squat Challenge', 'duration': '30 days', 'requires1RM': false},
+      {'name': 'Bench Press Specialization', 'duration': '3 weeks', 'requires1RM': true, 'lifts': ['Bench']},
+      {'name': 'Deadlift Builder', 'duration': '6 weeks', 'requires1RM': true, 'lifts': ['Deadlift']},
+      {'name': 'Arm Blaster', 'duration': '4 weeks', 'requires1RM': false},
+      {'name': 'Shoulder Sculptor', 'duration': '6 weeks', 'requires1RM': false},
+      {'name': 'Pull-Up Progression', 'duration': '6 weeks', 'requires1RM': false},
+    ];
   }
 }

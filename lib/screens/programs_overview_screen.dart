@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:personal_trainer_app_clean/screens/program_actions.dart';
 import 'package:personal_trainer_app_clean/screens/program_list_builder.dart';
-import 'package:personal_trainer_app_clean/main.dart'; // Correct import
+import 'package:personal_trainer_app_clean/main.dart';
 
 class ProgramsOverviewScreen extends StatefulWidget {
   final String unit;
@@ -48,9 +48,7 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
     } catch (e) {
       print('Error loading programs: $e');
       if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+        setState(() => isLoading = false);
       }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading programs: $e')));
     }
@@ -59,6 +57,17 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
   void _refreshPrograms() async {
     await _loadPrograms();
     print('Programs refreshed after async operation');
+  }
+
+  double _calculateProgress(Map<String, dynamic> program) {
+    final sessionsCompleted = program['sessionsCompleted'] as int? ?? 0;
+    final programName = program['name'] as String;
+    // Rough estimate of total sessions based on duration
+    int totalSessions = 1; // Default
+    if (programName.contains('Madcow 5x5')) totalSessions = 36; // 12 weeks * 3 sessions
+    else if (programName.contains('5/3/1')) totalSessions = 12; // Ongoing, assume 12 for demo
+    else if (programName.contains('Russian Squat')) totalSessions = 18; // 6 weeks * 3
+    return sessionsCompleted / totalSessions.clamp(1, double.infinity);
   }
 
   @override
@@ -72,7 +81,7 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Programs'),
+            title: const Text('Active Programs'),
             backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Colors.white,
             leading: IconButton(
@@ -123,6 +132,7 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
                         editProgram: editProgram,
                         deleteProgram: deleteProgram,
                         refreshPrograms: _refreshPrograms,
+                        progressCalculator: _calculateProgress, // Pass progress calculator
                       ),
                     ],
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../database_helper.dart';
 
 Widget buildProgramList({
   required BuildContext context,
@@ -27,20 +28,28 @@ Widget buildProgramList({
       Function() refreshPrograms,
       String unit,
       ) deleteProgram,
-  required Function() refreshPrograms, // Add callback to refresh programs
+  required Function() refreshPrograms,
+  required double Function(Map<String, dynamic>) progressCalculator, // New parameter
 }) {
   return Column(
     children: [
       Card(
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: Colors.lightGreen[50],
+        color: Theme.of(context).colorScheme.surface,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Current Cycles', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green[700])),
+              Text(
+                'Current Cycles',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
               const SizedBox(height: 10),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: 200),
@@ -54,11 +63,11 @@ Widget buildProgramList({
                     String oneRM;
                     if (details != null) {
                       if (details['1RM'] != null) {
-                        oneRM = (details['1RM'] as double).toString(); // Single-lift program
+                        oneRM = (details['1RM'] as double).toString();
                       } else if (details['1RMs'] != null && (details['1RMs'] as Map<String, dynamic>).isNotEmpty) {
                         final oneRMs = details['1RMs'] as Map<String, dynamic>;
                         final rmList = oneRMs.entries.map((entry) => '${entry.key}: ${entry.value}').join(', ');
-                        oneRM = '1RMs: $rmList $unit'; // Multi-lift program
+                        oneRM = '1RMs: $rmList $unit';
                       } else {
                         oneRM = 'Not set';
                       }
@@ -68,16 +77,30 @@ Widget buildProgramList({
                     print('Rendering current program $index: 1RM: $oneRM, unit: $unit, details: $details');
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       child: ListTile(
-                        title: Text('${program['name']} (${startDate})', style: const TextStyle(fontSize: 16, color: Colors.green)),
-                        subtitle: Text('Started: $startDate | $oneRM', style: const TextStyle(fontSize: 12)),
+                        title: Text(
+                          '${program['name']} (${startDate})',
+                          style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.secondary),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Started: $startDate | $oneRM', style: Theme.of(context).textTheme.bodyMedium),
+                            const SizedBox(height: 4),
+                            LinearProgressIndicator(
+                              value: progressCalculator(program),
+                              backgroundColor: Colors.grey[300],
+                              color: Theme.of(context).colorScheme.secondary,
+                            ),
+                          ],
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.play_arrow, color: Colors.green),
+                              icon: Icon(Icons.play_arrow, color: Theme.of(context).colorScheme.secondary),
                               onPressed: () => startProgram(
                                 context,
                                 program['name'] as String,
@@ -122,13 +145,20 @@ Widget buildProgramList({
       Card(
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: Colors.red[50],
+        color: Theme.of(context).colorScheme.surface,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Completed Cycles', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red[700])),
+              Text(
+                'Completed Cycles',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red[700],
+                ),
+              ),
               const SizedBox(height: 10),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: 200),
@@ -142,11 +172,11 @@ Widget buildProgramList({
                     String oneRM;
                     if (details != null) {
                       if (details['1RM'] != null) {
-                        oneRM = (details['1RM'] as double).toString(); // Single-lift program
+                        oneRM = (details['1RM'] as double).toString();
                       } else if (details['1RMs'] != null && (details['1RMs'] as Map<String, dynamic>).isNotEmpty) {
                         final oneRMs = details['1RMs'] as Map<String, dynamic>;
                         final rmList = oneRMs.entries.map((entry) => '${entry.key}: ${entry.value}').join(', ');
-                        oneRM = '1RMs: $rmList $unit'; // Multi-lift program
+                        oneRM = '1RMs: $rmList $unit';
                       } else {
                         oneRM = 'Not set';
                       }
@@ -156,15 +186,18 @@ Widget buildProgramList({
                     print('Rendering completed program $index: 1RM: $oneRM, unit: $unit, details.unit: ${program['details']?['unit']}');
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       child: ListTile(
-                        title: Text('${program['name']} (${startDate})', style: const TextStyle(fontSize: 16, color: Colors.red)),
-                        subtitle: Text('Started: $startDate | $oneRM', style: const TextStyle(fontSize: 12)),
+                        title: Text(
+                          '${program['name']} (${startDate})',
+                          style: const TextStyle(fontSize: 16, color: Colors.red),
+                        ),
+                        subtitle: Text('Started: $startDate | $oneRM', style: Theme.of(context).textTheme.bodyMedium),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.check, color: Colors.green),
+                            Icon(Icons.check, color: Theme.of(context).colorScheme.secondary),
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
                               onPressed: () => editProgram(
