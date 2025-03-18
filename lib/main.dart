@@ -12,11 +12,14 @@ import 'package:personal_trainer_app_clean/screens/workout_screen.dart';
 
 // Global unit state
 ValueNotifier<String> unitNotifier = ValueNotifier('lbs');
+// Global theme state
+ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseHelper.initialize();
   unitNotifier.value = await DatabaseHelper.getWeightUnit();
+  themeNotifier.value = await DatabaseHelper.getThemeMode(); // New method
   runApp(const MyApp());
 }
 
@@ -25,65 +28,70 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Personal Trainer',
-      theme: ThemeData(
-        primaryColor: Colors.blue[800],
-        scaffoldBackgroundColor: Colors.grey[100],
-        colorScheme: ColorScheme.light(
-          primary: Colors.blue[800]!,
-          secondary: Colors.green[600]!,
-          surface: Colors.white,
-        ),
-        textTheme: const TextTheme(
-          headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
-          bodyMedium: TextStyle(fontSize: 16, color: Colors.black54),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            textStyle: const TextStyle(fontSize: 16),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, themeMode, child) {
+        return MaterialApp(
+          title: 'Personal Trainer',
+          theme: ThemeData(
+            primaryColor: Colors.blue[800],
+            scaffoldBackgroundColor: Colors.grey[100],
+            colorScheme: ColorScheme.light(
+              primary: Colors.blue[800]!,
+              secondary: Colors.green[600]!,
+              surface: Colors.white,
+            ),
+            textTheme: const TextTheme(
+              headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
+              bodyMedium: TextStyle(fontSize: 16, color: Colors.black54),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                textStyle: const TextStyle(fontSize: 16),
+              ),
+            ),
+            useMaterial3: true,
           ),
-        ),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        primaryColor: Colors.blue[900],
-        scaffoldBackgroundColor: Colors.grey[900],
-        colorScheme: ColorScheme.dark(
-          primary: Colors.blue[900]!,
-          secondary: Colors.green[700]!,
-          surface: Colors.grey[800]!,
-        ),
-        textTheme: const TextTheme(
-          headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-          bodyMedium: TextStyle(fontSize: 16, color: Colors.white70),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            textStyle: const TextStyle(fontSize: 16),
+          darkTheme: ThemeData(
+            primaryColor: Colors.blue[900],
+            scaffoldBackgroundColor: Colors.grey[900],
+            colorScheme: ColorScheme.dark(
+              primary: Colors.blue[900]!,
+              secondary: Colors.green[700]!,
+              surface: Colors.grey[800]!,
+            ),
+            textTheme: const TextTheme(
+              headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+              bodyMedium: TextStyle(fontSize: 16, color: Colors.white70),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                textStyle: const TextStyle(fontSize: 16),
+              ),
+            ),
+            useMaterial3: true,
           ),
-        ),
-        useMaterial3: true,
-      ),
-      themeMode: ThemeMode.system,
-      home: const SplashScreen(),
-      routes: {
-        '/main': (context) => const MainScreen(),
-        '/program_selection': (context) => programs.ProgramSelectionScreen(),
-        '/program_details': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return ProgramDetailsScreen(
-            programId: args['programId'] as String,
-          );
-        },
-        '/settings': (context) => const SettingsScreen(),
-        '/workout': (context) => const WorkoutScreen(),
-        '/programs': (context) => ProgramsOverviewScreen(
-          unit: unitNotifier.value,
-          programName: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?)?['programName'] as String? ?? '',
-        ),
+          themeMode: themeMode, // Use dynamic theme mode
+          home: const SplashScreen(),
+          routes: {
+            '/main': (context) => const MainScreen(),
+            '/program_selection': (context) => programs.ProgramSelectionScreen(),
+            '/program_details': (context) {
+              final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+              return ProgramDetailsScreen(
+                programId: args['programId'] as String,
+              );
+            },
+            '/settings': (context) => const SettingsScreen(),
+            '/workout': (context) => const WorkoutScreen(),
+            '/programs': (context) => ProgramsOverviewScreen(
+              unit: unitNotifier.value,
+              programName: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?)?['programName'] as String? ?? '',
+            ),
+          },
+        );
       },
     );
   }
@@ -109,7 +117,7 @@ class _MainScreenState extends State<MainScreen> {
           bottomNavigationBar: BottomNavigationBar(
             items: const <BottomNavigationBarItem>[
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Active Programs'), // Updated
+              BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Active Programs'),
               BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Progress'),
               BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
             ],
@@ -127,7 +135,7 @@ class _MainScreenState extends State<MainScreen> {
 
   static List<Widget> _screens(String unit) => <Widget>[
     home.HomeScreen(unit: unit),
-    ProgramsOverviewScreen(unit: unit, programName: ''), // Replaced ProgramSelectionScreen
+    ProgramsOverviewScreen(unit: unit, programName: ''),
     progress.ProgressScreen(unit: unit),
     const diet.DietScreen(),
   ];

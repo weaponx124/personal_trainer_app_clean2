@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart'; // Added for ThemeMode
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
@@ -10,6 +11,7 @@ class DatabaseHelper {
   static const String _mealsKey = 'meals';
   static const String _progressKey = 'progress';
   static const String _weightUnitKey = 'weightUnit';
+  static const String _themeModeKey = 'themeMode';
 
   static Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
 
@@ -19,6 +21,10 @@ class DatabaseHelper {
     if (!prefs.containsKey(_weightUnitKey)) {
       await prefs.setString(_weightUnitKey, 'lbs');
       print('Initialized default weight unit to lbs');
+    }
+    if (!prefs.containsKey(_themeModeKey)) {
+      await prefs.setString(_themeModeKey, 'system');
+      print('Initialized default theme mode to system');
     }
     if (!prefs.containsKey(_programsKey)) {
       await _initializeDefaultData();
@@ -403,7 +409,6 @@ class DatabaseHelper {
     print('Set weight unit to: $unit');
   }
 
-  // New method to fetch static program list with durations
   static Future<List<Map<String, dynamic>>> getAllPrograms() async {
     // Static list matching ProgramSelectionScreen for duration reference
     return [
@@ -437,5 +442,38 @@ class DatabaseHelper {
       {'name': 'Shoulder Sculptor', 'duration': '6 weeks', 'requires1RM': false},
       {'name': 'Pull-Up Progression', 'duration': '6 weeks', 'requires1RM': false},
     ];
+  }
+
+  static Future<ThemeMode> getThemeMode() async {
+    final prefs = await _prefs;
+    final mode = prefs.getString(_themeModeKey) ?? 'system';
+    switch (mode) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      case 'system':
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  static Future<void> setThemeMode(ThemeMode mode) async {
+    final prefs = await _prefs;
+    String modeString;
+    switch (mode) {
+      case ThemeMode.light:
+        modeString = 'light';
+        break;
+      case ThemeMode.dark:
+        modeString = 'dark';
+        break;
+      case ThemeMode.system:
+      default:
+        modeString = 'system';
+        break;
+    }
+    await prefs.setString(_themeModeKey, modeString);
+    print('Set theme mode to: $modeString');
   }
 }
