@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:personal_trainer_app_clean/main.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HomeScreen extends StatefulWidget {
   final String unit;
@@ -22,99 +23,140 @@ class _HomeScreenState extends State<HomeScreen> {
     return ValueListenableBuilder<String>(
       valueListenable: unitNotifier,
       builder: (context, unit, child) {
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Ready to Crush It?',
-                  style: Theme.of(context).textTheme.headlineLarge,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                FutureBuilder<Map<String, dynamic>?>(
-                  future: _getLastWorkout(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return CircularProgressIndicator(color: Theme.of(context).colorScheme.primary);
-                    }
-                    final lastWorkout = snapshot.data;
-                    return Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      color: Theme.of(context).colorScheme.surface,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            Text(
-                              lastWorkout != null
-                                  ? 'Last Workout: ${lastWorkout['exercise']} ${lastWorkout['weight']} $unit'
-                                  : 'No Workouts Yet',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            LinearProgressIndicator(
-                              value: lastWorkout != null ? 0.6 : 0.0,
-                              backgroundColor: Colors.grey[300],
-                              color: Theme.of(context).colorScheme.secondary,
-                            ),
-                          ],
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)], // Soft Sky Blue fade to Matte Black
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Logo and Tagline
+                  Padding(
+                    padding: const EdgeInsets.only(top: 40.0, bottom: 40.0),
+                    child: Column(
+                      children: [
+                        Image.asset(
+                          'assets/logo_512_transparent.png',
+                          height: 180,
+                          fit: BoxFit.contain,
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: Theme.of(context).colorScheme.surface,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Streak: 3 Days',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                        const SizedBox(height: 12),
+                        Text(
+                          'Seek First, Lift Strong',
+                          style: GoogleFonts.oswald(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFB22222), // New Red
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
+                  // Last Workout Card
+                  Card(
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: const Color(0xFFB0B7BF), // Silver
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: FutureBuilder<Map<String, dynamic>?>(
+                        future: _getLastWorkout(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return CircularProgressIndicator(color: const Color(0xFFB22222)); // New Red
+                          }
+                          final lastWorkout = snapshot.data;
+                          return Column(
+                            children: [
+                              Text(
+                                lastWorkout != null
+                                    ? 'Last Lift: ${lastWorkout['exercise']} ${lastWorkout['weight']} $unit'
+                                    : 'No Lifts Yet',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 18,
+                                  color: const Color(0xFF1C2526), // Matte Black
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              LinearProgressIndicator(
+                                value: lastWorkout != null ? 0.6 : 0.0,
+                                backgroundColor: Colors.grey[400],
+                                color: const Color(0xFFB22222), // New Red
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/workout');
-                  },
-                  child: const Text('Start Today’s Workout'),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary,
-                    foregroundColor: Colors.white,
+                  const SizedBox(height: 20),
+                  // Streak Card
+                  Card(
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    color: const Color(0xFFB0B7BF), // Silver
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text(
+                        'Streak: 3 Days',
+                        style: GoogleFonts.roboto(
+                          fontSize: 18,
+                          color: const Color(0xFF1C2526), // Matte Black
+                        ),
+                      ),
+                    ),
                   ),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/program_selection');
-                  },
-                  child: const Text('Choose a Program'),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Colors.white,
+                  const SizedBox(height: 20),
+                  // Buttons
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.fitness_center, size: 24),
+                    label: const Text('Start Today’s Lift', style: TextStyle(fontSize: 18)),
+                    onPressed: () => Navigator.pushNamed(context, '/workout'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFB22222), // New Red
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
-                  onPressed: () async {
-                    await Navigator.pushNamed(context, '/settings');
-                    if (mounted) setState(() {});
-                  },
-                  child: const Text('Settings'),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.list_alt, size: 24),
+                    label: const Text('Choose a Program', style: TextStyle(fontSize: 18)),
+                    onPressed: () => Navigator.pushNamed(context, '/program_selection'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFB22222), // New Red
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.settings, size: 24),
+                    label: const Text('Settings', style: TextStyle(fontSize: 18)),
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/settings');
+                      if (mounted) setState(() {});
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFB22222), // New Red
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );

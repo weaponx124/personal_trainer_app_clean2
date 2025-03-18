@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:personal_trainer_app_clean/screens/splash_screen.dart';
 import 'package:personal_trainer_app_clean/screens/home_screen.dart' as home;
@@ -19,7 +21,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseHelper.initialize();
   unitNotifier.value = await DatabaseHelper.getWeightUnit();
-  themeNotifier.value = await DatabaseHelper.getThemeMode(); // New method
+  themeNotifier.value = await DatabaseHelper.getThemeMode();
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+  ));
   runApp(const MyApp());
 }
 
@@ -32,48 +38,96 @@ class MyApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (context, themeMode, child) {
         return MaterialApp(
-          title: 'Personal Trainer',
+          title: 'Seek & Lift',
           theme: ThemeData(
-            primaryColor: Colors.blue[800],
-            scaffoldBackgroundColor: Colors.grey[100],
+            primaryColor: const Color(0xFF1C2526), // Matte Black
+            scaffoldBackgroundColor: const Color(0xFF1C2526), // Matte Black
             colorScheme: ColorScheme.light(
-              primary: Colors.blue[800]!,
-              secondary: Colors.green[600]!,
-              surface: Colors.white,
+              primary: const Color(0xFF1C2526), // Matte Black
+              secondary: const Color(0xFFB22222), // New Red
+              surface: const Color(0xFFB0B7BF), // Silver
             ),
-            textTheme: const TextTheme(
-              headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
-              bodyMedium: TextStyle(fontSize: 16, color: Colors.black54),
+            textTheme: GoogleFonts.robotoTextTheme(
+              ThemeData.light().textTheme.copyWith(
+                headlineLarge: GoogleFonts.oswald(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFB22222), // New Red
+                ),
+                bodyMedium: GoogleFonts.roboto(
+                  fontSize: 16,
+                  color: const Color(0xFFB0B7BF), // Silver
+                ),
+              ),
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                textStyle: const TextStyle(fontSize: 16),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                textStyle: GoogleFonts.oswald(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: const Color(0xFFB22222), // New Red
+                foregroundColor: Colors.white,
               ),
+            ),
+            cardTheme: CardTheme(
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              color: const Color(0xFFB0B7BF), // Silver
+            ),
+            progressIndicatorTheme: ProgressIndicatorThemeData(
+              color: const Color(0xFFB22222), // New Red
+              linearMinHeight: 8,
             ),
             useMaterial3: true,
           ),
           darkTheme: ThemeData(
-            primaryColor: Colors.blue[900],
-            scaffoldBackgroundColor: Colors.grey[900],
+            primaryColor: const Color(0xFF1C2526), // Matte Black
+            scaffoldBackgroundColor: const Color(0xFF1C2526), // Matte Black
             colorScheme: ColorScheme.dark(
-              primary: Colors.blue[900]!,
-              secondary: Colors.green[700]!,
-              surface: Colors.grey[800]!,
+              primary: const Color(0xFF1C2526), // Matte Black
+              secondary: const Color(0xFFB22222), // New Red
+              surface: const Color(0xFFB0B7BF), // Silver
             ),
-            textTheme: const TextTheme(
-              headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-              bodyMedium: TextStyle(fontSize: 16, color: Colors.white70),
+            textTheme: GoogleFonts.robotoTextTheme(
+              ThemeData.dark().textTheme.copyWith(
+                headlineLarge: GoogleFonts.oswald(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFB22222), // New Red
+                ),
+                bodyMedium: GoogleFonts.roboto(
+                  fontSize: 16,
+                  color: const Color(0xFFB0B7BF), // Silver
+                ),
+              ),
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                textStyle: const TextStyle(fontSize: 16),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                textStyle: GoogleFonts.oswald(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: const Color(0xFFB22222), // New Red
+                foregroundColor: Colors.white,
               ),
+            ),
+            cardTheme: CardTheme(
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              color: const Color(0xFFB0B7BF), // Silver
+            ),
+            progressIndicatorTheme: ProgressIndicatorThemeData(
+              color: const Color(0xFFB22222), // New Red
+              linearMinHeight: 8,
             ),
             useMaterial3: true,
           ),
-          themeMode: themeMode, // Use dynamic theme mode
+          themeMode: themeMode,
           home: const SplashScreen(),
           routes: {
             '/main': (context) => const MainScreen(),
@@ -122,10 +176,10 @@ class _MainScreenState extends State<MainScreen> {
               BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
             ],
             currentIndex: _selectedIndex,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Colors.grey[600],
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            elevation: 8,
+            selectedItemColor: Theme.of(context).colorScheme.secondary, // New Red
+            unselectedItemColor: const Color(0xFFB0B7BF), // Silver
+            backgroundColor: const Color(0xFF1C2526), // Matte Black
+            elevation: 12,
             onTap: _onItemTapped,
           ),
         );
