@@ -1,7 +1,7 @@
-// lib/screens/program_actions.dart
 import 'package:flutter/material.dart';
-import '../database_helper.dart';
-import 'custom_program_form.dart'; // Import the new CustomProgramForm file
+import 'package:personal_trainer_app_clean/database_helper.dart';
+import 'package:personal_trainer_app_clean/screens/custom_program_form.dart';
+import 'package:personal_trainer_app_clean/main.dart'; // Correct import
 
 void startProgram(
     BuildContext context,
@@ -11,7 +11,7 @@ void startProgram(
     bool requires1RM,
     List<String>? lifts,
     Function() loadPrograms,
-    String unit, // Pass unit directly to avoid context lookup
+    String unit,
     ) {
   print('Starting program: $programName, isNewInstance: $isNewInstance, programId: $programId, requires1RM: $requires1RM, lifts: $lifts');
   Map<String, dynamic> programInputs = {};
@@ -21,7 +21,7 @@ void startProgram(
       final result = await Navigator.pushNamed(
         context,
         '/program_details',
-        arguments: {'programId': programId, 'unit': unit},
+        arguments: {'programId': programId},
       );
       if (result == true) {
         loadPrograms();
@@ -29,7 +29,7 @@ void startProgram(
       return;
     }
 
-    print('Showing dialog for program: $programName, unit: $unit, requires1RM: $requires1RM, lifts: $lifts');
+    print('Showing dialog for program: $programName, unit: ${unitNotifier.value}, requires1RM: $requires1RM, lifts: $lifts');
     if (requires1RM && lifts != null && lifts.length == 4) {
       programInputs['1RMs'] = <String, double>{};
       showDialog(
@@ -44,7 +44,7 @@ void startProgram(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: TextField(
                     decoration: InputDecoration(
-                      labelText: 'Enter $lift 1RM ($unit)',
+                      labelText: 'Enter $lift 1RM (${unitNotifier.value})',
                       border: const OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
@@ -73,18 +73,18 @@ void startProgram(
                 final oneRMs = programInputs['1RMs'] as Map<String, double>? ?? {};
                 final allValid = oneRMs.length == 4 && oneRMs.values.every((v) => v is double && v > 0);
                 if (allValid) {
-                  programInputs['unit'] = unit;
+                  programInputs['unit'] = unitNotifier.value;
                   try {
                     await DatabaseHelper.saveProgram(programName, programInputs);
                     loadPrograms();
                     final programs = await DatabaseHelper.getPrograms();
                     final newProgram = programs.lastWhere((p) => p['name'] == programName);
-                    print('Saved program with 1RMs: ${newProgram['details']['1RMs']}'); // Debug print
+                    print('Saved program with 1RMs: ${newProgram['details']['1RMs']}');
                     Navigator.pop(context);
                     Navigator.pushNamed(
                       context,
-                      '/program_details',
-                      arguments: {'programId': newProgram['id'], 'unit': unit},
+                      '/programs',
+                      arguments: {'programName': programName},
                     );
                     print('Program list refreshed after starting new $programName cycle');
                   } catch (e) {
@@ -114,7 +114,7 @@ void startProgram(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: TextField(
                     decoration: InputDecoration(
-                      labelText: 'Enter $lift 1RM ($unit)',
+                      labelText: 'Enter $lift 1RM (${unitNotifier.value})',
                       border: const OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
@@ -143,18 +143,18 @@ void startProgram(
                 final oneRMs = programInputs['1RMs'] as Map<String, double>? ?? {};
                 final allValid = oneRMs.length == 3 && oneRMs.values.every((v) => v is double && v > 0);
                 if (allValid) {
-                  programInputs['unit'] = unit;
+                  programInputs['unit'] = unitNotifier.value;
                   try {
                     await DatabaseHelper.saveProgram(programName, programInputs);
                     loadPrograms();
                     final programs = await DatabaseHelper.getPrograms();
                     final newProgram = programs.lastWhere((p) => p['name'] == programName);
-                    print('Saved program with 1RMs: ${newProgram['details']['1RMs']}'); // Debug print
+                    print('Saved program with 1RMs: ${newProgram['details']['1RMs']}');
                     Navigator.pop(context);
                     Navigator.pushNamed(
                       context,
-                      '/program_details',
-                      arguments: {'programId': newProgram['id'], 'unit': unit},
+                      '/programs',
+                      arguments: {'programName': programName},
                     );
                     print('Program list refreshed after starting new $programName cycle');
                   } catch (e) {
@@ -171,7 +171,7 @@ void startProgram(
         ),
       );
     } else if (requires1RM && lifts != null && lifts.length == 1) {
-      double oneRMIncrement = unit == 'kg' ? 2.5 : 5.0;
+      double oneRMIncrement = unitNotifier.value == 'kg' ? 2.5 : 5.0;
       String? selectedIncrement;
 
       showDialog(
@@ -185,7 +185,7 @@ void startProgram(
                 children: [
                   TextField(
                     decoration: InputDecoration(
-                      labelText: 'Enter 1RM ($unit)',
+                      labelText: 'Enter 1RM (${unitNotifier.value})',
                       border: const OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
@@ -196,11 +196,11 @@ void startProgram(
                     },
                   ),
                   const SizedBox(height: 16),
-                  Text('Select 1RM Increment After Cycle ($unit)'),
+                  Text('Select 1RM Increment After Cycle (${unitNotifier.value})'),
                   DropdownButton<String>(
                     value: selectedIncrement,
                     hint: const Text('Select Increment'),
-                    items: unit == 'kg'
+                    items: unitNotifier.value == 'kg'
                         ? ['1.25', '2.5', '5'].map((value) {
                       return DropdownMenuItem<String>(
                         value: value,
@@ -232,19 +232,19 @@ void startProgram(
                 onPressed: () async {
                   final oneRM = programInputs['1RM'] as double?;
                   if (oneRM != null && oneRM > 0 && selectedIncrement != null) {
-                    programInputs['unit'] = unit;
+                    programInputs['unit'] = unitNotifier.value;
                     programInputs['oneRMIncrement'] = oneRMIncrement;
                     try {
                       await DatabaseHelper.saveProgram(programName, programInputs);
                       loadPrograms();
                       final programs = await DatabaseHelper.getPrograms();
                       final newProgram = programs.lastWhere((p) => p['name'] == programName);
-                      print('Saved program with 1RM: ${newProgram['details']['1RM']}, Increment: ${newProgram['details']['oneRMIncrement']}'); // Debug print
+                      print('Saved program with 1RM: ${newProgram['details']['1RM']}, Increment: ${newProgram['details']['oneRMIncrement']}');
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        '/program_details',
-                        arguments: {'programId': newProgram['id'], 'unit': unit},
+                        '/programs',
+                        arguments: {'programName': programName},
                       );
                       print('Program list refreshed after starting new $programName cycle');
                     } catch (e) {
@@ -262,8 +262,7 @@ void startProgram(
         ),
       );
     } else {
-      // For programs not requiring 1RM (e.g., PPL, Starting Strength, etc.)
-      programInputs['unit'] = unit;
+      programInputs['unit'] = unitNotifier.value;
       try {
         await DatabaseHelper.saveProgram(programName, programInputs);
         loadPrograms();
@@ -271,8 +270,8 @@ void startProgram(
         final newProgram = programs.lastWhere((p) => p['name'] == programName);
         Navigator.pushNamed(
           context,
-          '/program_details',
-          arguments: {'programId': newProgram['id'], 'unit': unit},
+          '/programs',
+          arguments: {'programName': programName},
         );
         print('Program list refreshed after starting new $programName cycle');
       } catch (e) {
@@ -289,7 +288,7 @@ void editProgram(
     BuildContext context,
     String programId,
     Function() loadPrograms,
-    String unit, // Pass unit directly
+    String unit,
     ) {
   showDialog(
     context: context,
@@ -324,7 +323,7 @@ void editProgram(
                       await DatabaseHelper.savePrograms(programs);
                       Navigator.pop(context);
                       loadPrograms();
-                      print('Program $programId ${value ? "completed" : "uncompleted"} with unit: $unit');
+                      print('Program $programId ${value ? "completed" : "uncompleted"} with unit: ${unitNotifier.value}');
                     }
                   },
                 ),
@@ -332,7 +331,7 @@ void editProgram(
                   TextField(
                     controller: oneRMController,
                     decoration: InputDecoration(
-                      labelText: '1RM ($unit)',
+                      labelText: '1RM (${unitNotifier.value})',
                       border: const OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
@@ -341,7 +340,7 @@ void editProgram(
                       if (parsedValue != null && parsedValue > 0) {
                         program['details']['1RM'] = parsedValue;
                         program['details']['original1RM'] = parsedValue;
-                        program['details']['originalUnit'] = unit;
+                        program['details']['originalUnit'] = unitNotifier.value;
                       }
                     },
                   ),
@@ -352,7 +351,7 @@ void editProgram(
                       child: TextField(
                         controller: oneRMsControllers[lift]!,
                         decoration: InputDecoration(
-                          labelText: '$lift 1RM ($unit)',
+                          labelText: '$lift 1RM (${unitNotifier.value})',
                           border: const OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
@@ -367,13 +366,13 @@ void editProgram(
                             oneRMs.remove(lift);
                             original1RMs.remove(lift);
                           }
-                          program['details']['originalUnit'] = unit;
+                          program['details']['originalUnit'] = unitNotifier.value;
                         },
                       ),
                     );
                   }),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[700]),
+                  style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
                   onPressed: () async {
                     final programs = await DatabaseHelper.getPrograms();
                     final programIndex = programs.indexWhere((p) => p['id'] == programId);
@@ -381,7 +380,7 @@ void editProgram(
                       await DatabaseHelper.savePrograms(programs);
                       Navigator.pop(context);
                       loadPrograms();
-                      print('Program $programId updated with unit: $unit');
+                      print('Program $programId updated with unit: ${unitNotifier.value}');
                     }
                   },
                   child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
@@ -423,7 +422,7 @@ void deleteProgram(
               await DatabaseHelper.deleteProgram(programId);
               Navigator.pop(context);
               loadPrograms();
-              print('Program list refreshed after deleting program with unit: $unit');
+              print('Program list refreshed after deleting program with unit: ${unitNotifier.value}');
             } catch (e) {
               print('Error deleting program: $e');
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting program: $e')));
@@ -446,7 +445,7 @@ void createCustomProgram(
     builder: (context) => AlertDialog(
       title: const Text('Create Custom Program'),
       content: CustomProgramForm(
-        unit: unit,
+        unit: unitNotifier.value,
         onSave: onSave,
       ),
       actions: [

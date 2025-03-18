@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import '../database_helper.dart';
-import 'program_details_logic.dart';
-import 'program_details_widgets.dart';
-import 'program_details_dialogs.dart';
+import 'package:personal_trainer_app_clean/database_helper.dart';
+import 'package:personal_trainer_app_clean/screens/program_details_logic.dart';
+import 'package:personal_trainer_app_clean/screens/program_details_widgets.dart';
+import 'package:personal_trainer_app_clean/screens/program_details_dialogs.dart';
+import 'package:personal_trainer_app_clean/main.dart'; // Correct import
 
 class ProgramDetailsScreen extends StatefulWidget {
   final String programId;
-  final String unit;
 
-  const ProgramDetailsScreen({super.key, required this.programId, required this.unit});
+  const ProgramDetailsScreen({super.key, required this.programId});
 
   @override
   _ProgramDetailsScreenState createState() => _ProgramDetailsScreenState();
@@ -27,10 +27,10 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    print('ProgramDetailsScreen initState with unit: ${widget.unit}');
+    print('ProgramDetailsScreen initState with unit: ${unitNotifier.value}');
     _logic = ProgramDetailsLogic(
       programId: widget.programId,
-      unit: widget.unit,
+      unit: unitNotifier.value,
       onSessionInitialized: (sets, controllers, completed, workout) {
         setState(() {
           currentSessionSets = sets ?? [];
@@ -43,17 +43,6 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
     );
     _loadProgram();
     _loadWorkoutLog();
-  }
-
-  @override
-  void didUpdateWidget(ProgramDetailsScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.unit != widget.unit) {
-      print('Unit changed from ${oldWidget.unit} to ${widget.unit}, reloading program');
-      _logic.updateUnit(widget.unit);
-      _loadProgram();
-      _loadWorkoutLog();
-    }
   }
 
   Future<void> _loadProgram() async {
@@ -74,7 +63,7 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
   Future<void> _loadWorkoutLog() async {
     try {
       workoutLog = await DatabaseHelper.getProgramLog(widget.programId);
-      print('Loaded workout log with unit: ${widget.unit}');
+      print('Loaded workout log with unit: ${unitNotifier.value}');
       setState(() {});
     } catch (e) {
       print('Error loading workout log: $e');
@@ -127,7 +116,7 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              Navigator.pop(context, true); // Return to previous screen
+              Navigator.pop(context, true); // Return to ProgramsOverviewScreen
             },
             child: const Text('OK'),
           ),
@@ -138,138 +127,144 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final is531Program = program['name'] == '5/3/1 Program';
-    final isRussianSquat = program['name'] == 'Russian Squat Program';
+    return ValueListenableBuilder<String>(
+      valueListenable: unitNotifier,
+      builder: (context, unit, child) {
+        _logic.updateUnit(unit);
+        final is531Program = program['name'] == '5/3/1 Program';
+        final isRussianSquat = program['name'] == 'Russian Squat Program';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(program['name'] ?? 'Program Details'),
-        backgroundColor: Theme.of(context).colorScheme.primary, // Use theme primary
-        foregroundColor: Colors.white, // White icons/text
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () => ProgramDetailsDialogs.showUpdate1RMDialog(
-              context: context,
-              program: program,
-              unit: widget.unit,
-              onUpdate: () => _loadProgram(),
-            ),
-            tooltip: 'Update 1RM',
-          ),
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: () => ProgramDetailsDialogs.showMarkAsCompletedDialog(
-              context: context,
-              program: program,
-              programId: widget.programId,
-              onComplete: () => Navigator.pop(context, true),
-            ),
-            tooltip: 'Mark as Completed',
-          ),
-        ],
-      ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ProgramDetailsCard(
-              program: program,
-              unit: widget.unit,
-              is531Program: is531Program,
-              isRussianSquat: isRussianSquat,
-            ),
-            const SizedBox(height: 20),
-            if (currentSessionSets.isNotEmpty && !(program['completed'] as bool? ?? false)) ...[
-              SessionSetsCard(
-                currentSession: program['currentSession'] as int? ?? 1,
-                workoutName: currentWorkout?['workoutName'] ?? '',
-                currentSessionSets: currentSessionSets,
-                repsControllers: repsControllers,
-                setCompleted: setCompleted,
-                unit: widget.unit,
-                onRepsChanged: (index, value) {
-                  setState(() {
-                    final completedReps = int.tryParse(value) ?? 0;
-                    currentSessionSets[index]['completedReps'] = completedReps;
-                  });
-                },
-                onSetCompletedChanged: (index, value) {
-                  setState(() {
-                    setCompleted[index] = value ?? false;
-                  });
-                },
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(program['name'] ?? 'Program Details'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Colors.white,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () => ProgramDetailsDialogs.showUpdate1RMDialog(
+                  context: context,
+                  program: program,
+                  unit: unit,
+                  onUpdate: () => _loadProgram(),
+                ),
+                tooltip: 'Update 1RM',
               ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  if (is531Program)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary, // Theme primary
-                        foregroundColor: Colors.white, // White text
-                      ),
-                      onPressed: () => ProgramDetailsDialogs.showCompleteWeekDialog(
-                        context: context,
-                        programName: program['name'] as String,
-                        programId: widget.programId,
-                        onComplete: () => _loadProgram(),
-                      ),
-                      child: const Text('Complete Week'),
-                    ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary, // Theme primary
-                      foregroundColor: Colors.white, // White text
-                    ),
-                    onPressed: _logic.completeSession(
-                      context: context,
-                      setCompleted: setCompleted,
-                      currentSessionSets: currentSessionSets,
-                      repsControllers: repsControllers,
-                      programId: widget.programId,
-                      onComplete: () async {
-                        await _loadProgram();
-                        await _loadWorkoutLog();
-                        if (program['completed'] == true) {
-                          _showCompletionDialog();
-                        }
-                      },
-                      currentWorkout: currentWorkout,
-                    ),
-                    child: const Text('Complete Session'),
+              IconButton(
+                icon: const Icon(Icons.check),
+                onPressed: () => ProgramDetailsDialogs.showMarkAsCompletedDialog(
+                  context: context,
+                  program: program,
+                  programId: widget.programId,
+                  onComplete: () => Navigator.pop(context, true),
+                ),
+                tooltip: 'Mark as Completed',
+              ),
+            ],
+          ),
+          body: isLoading
+              ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
+              : SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ProgramDetailsCard(
+                  program: program,
+                  unit: unit,
+                  is531Program: is531Program,
+                  isRussianSquat: isRussianSquat,
+                ),
+                const SizedBox(height: 20),
+                if (currentSessionSets.isNotEmpty && !(program['completed'] as bool? ?? false)) ...[
+                  SessionSetsCard(
+                    currentSession: program['currentSession'] as int? ?? 1,
+                    workoutName: currentWorkout?['workoutName'] ?? '',
+                    currentSessionSets: currentSessionSets,
+                    repsControllers: repsControllers,
+                    setCompleted: setCompleted,
+                    unit: unit,
+                    onRepsChanged: (index, value) {
+                      setState(() {
+                        final completedReps = int.tryParse(value) ?? 0;
+                        currentSessionSets[index]['completedReps'] = completedReps;
+                      });
+                    },
+                    onSetCompletedChanged: (index, value) {
+                      setState(() {
+                        setCompleted[index] = value ?? false;
+                      });
+                    },
                   ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary, // Theme primary
-                      foregroundColor: Colors.white, // White text
-                    ),
-                    onPressed: _completeAllSets,
-                    child: const Text('Complete All Sets'),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      if (is531Program)
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () => ProgramDetailsDialogs.showCompleteWeekDialog(
+                            context: context,
+                            programName: program['name'] as String,
+                            programId: widget.programId,
+                            onComplete: () => _loadProgram(),
+                          ),
+                          child: const Text('Complete Week'),
+                        ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _logic.completeSession(
+                          context: context,
+                          setCompleted: setCompleted,
+                          currentSessionSets: currentSessionSets,
+                          repsControllers: repsControllers,
+                          programId: widget.programId,
+                          onComplete: () async {
+                            await _loadProgram();
+                            await _loadWorkoutLog();
+                            if (program['completed'] == true) {
+                              _showCompletionDialog();
+                            }
+                          },
+                          currentWorkout: currentWorkout,
+                        ),
+                        child: const Text('Complete Session'),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _completeAllSets,
+                        child: const Text('Complete All Sets'),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ],
-            if (workoutLog.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              WorkoutLogCard(
-                workoutLog: workoutLog,
-                unit: widget.unit,
-                onDelete: (index) => ProgramDetailsDialogs.showDeleteWorkoutLogDialog(
-                  context: context,
-                  programId: widget.programId,
-                  index: index,
-                  onDelete: () => _loadWorkoutLog(),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+                if (workoutLog.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  WorkoutLogCard(
+                    workoutLog: workoutLog,
+                    unit: unit,
+                    onDelete: (index) => ProgramDetailsDialogs.showDeleteWorkoutLogDialog(
+                      context: context,
+                      programId: widget.programId,
+                      index: index,
+                      onDelete: () => _loadWorkoutLog(),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

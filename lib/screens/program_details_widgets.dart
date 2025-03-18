@@ -20,7 +20,7 @@ class ProgramDetailsCard extends StatelessWidget {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Theme.of(context).colorScheme.surface, // Theme surface
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -31,7 +31,7 @@ class ProgramDetailsCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary, // Theme primary
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 10),
@@ -62,7 +62,7 @@ class ProgramDetailsCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary, // Theme primary
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 10),
@@ -131,7 +131,7 @@ class SessionSetsCard extends StatelessWidget {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Theme.of(context).colorScheme.surface, // Theme surface
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -142,7 +142,7 @@ class SessionSetsCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary, // Theme primary
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 10),
@@ -169,8 +169,8 @@ class SessionSetsCard extends StatelessWidget {
                             'Set ${index + 1}: $weight $unit x $reps reps',
                             style: TextStyle(
                               color: setCompleted[globalIndex]
-                                  ? Theme.of(context).colorScheme.secondary // Green for completed
-                                  : Theme.of(context).colorScheme.onSurface, // Default text color
+                                  ? Theme.of(context).colorScheme.secondary
+                                  : Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -195,7 +195,7 @@ class SessionSetsCard extends StatelessWidget {
                         Checkbox(
                           value: setCompleted[globalIndex],
                           onChanged: (value) => onSetCompletedChanged(globalIndex, value),
-                          activeColor: Theme.of(context).colorScheme.secondary, // Green checkmark
+                          activeColor: Theme.of(context).colorScheme.secondary,
                         ),
                       ],
                     ),
@@ -238,8 +238,8 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
   @override
   void didUpdateWidget(WorkoutLogCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.workoutLog != oldWidget.workoutLog) {
-      print('WorkoutLogCard: workoutLog updated, reinitializing controllers');
+    if (widget.workoutLog != oldWidget.workoutLog || widget.unit != oldWidget.unit) {
+      print('WorkoutLogCard: workoutLog or unit updated, reinitializing controllers');
       _initializeControllers();
     }
   }
@@ -278,7 +278,7 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Theme.of(context).colorScheme.surface, // Theme surface
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -289,7 +289,7 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary, // Theme primary
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 10),
@@ -347,7 +347,7 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
                         final color = completedReps < reps
                             ? Colors.red
                             : completedReps > reps
-                            ? Theme.of(context).colorScheme.secondary // Green
+                            ? Theme.of(context).colorScheme.secondary
                             : Colors.blue;
                         final icon = completedReps < reps
                             ? Icons.arrow_downward
@@ -394,9 +394,9 @@ class _WorkoutLogCardState extends State<WorkoutLogCard> {
                               ),
                               SizedBox(width: 8),
                               Checkbox(
-                                value: false, // Placeholder, use log data if needed
+                                value: false,
                                 onChanged: (value) {},
-                                activeColor: Theme.of(context).colorScheme.secondary, // Green
+                                activeColor: Theme.of(context).colorScheme.secondary,
                               ),
                               if (completedReps != reps)
                                 Padding(
@@ -466,7 +466,7 @@ Widget buildProgramList({
       Card(
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: Theme.of(context).colorScheme.surface, // Theme surface
+        color: Theme.of(context).colorScheme.surface,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -477,7 +477,7 @@ Widget buildProgramList({
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary, // Green
+                  color: Theme.of(context).colorScheme.secondary,
                 ),
               ),
               const SizedBox(height: 10),
@@ -507,19 +507,19 @@ Widget buildProgramList({
                     print('Rendering current program $index: 1RM: $oneRM, unit: $unit, details: $details');
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: Theme.of(context).colorScheme.surface, // Theme surface
+                      color: Theme.of(context).colorScheme.surface,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       child: ListTile(
                         title: Text(
                           '${program['name']} (${startDate})',
-                          style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.secondary), // Green
+                          style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.secondary),
                         ),
                         subtitle: Text('Started: $startDate | $oneRM', style: Theme.of(context).textTheme.bodyMedium),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: Icon(Icons.play_arrow, color: Theme.of(context).colorScheme.secondary), // Green
+                              icon: Icon(Icons.play_arrow, color: Theme.of(context).colorScheme.secondary),
                               onPressed: () => startProgram(
                                 context,
                                 program['name'] as String,
@@ -564,7 +564,7 @@ Widget buildProgramList({
       Card(
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: Theme.of(context).colorScheme.surface, // Theme surface
+        color: Theme.of(context).colorScheme.surface,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -575,7 +575,7 @@ Widget buildProgramList({
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.red[700], // Keep red for completed
+                  color: Colors.red[700],
                 ),
               ),
               const SizedBox(height: 10),
@@ -605,7 +605,7 @@ Widget buildProgramList({
                     print('Rendering completed program $index: 1RM: $oneRM, unit: $unit, details.unit: ${program['details']?['unit']}');
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      color: Theme.of(context).colorScheme.surface, // Theme surface
+                      color: Theme.of(context).colorScheme.surface,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       child: ListTile(
                         title: Text(
@@ -616,7 +616,7 @@ Widget buildProgramList({
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.check, color: Theme.of(context).colorScheme.secondary), // Green check
+                            Icon(Icons.check, color: Theme.of(context).colorScheme.secondary),
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
                               onPressed: () => editProgram(

@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
-import 'database_helper.dart';
-import 'screens/splash_screen.dart';
-import 'screens/home_screen.dart' as home;
-import 'screens/program_selection_screen.dart' as programs;
-import 'screens/progress_screen.dart' as progress;
-import 'screens/diet_screen.dart' as diet;
-import 'screens/programs_overview_screen.dart';
-import 'screens/program_details_screen.dart';
+import 'package:personal_trainer_app_clean/database_helper.dart';
+import 'package:personal_trainer_app_clean/screens/splash_screen.dart';
+import 'package:personal_trainer_app_clean/screens/home_screen.dart' as home;
+import 'package:personal_trainer_app_clean/screens/program_selection_screen.dart' as programs;
+import 'package:personal_trainer_app_clean/screens/progress_screen.dart' as progress;
+import 'package:personal_trainer_app_clean/screens/diet_screen.dart' as diet;
+import 'package:personal_trainer_app_clean/screens/programs_overview_screen.dart';
+import 'package:personal_trainer_app_clean/screens/program_details_screen.dart';
+import 'package:personal_trainer_app_clean/screens/settings_screen.dart';
+import 'package:personal_trainer_app_clean/screens/workout_screen.dart';
+
+// Global unit state
+ValueNotifier<String> unitNotifier = ValueNotifier('lbs');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DatabaseHelper.initialize();
+  unitNotifier.value = await DatabaseHelper.getWeightUnit();
   runApp(const MyApp());
 }
 
@@ -65,16 +71,19 @@ class MyApp extends StatelessWidget {
       home: const SplashScreen(),
       routes: {
         '/main': (context) => const MainScreen(),
-        '/program_selection': (context) => programs.ProgramSelectionScreen(
-          unit: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?)?['unit'] as String? ?? 'lbs',
-        ),
+        '/program_selection': (context) => programs.ProgramSelectionScreen(),
         '/program_details': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
           return ProgramDetailsScreen(
             programId: args['programId'] as String,
-            unit: args['unit'] as String,
           );
         },
+        '/settings': (context) => const SettingsScreen(),
+        '/workout': (context) => const WorkoutScreen(),
+        '/programs': (context) => ProgramsOverviewScreen(
+          unit: unitNotifier.value,
+          programName: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?)?['programName'] as String? ?? '',
+        ),
       },
     );
   }
@@ -90,37 +99,40 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  static final List<Widget> _screens = <Widget>[
-    const home.HomeScreen(),
-    const programs.ProgramSelectionScreen(unit: 'lbs'), // Default unit, adjust dynamically if needed
-    const progress.ProgressScreen(unit: 'lbs'),
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<String>(
+      valueListenable: unitNotifier,
+      builder: (context, unit, child) {
+        return Scaffold(
+          body: SafeArea(child: _screens(unit)[_selectedIndex]),
+          bottomNavigationBar: BottomNavigationBar(
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Active Programs'), // Updated
+              BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Progress'),
+              BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
+            ],
+            currentIndex: _selectedIndex,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            unselectedItemColor: Colors.grey[600],
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            elevation: 8,
+            onTap: _onItemTapped,
+          ),
+        );
+      },
+    );
+  }
+
+  static List<Widget> _screens(String unit) => <Widget>[
+    home.HomeScreen(unit: unit),
+    ProgramsOverviewScreen(unit: unit, programName: ''), // Replaced ProgramSelectionScreen
+    progress.ProgressScreen(unit: unit),
     const diet.DietScreen(),
   ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(child: _screens[_selectedIndex]),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Programs'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Progress'),
-          BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.grey[600],
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        elevation: 8,
-        onTap: _onItemTapped,
-      ),
-    );
+    setState(() => _selectedIndex = index);
   }
 }
