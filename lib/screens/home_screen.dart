@@ -23,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showCelebration = false;
   String _celebrationMessage = '';
   late ConfettiController _confettiController;
+  int _previousWorkoutCount = 0; // Track the previous workout count to detect milestone achievement
 
   @override
   void initState() {
@@ -134,17 +135,32 @@ class _HomeScreenState extends State<HomeScreen> {
     final weeklyGoal = await DatabaseHelper.getWeeklyWorkoutGoal();
     print('Weekly goal: $weeklyGoal'); // Debug log
 
-    // Check if the user has met or exceeded their weekly goal
-    if (workoutCount >= weeklyGoal) {
-      print('Milestone met! Triggering celebration...'); // Debug log
-      setState(() {
-        _showCelebration = true;
-        _celebrationMessage = 'Great Job! You’ve met your weekly goal of $weeklyGoal workouts!';
-        _confettiController.play();
-      });
+    // Check if the milestone has already been celebrated this week
+    final hasCelebrated = await DatabaseHelper.hasCelebratedMilestoneThisWeek(startOfWeekDate);
+    print('Has celebrated this week: $hasCelebrated'); // Debug log
+
+    // Check if the user has met or exceeded their weekly goal and hasn't celebrated yet
+    if (workoutCount >= weeklyGoal && !hasCelebrated) {
+      // Check if this is the first time the milestone is achieved (i.e., previous count was below goal)
+      if (_previousWorkoutCount < weeklyGoal) {
+        print('Milestone met! Triggering celebration...'); // Debug log
+        setState(() {
+          _showCelebration = true;
+          _celebrationMessage = 'Great Job! You’ve met your weekly goal of $weeklyGoal workouts!';
+          _confettiController.play();
+        });
+        await DatabaseHelper.setCelebratedMilestoneThisWeek(startOfWeekDate, true);
+      } else {
+        print('Milestone already met this week, but no new achievement. Previous count: $_previousWorkoutCount'); // Debug log
+      }
+    } else if (hasCelebrated) {
+      print('Milestone already celebrated this week.'); // Debug log
     } else {
       print('Milestone not met. Workouts: $workoutCount, Goal: $weeklyGoal'); // Debug log
     }
+
+    // Update the previous workout count for the next check
+    _previousWorkoutCount = workoutCount;
   }
 
   @override

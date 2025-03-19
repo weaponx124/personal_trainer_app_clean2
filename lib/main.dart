@@ -12,6 +12,7 @@ import 'package:personal_trainer_app_clean/screens/programs_overview_screen.dart
 import 'package:personal_trainer_app_clean/screens/program_details_screen.dart';
 import 'package:personal_trainer_app_clean/screens/settings_screen.dart';
 import 'package:personal_trainer_app_clean/screens/scripture_reading_screen.dart';
+import 'package:personal_trainer_app_clean/screens/workout_log_screen.dart';
 
 // Global unit state
 ValueNotifier<String> unitNotifier = ValueNotifier('lbs');
@@ -198,6 +199,7 @@ class _MainScreenState extends State<MainScreen> {
               BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Progress'),
               BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
               BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Scriptures'),
+              BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Workout Log'), // New tab
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Theme.of(context).colorScheme.secondary, // Red
@@ -225,5 +227,6 @@ class _MainScreenState extends State<MainScreen> {
     progress.ProgressScreen(unit: unit),
     diet.DietScreen(),
     const ScriptureReadingScreen(), // Default instance for nav bar
+    WorkoutLogScreen(unit: unit), // New tab
   ];
 }

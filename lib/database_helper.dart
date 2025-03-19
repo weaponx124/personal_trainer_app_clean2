@@ -14,6 +14,8 @@ class DatabaseHelper {
   static const String _weightUnitKey = 'weightUnit';
   static const String _themeModeKey = 'themeMode';
   static const String _weeklyWorkoutGoalKey = 'weeklyWorkoutGoal'; // Added for weekly goal
+  static const String _milestoneCelebratedKey = 'milestoneCelebrated'; // Added for milestone tracking
+  static const String _milestoneWeekKey = 'milestoneWeek'; // Added to track the week of the last celebration
 
   static Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
 
@@ -441,6 +443,24 @@ class DatabaseHelper {
   static Future<int> getWeeklyWorkoutGoal() async {
     final prefs = await _prefs;
     return prefs.getInt(_weeklyWorkoutGoalKey) ?? 3; // Default to 3 if not set
+  }
+
+  static Future<bool> hasCelebratedMilestoneThisWeek(DateTime startOfWeek) async {
+    final prefs = await _prefs;
+    final lastCelebratedWeek = prefs.getString(_milestoneWeekKey);
+    final currentWeek = startOfWeek.toIso8601String().split('T')[0]; // Use date as week identifier
+    if (lastCelebratedWeek == currentWeek) {
+      return prefs.getBool(_milestoneCelebratedKey) ?? false;
+    }
+    return false;
+  }
+
+  static Future<void> setCelebratedMilestoneThisWeek(DateTime startOfWeek, bool celebrated) async {
+    final prefs = await _prefs;
+    final currentWeek = startOfWeek.toIso8601String().split('T')[0];
+    await prefs.setString(_milestoneWeekKey, currentWeek);
+    await prefs.setBool(_milestoneCelebratedKey, celebrated);
+    print('Set milestone celebrated for week $currentWeek: $celebrated');
   }
 
   static Future<List<Map<String, dynamic>>> getAllPrograms() async {
