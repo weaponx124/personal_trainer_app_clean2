@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:personal_trainer_app_clean/main.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:animate_do/animate_do.dart'; // Added for animation
 
 class HomeScreen extends StatefulWidget {
   final String unit;
@@ -28,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)], // Soft Sky Blue fade to Matte Black
+              colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
             ),
           ),
           child: SingleChildScrollView(
@@ -37,15 +38,18 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo and Tagline
+                  // Logo and Tagline with Animation
                   Padding(
                     padding: const EdgeInsets.only(top: 40.0, bottom: 40.0),
                     child: Column(
                       children: [
-                        Image.asset(
-                          'assets/logo_512_transparent.png',
-                          height: 180,
-                          fit: BoxFit.contain,
+                        FadeIn(
+                          duration: const Duration(milliseconds: 800),
+                          child: Image.asset(
+                            'assets/logo_512_transparent.png',
+                            height: 180,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -53,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: GoogleFonts.oswald(
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFFB22222), // New Red
+                            color: const Color(0xFFB22222), // Red
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -71,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         future: _getLastWorkout(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
-                            return CircularProgressIndicator(color: const Color(0xFFB22222)); // New Red
+                            return CircularProgressIndicator(color: const Color(0xFFB22222)); // Red
                           }
                           final lastWorkout = snapshot.data;
                           return Column(
@@ -89,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               LinearProgressIndicator(
                                 value: lastWorkout != null ? 0.6 : 0.0,
                                 backgroundColor: Colors.grey[400],
-                                color: const Color(0xFFB22222), // New Red
+                                color: const Color(0xFFB22222), // Red
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ],
@@ -122,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: const Text('Start Today’s Lift', style: TextStyle(fontSize: 18)),
                     onPressed: () => Navigator.pushNamed(context, '/workout'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFB22222), // New Red
+                      backgroundColor: const Color(0xFFB22222), // Red
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -134,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: const Text('Choose a Program', style: TextStyle(fontSize: 18)),
                     onPressed: () => Navigator.pushNamed(context, '/program_selection'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFB22222), // New Red
+                      backgroundColor: const Color(0xFFB22222), // Red
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -149,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (mounted) setState(() {});
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFB22222), // New Red
+                      backgroundColor: const Color(0xFFB22222), // Red
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -29,7 +29,7 @@ Widget buildProgramList({
       String unit,
       ) deleteProgram,
   required Function() refreshPrograms,
-  required double Function(Map<String, dynamic>) progressCalculator, // New parameter
+  required double Function(Map<String, dynamic>) progressCalculator,
 }) {
   return Column(
     children: [
@@ -47,12 +47,12 @@ Widget buildProgramList({
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.secondary,
+                  color: Theme.of(context).colorScheme.secondary, // Red
                 ),
               ),
               const SizedBox(height: 10),
               ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: 200),
+                constraints: const BoxConstraints(maxHeight: 200),
                 child: ListView.builder(
                   shrinkWrap: true,
                   itemCount: currentPrograms.length,
@@ -92,7 +92,7 @@ Widget buildProgramList({
                             LinearProgressIndicator(
                               value: progressCalculator(program),
                               backgroundColor: Colors.grey[300],
-                              color: Theme.of(context).colorScheme.secondary,
+                              color: Theme.of(context).colorScheme.secondary, // Red
                             ),
                           ],
                         ),
@@ -161,7 +161,7 @@ Widget buildProgramList({
               ),
               const SizedBox(height: 10),
               ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: 200),
+                constraints: const BoxConstraints(maxHeight: 200),
                 child: ListView.builder(
                   shrinkWrap: true,
                   itemCount: completedPrograms.length,

@@ -44,7 +44,7 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: const Color(0xFF1C2526), // Matte Black
             colorScheme: ColorScheme.light(
               primary: const Color(0xFF1C2526), // Matte Black
-              secondary: const Color(0xFFB22222), // New Red
+              secondary: const Color(0xFFB22222), // Red
               surface: const Color(0xFFB0B7BF), // Silver
             ),
             textTheme: GoogleFonts.robotoTextTheme(
@@ -52,11 +52,11 @@ class MyApp extends StatelessWidget {
                 headlineLarge: GoogleFonts.oswald(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFFB22222), // New Red
+                  color: const Color(0xFFB22222), // Red
                 ),
                 bodyMedium: GoogleFonts.roboto(
                   fontSize: 16,
-                  color: const Color(0xFFB0B7BF), // Silver
+                  color: const Color(0xFF808080), // Darker gray
                 ),
               ),
             ),
@@ -68,7 +68,7 @@ class MyApp extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                backgroundColor: const Color(0xFFB22222), // New Red
+                backgroundColor: const Color(0xFFB22222), // Red
                 foregroundColor: Colors.white,
               ),
             ),
@@ -78,7 +78,7 @@ class MyApp extends StatelessWidget {
               color: const Color(0xFFB0B7BF), // Silver
             ),
             progressIndicatorTheme: ProgressIndicatorThemeData(
-              color: const Color(0xFFB22222), // New Red
+              color: const Color(0xFFB22222), // Red
               linearMinHeight: 8,
             ),
             useMaterial3: true,
@@ -88,7 +88,7 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: const Color(0xFF1C2526), // Matte Black
             colorScheme: ColorScheme.dark(
               primary: const Color(0xFF1C2526), // Matte Black
-              secondary: const Color(0xFFB22222), // New Red
+              secondary: const Color(0xFFB22222), // Red
               surface: const Color(0xFFB0B7BF), // Silver
             ),
             textTheme: GoogleFonts.robotoTextTheme(
@@ -96,11 +96,11 @@ class MyApp extends StatelessWidget {
                 headlineLarge: GoogleFonts.oswald(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFFB22222), // New Red
+                  color: const Color(0xFFB22222), // Red
                 ),
                 bodyMedium: GoogleFonts.roboto(
                   fontSize: 16,
-                  color: const Color(0xFFB0B7BF), // Silver
+                  color: const Color(0xFF808080), // Darker gray
                 ),
               ),
             ),
@@ -112,7 +112,7 @@ class MyApp extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                backgroundColor: const Color(0xFFB22222), // New Red
+                backgroundColor: const Color(0xFFB22222), // Red
                 foregroundColor: Colors.white,
               ),
             ),
@@ -122,7 +122,7 @@ class MyApp extends StatelessWidget {
               color: const Color(0xFFB0B7BF), // Silver
             ),
             progressIndicatorTheme: ProgressIndicatorThemeData(
-              color: const Color(0xFFB22222), // New Red
+              color: const Color(0xFFB22222), // Red
               linearMinHeight: 8,
             ),
             useMaterial3: true,
@@ -162,6 +162,19 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    // Ensure Home tab is selected when navigated to
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ModalRoute.of(context)?.settings.name == '/main') {
+        setState(() {
+          _selectedIndex = 0; // Force Home tab
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<String>(
       valueListenable: unitNotifier,
@@ -176,8 +189,8 @@ class _MainScreenState extends State<MainScreen> {
               BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
             ],
             currentIndex: _selectedIndex,
-            selectedItemColor: Theme.of(context).colorScheme.secondary, // New Red
-            unselectedItemColor: const Color(0xFFB0B7BF), // Silver
+            selectedItemColor: Theme.of(context).colorScheme.secondary, // Red
+            unselectedItemColor: const Color(0xFF808080), // Medium gray
             backgroundColor: const Color(0xFF1C2526), // Matte Black
             elevation: 12,
             onTap: _onItemTapped,

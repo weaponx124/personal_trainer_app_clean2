@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:personal_trainer_app_clean/screens/program_actions.dart';
-import 'package:personal_trainer_app_clean/main.dart'; // Correct import
+import 'package:personal_trainer_app_clean/main.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:animate_do/animate_do.dart';
 
 class ProgramSelectionScreen extends StatefulWidget {
   const ProgramSelectionScreen({super.key});
@@ -292,85 +294,123 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Choose Your Program'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
+            backgroundColor: const Color(0xFF1C2526), // Matte Black
+            foregroundColor: const Color(0xFFB0B7BF), // Silver
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
+              onPressed: () {
+                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+              },
+            ),
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+              ),
+            ),
+            child: Stack(
               children: [
-                const Text('Filter by Goal:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    _buildFilterChip('All', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                    _buildFilterChip('Powerlifting', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                    _buildFilterChip('Bodybuilding', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                    _buildFilterChip('General Fitness', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                    _buildFilterChip('Specific Body Part', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                  ],
+                // Subtle Cross Background
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.1,
+                    child: CustomPaint(
+                      painter: CrossPainter(),
+                      child: Container(),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                const Text('Filter by Level:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    _buildFilterChip('All', selectedLevel, (value) => setState(() => selectedLevel = value)),
-                    _buildFilterChip('Beginner', selectedLevel, (value) => setState(() => selectedLevel = value)),
-                    _buildFilterChip('Intermediate', selectedLevel, (value) => setState(() => selectedLevel = value)),
-                    _buildFilterChip('Advanced', selectedLevel, (value) => setState(() => selectedLevel = value)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: filteredPrograms.length,
-                    itemBuilder: (context, index) {
-                      final program = filteredPrograms[index];
-                      return Card(
-                        elevation: 6,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        color: Theme.of(context).colorScheme.surface,
-                        child: ListTile(
-                          leading: Icon(
-                            program['category'] == 'Powerlifting'
-                                ? Icons.fitness_center
-                                : program['category'] == 'Bodybuilding'
-                                ? Icons.directions_run
-                                : program['category'] == 'General Fitness'
-                                ? Icons.health_and_safety
-                                : Icons.bolt,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          title: Text(
-                            program['name'],
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Goal: ${program['category']}', style: Theme.of(context).textTheme.bodyMedium),
-                              Text('Level: ${program['level']}', style: Theme.of(context).textTheme.bodyMedium),
-                              Text('Duration: ${program['duration']}', style: Theme.of(context).textTheme.bodyMedium),
-                              const SizedBox(height: 4),
-                              Text(program['description'], style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey)),
-                            ],
-                          ),
-                          onTap: () => _startProgram(
-                            program['name'],
-                            program['requires1RM'] ?? false,
-                            program['lifts']?.cast<String>(),
-                          ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FadeIn(
+                        duration: const Duration(milliseconds: 800),
+                        child: const Text('Filter by Goal:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8.0,
+                        children: [
+                          _buildFilterChip('All', selectedGoal, (value) => setState(() => selectedGoal = value)),
+                          _buildFilterChip('Powerlifting', selectedGoal, (value) => setState(() => selectedGoal = value)),
+                          _buildFilterChip('Bodybuilding', selectedGoal, (value) => setState(() => selectedGoal = value)),
+                          _buildFilterChip('General Fitness', selectedGoal, (value) => setState(() => selectedGoal = value)),
+                          _buildFilterChip('Specific Body Part', selectedGoal, (value) => setState(() => selectedGoal = value)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      FadeIn(
+                        duration: const Duration(milliseconds: 800),
+                        child: const Text('Filter by Level:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8.0,
+                        children: [
+                          _buildFilterChip('All', selectedLevel, (value) => setState(() => selectedLevel = value)),
+                          _buildFilterChip('Beginner', selectedLevel, (value) => setState(() => selectedLevel = value)),
+                          _buildFilterChip('Intermediate', selectedLevel, (value) => setState(() => selectedLevel = value)),
+                          _buildFilterChip('Advanced', selectedLevel, (value) => setState(() => selectedLevel = value)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: filteredPrograms.length,
+                          itemBuilder: (context, index) {
+                            final program = filteredPrograms[index];
+                            return FadeIn(
+                              duration: const Duration(milliseconds: 800),
+                              child: Card(
+                                elevation: 8,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                color: Theme.of(context).colorScheme.surface,
+                                child: ListTile(
+                                  leading: Icon(
+                                    program['category'] == 'Powerlifting'
+                                        ? Icons.fitness_center
+                                        : program['category'] == 'Bodybuilding'
+                                        ? Icons.directions_run
+                                        : program['category'] == 'General Fitness'
+                                        ? Icons.health_and_safety
+                                        : Icons.bolt,
+                                    color: Theme.of(context).colorScheme.secondary, // Red
+                                  ),
+                                  title: Text(
+                                    program['name'],
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Goal: ${program['category']}', style: Theme.of(context).textTheme.bodyMedium),
+                                      Text('Level: ${program['level']}', style: Theme.of(context).textTheme.bodyMedium),
+                                      Text('Duration: ${program['duration']}', style: Theme.of(context).textTheme.bodyMedium),
+                                      const SizedBox(height: 4),
+                                      Text(program['description'], style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF808080))),
+                                    ],
+                                  ),
+                                  onTap: () => _startProgram(
+                                    program['name'],
+                                    program['requires1RM'] ?? false,
+                                    program['lifts']?.cast<String>(),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -390,10 +430,40 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
           onSelected(label);
         }
       },
-      selectedColor: Theme.of(context).colorScheme.primary,
+      selectedColor: Theme.of(context).colorScheme.secondary, // Red
       labelStyle: TextStyle(
         color: selectedValue == label ? Colors.white : Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
+}
+
+// Custom painter for cross background
+class CrossPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF87CEEB) // Soft Sky Blue
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    const double crossSize = 100.0;
+    for (double x = 0; x < size.width; x += crossSize * 1.5) {
+      for (double y = 0; y < size.height; y += crossSize * 1.5) {
+        canvas.drawLine(
+          Offset(x + crossSize / 2, y),
+          Offset(x + crossSize / 2, y + crossSize),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(x + crossSize / 4, y + crossSize / 2),
+          Offset(x + 3 * crossSize / 4, y + crossSize / 2),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

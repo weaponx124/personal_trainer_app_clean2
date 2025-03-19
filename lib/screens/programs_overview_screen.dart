@@ -3,6 +3,7 @@ import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:personal_trainer_app_clean/screens/program_actions.dart';
 import 'package:personal_trainer_app_clean/screens/program_list_builder.dart';
 import 'package:personal_trainer_app_clean/main.dart';
+import 'package:animate_do/animate_do.dart';
 
 class ProgramsOverviewScreen extends StatefulWidget {
   final String unit;
@@ -48,7 +49,9 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
     } catch (e) {
       print('Error loading programs: $e');
       if (mounted) {
-        setState(() => isLoading = false);
+        setState(() {
+          isLoading = false;
+        });
       }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading programs: $e')));
     }
@@ -59,15 +62,10 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
     print('Programs refreshed after async operation');
   }
 
-  double _calculateProgress(Map<String, dynamic> program) {
-    final sessionsCompleted = program['sessionsCompleted'] as int? ?? 0;
-    final programName = program['name'] as String;
-    // Rough estimate of total sessions based on duration
-    int totalSessions = 1; // Default
-    if (programName.contains('Madcow 5x5')) totalSessions = 36; // 12 weeks * 3 sessions
-    else if (programName.contains('5/3/1')) totalSessions = 12; // Ongoing, assume 12 for demo
-    else if (programName.contains('Russian Squat')) totalSessions = 18; // 6 weeks * 3
-    return sessionsCompleted / totalSessions.clamp(1, double.infinity);
+  double calculateProgress(Map<String, dynamic> program) {
+    int sessionsCompleted = program['sessionsCompleted'] as int? ?? 0;
+    int totalSessions = program['totalSessions'] as int? ?? 1;
+    return totalSessions > 0 ? sessionsCompleted / totalSessions : 0.0;
   }
 
   @override
@@ -82,66 +80,127 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Active Programs'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
+            backgroundColor: const Color(0xFF1C2526),
+            foregroundColor: const Color(0xFFB0B7BF),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () {
                 print('Back button pressed on ProgramsOverviewScreen, popping route');
-                Navigator.pop(context);
+                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
               },
             ),
           ),
-          body: FutureBuilder<void>(
-            future: _fetchProgramsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                print('FutureBuilder waiting for _fetchProgramsFuture to complete');
-                return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
-              } else if (snapshot.hasError) {
-                print('FutureBuilder error: ${snapshot.error}');
-                return Center(child: Text('Error loading programs: ${snapshot.error}'));
-              }
-              print('FutureBuilder completed, building UI with programs: $programs');
-              return SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          print('Navigating to ProgramSelectionScreen to add a new program');
-                          Navigator.pushNamed(context, '/program_selection');
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add New Program'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      buildProgramList(
-                        context: context,
-                        currentPrograms: currentPrograms,
-                        completedPrograms: completedPrograms,
-                        unit: unit,
-                        startProgram: startProgram,
-                        editProgram: editProgram,
-                        deleteProgram: deleteProgram,
-                        refreshPrograms: _refreshPrograms,
-                        progressCalculator: _calculateProgress, // Pass progress calculator
-                      ),
-                    ],
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+              ),
+            ),
+            child: Stack(
+              children: [
+                // Subtle Cross Background
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.1,
+                    child: CustomPaint(
+                      painter: CrossPainter(),
+                      child: Container(),
+                    ),
                   ),
                 ),
-              );
+                FutureBuilder<void>(
+                  future: _fetchProgramsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      print('FutureBuilder waiting for _fetchProgramsFuture to complete');
+                      return const Center(child: CircularProgressIndicator(color: Color(0xFFB22222)));
+                    } else if (snapshot.hasError) {
+                      print('FutureBuilder error: ${snapshot.error}');
+                      return Center(child: Text('Error loading programs: ${snapshot.error}'));
+                    }
+                    print('FutureBuilder completed, building UI with programs: $programs');
+                    return SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add New Program'),
+                              onPressed: () {
+                                print('Navigating to ProgramSelectionScreen to add a new program');
+                                Navigator.pushNamed(context, '/program_selection');
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFB22222),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            buildProgramList(
+                              context: context,
+                              currentPrograms: currentPrograms,
+                              completedPrograms: completedPrograms,
+                              unit: unit,
+                              startProgram: startProgram,
+                              editProgram: editProgram,
+                              deleteProgram: deleteProgram,
+                              refreshPrograms: _refreshPrograms,
+                              progressCalculator: calculateProgress,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.pushNamed(context, '/program_selection');
             },
+            backgroundColor: const Color(0xFFB22222),
+            child: const Icon(Icons.add),
           ),
         );
       },
     );
   }
+}
+
+// Custom painter for cross background
+class CrossPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF87CEEB) // Soft Sky Blue
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    const double crossSize = 100.0;
+    for (double x = 0; x < size.width; x += crossSize * 1.5) {
+      for (double y = 0; y < size.height; y += crossSize * 1.5) {
+        canvas.drawLine(
+          Offset(x + crossSize / 2, y),
+          Offset(x + crossSize / 2, y + crossSize),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(x + crossSize / 4, y + crossSize / 2),
+          Offset(x + 3 * crossSize / 4, y + crossSize / 2),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

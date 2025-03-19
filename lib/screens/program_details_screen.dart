@@ -4,6 +4,7 @@ import 'package:personal_trainer_app_clean/screens/program_details_logic.dart';
 import 'package:personal_trainer_app_clean/screens/program_details_widgets.dart';
 import 'package:personal_trainer_app_clean/screens/program_details_dialogs.dart';
 import 'package:personal_trainer_app_clean/main.dart';
+import 'package:animate_do/animate_do.dart';
 
 class ProgramDetailsScreen extends StatefulWidget {
   final String programId;
@@ -49,7 +50,7 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
     try {
       setState(() => isLoading = true);
       program = await DatabaseHelper.getProgram(widget.programId);
-      await _addTotalSessions(); // Dynamic total sessions
+      await _addTotalSessions();
       print('Loaded program in ProgramDetailsScreen: $program');
       print('Loaded program 1RMs: ${program['details']?['1RMs']}');
       _logic.initializeSessionSets(program);
@@ -73,18 +74,16 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
   }
 
   Future<void> _addTotalSessions() async {
-    // Fetch all programs to match duration
-    final allPrograms = await DatabaseHelper.getAllPrograms(); // Assuming this method exists or adapt from ProgramSelectionScreen data
+    final allPrograms = await DatabaseHelper.getAllPrograms();
     final programData = allPrograms.firstWhere((p) => p['name'] == program['name'], orElse: () => {'duration': 'Ongoing'});
     String duration = programData['duration'] ?? 'Ongoing';
 
-    int sessionsPerWeek = 3; // Default for strength programs
-    if (program['name'] == '5/3/1 Program') sessionsPerWeek = 4; // Example adjustment
+    int sessionsPerWeek = 3;
+    if (program['name'] == '5/3/1 Program') sessionsPerWeek = 4;
 
     if (duration == 'Ongoing') {
-      program['totalSessions'] = 999; // Arbitrary high number for ongoing
+      program['totalSessions'] = 999;
     } else {
-      // Parse duration (e.g., "12-16 weeks" -> avg 14, "6 weeks" -> 6)
       final match = RegExp(r'(\d+)(?:-(\d+))?\s*weeks').firstMatch(duration);
       if (match != null) {
         int minWeeks = int.parse(match.group(1)!);
@@ -92,7 +91,7 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
         int weeks = maxWeeks != null ? (minWeeks + maxWeeks) ~/ 2 : minWeeks;
         program['totalSessions'] = weeks * sessionsPerWeek;
       } else {
-        program['totalSessions'] = 1; // Fallback
+        program['totalSessions'] = 1;
       }
     }
     print('Set totalSessions for ${program['name']}: ${program['totalSessions']}');
@@ -143,7 +142,7 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false); // Clear stack, return to MainScreen
+              Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
             },
             child: const Text('OK'),
           ),
@@ -164,12 +163,12 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
         return Scaffold(
           appBar: AppBar(
             title: Text(program['name'] ?? 'Program Details'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
+            backgroundColor: const Color(0xFF1C2526), // Matte Black
+            foregroundColor: const Color(0xFFB0B7BF), // Silver
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () {
-                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false); // Clear stack, return to MainScreen
+                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
               },
             ),
             actions: [
@@ -195,133 +194,167 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
               ),
             ],
           ),
-          body: isLoading
-              ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
-              : SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+              ),
+            ),
+            child: Stack(
               children: [
-                ExpansionTile(
-                  title: Text('Program Details', style: Theme.of(context).textTheme.headlineMedium),
-                  initiallyExpanded: true,
-                  children: [
-                    ProgramDetailsCard(
-                      program: program,
-                      unit: unit,
-                      is531Program: is531Program,
-                      isRussianSquat: isRussianSquat,
+                // Subtle Cross Background
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.1,
+                    child: CustomPaint(
+                      painter: CrossPainter(),
+                      child: Container(),
                     ),
-                    if (program['sessionsCompleted'] != null && program['totalSessions'] != null) ...[
-                      const SizedBox(height: 16),
-                      Text('Progress', style: Theme.of(context).textTheme.headlineMedium),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: (program['sessionsCompleted'] as int) / (program['totalSessions'] as int),
-                        color: Theme.of(context).colorScheme.secondary,
-                        backgroundColor: Colors.grey[300],
-                      ),
-                      const SizedBox(height: 4),
-                      Text('${program['sessionsCompleted']}/${program['totalSessions']} sessions completed'),
-                    ],
-                  ],
-                ),
-                if (currentSessionSets.isNotEmpty && !(program['completed'] as bool? ?? false)) ...[
-                  const SizedBox(height: 20),
-                  ExpansionTile(
-                    title: Text('Current Session', style: Theme.of(context).textTheme.headlineMedium),
-                    initiallyExpanded: true,
-                    children: [
-                      SessionSetsCard(
-                        currentSession: program['currentSession'] as int? ?? 1,
-                        workoutName: currentWorkout?['workoutName'] ?? '',
-                        currentSessionSets: currentSessionSets,
-                        repsControllers: repsControllers,
-                        setCompleted: setCompleted,
-                        unit: unit,
-                        onRepsChanged: (index, value) {
-                          setState(() {
-                            repsControllers[index].text = value.toString();
-                            currentSessionSets[index]['completedReps'] = value;
-                          });
-                        },
-                        onSetCompletedChanged: (index, value) {
-                          setState(() {
-                            setCompleted[index] = value ?? false;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          if (is531Program)
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).colorScheme.primary,
-                                foregroundColor: Colors.white,
-                              ),
-                              onPressed: () => ProgramDetailsDialogs.showCompleteWeekDialog(
-                                context: context,
-                                programName: program['name'] as String,
-                                programId: widget.programId,
-                                onComplete: () => _loadProgram(),
-                              ),
-                              child: const Text('Complete Week'),
-                            ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.primary,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: _logic.completeSession(
-                              context: context,
-                              setCompleted: setCompleted,
-                              currentSessionSets: currentSessionSets,
-                              repsControllers: repsControllers,
-                              programId: widget.programId,
-                              onComplete: () async {
-                                await _loadProgram();
-                                await _loadWorkoutLog();
-                                if (program['completed'] == true) {
-                                  _showCompletionDialog();
-                                }
-                              },
-                              currentWorkout: currentWorkout,
-                            ),
-                            child: const Text('Complete Session'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.primary,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: _completeAllSets,
-                            child: const Text('Complete All Sets'),
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
-                ],
-                if (workoutLog.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  ExpansionTile(
-                    title: Text('Workout Log', style: Theme.of(context).textTheme.headlineMedium),
+                ),
+                isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFFB22222)))
+                    : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      WorkoutLogCard(
-                        workoutLog: workoutLog,
-                        unit: unit,
-                        onDelete: (index) => ProgramDetailsDialogs.showDeleteWorkoutLogDialog(
-                          context: context,
-                          programId: widget.programId,
-                          index: index,
-                          onDelete: () => _loadWorkoutLog(),
+                      FadeIn(
+                        duration: const Duration(milliseconds: 800),
+                        child: ExpansionTile(
+                          title: Text('Program Details', style: Theme.of(context).textTheme.headlineLarge),
+                          initiallyExpanded: true,
+                          children: [
+                            ProgramDetailsCard(
+                              program: program,
+                              unit: unit,
+                              is531Program: is531Program,
+                              isRussianSquat: isRussianSquat,
+                            ),
+                            if (program['sessionsCompleted'] != null && program['totalSessions'] != null) ...[
+                              const SizedBox(height: 16),
+                              Text('Progress', style: Theme.of(context).textTheme.headlineLarge),
+                              const SizedBox(height: 8),
+                              LinearProgressIndicator(
+                                value: (program['sessionsCompleted'] as int) / (program['totalSessions'] as int),
+                                color: Theme.of(context).colorScheme.secondary, // Red
+                                backgroundColor: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              const SizedBox(height: 4),
+                              Text('${program['sessionsCompleted']}/${program['totalSessions']} sessions completed',
+                                  style: Theme.of(context).textTheme.bodyMedium),
+                            ],
+                          ],
                         ),
                       ),
+                      if (currentSessionSets.isNotEmpty && !(program['completed'] as bool? ?? false)) ...[
+                        const SizedBox(height: 20),
+                        FadeIn(
+                          duration: const Duration(milliseconds: 800),
+                          child: ExpansionTile(
+                            title: Text('Current Session', style: Theme.of(context).textTheme.headlineLarge),
+                            initiallyExpanded: true,
+                            children: [
+                              SessionSetsCard(
+                                currentSession: program['currentSession'] as int? ?? 1,
+                                workoutName: currentWorkout?['workoutName'] ?? '',
+                                currentSessionSets: currentSessionSets,
+                                repsControllers: repsControllers,
+                                setCompleted: setCompleted,
+                                unit: unit,
+                                onRepsChanged: (index, value) {
+                                  setState(() {
+                                    repsControllers[index].text = value.toString();
+                                    currentSessionSets[index]['completedReps'] = value;
+                                  });
+                                },
+                                onSetCompletedChanged: (index, value) {
+                                  setState(() {
+                                    setCompleted[index] = value ?? false;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  if (is531Program)
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Theme.of(context).colorScheme.secondary, // Red
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      onPressed: () => ProgramDetailsDialogs.showCompleteWeekDialog(
+                                        context: context,
+                                        programName: program['name'] as String,
+                                        programId: widget.programId,
+                                        onComplete: () => _loadProgram(),
+                                      ),
+                                      child: const Text('Complete Week'),
+                                    ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Theme.of(context).colorScheme.secondary, // Red
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: _logic.completeSession(
+                                      context: context,
+                                      setCompleted: setCompleted,
+                                      currentSessionSets: currentSessionSets,
+                                      repsControllers: repsControllers,
+                                      programId: widget.programId,
+                                      onComplete: () async {
+                                        await _loadProgram();
+                                        await _loadWorkoutLog();
+                                        if (program['completed'] == true) {
+                                          _showCompletionDialog();
+                                        }
+                                      },
+                                      currentWorkout: currentWorkout,
+                                    ),
+                                    child: const Text('Complete Session'),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Theme.of(context).colorScheme.secondary, // Red
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: _completeAllSets,
+                                    child: const Text('Complete All Sets'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (workoutLog.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        FadeIn(
+                          duration: const Duration(milliseconds: 800),
+                          child: ExpansionTile(
+                            title: Text('Workout Log', style: Theme.of(context).textTheme.headlineLarge),
+                            children: [
+                              WorkoutLogCard(
+                                workoutLog: workoutLog,
+                                unit: unit,
+                                onDelete: (index) => ProgramDetailsDialogs.showDeleteWorkoutLogDialog(
+                                  context: context,
+                                  programId: widget.programId,
+                                  index: index,
+                                  onDelete: () => _loadWorkoutLog(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -329,4 +362,37 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
       },
     );
   }
+}
+
+// Custom painter for cross background
+class CrossPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF87CEEB) // Soft Sky Blue
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    // Draw a subtle cross pattern
+    const double crossSize = 100.0;
+    for (double x = 0; x < size.width; x += crossSize * 1.5) {
+      for (double y = 0; y < size.height; y += crossSize * 1.5) {
+        // Vertical line of cross
+        canvas.drawLine(
+          Offset(x + crossSize / 2, y),
+          Offset(x + crossSize / 2, y + crossSize),
+          paint,
+        );
+        // Horizontal line of cross
+        canvas.drawLine(
+          Offset(x + crossSize / 4, y + crossSize / 2),
+          Offset(x + 3 * crossSize / 4, y + crossSize / 2),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
