@@ -2,6 +2,7 @@ import 'package:flutter/material.dart'; // Added for ThemeMode
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
+import 'package:personal_trainer_app_clean/main.dart'; // Import to access unitNotifier and themeNotifier
 
 class DatabaseHelper {
   static const String _programsKey = 'programs';
@@ -12,6 +13,7 @@ class DatabaseHelper {
   static const String _progressKey = 'progress';
   static const String _weightUnitKey = 'weightUnit';
   static const String _themeModeKey = 'themeMode';
+  static const String _weeklyWorkoutGoalKey = 'weeklyWorkoutGoal'; // Added for weekly goal
 
   static Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
 
@@ -25,6 +27,10 @@ class DatabaseHelper {
     if (!prefs.containsKey(_themeModeKey)) {
       await prefs.setString(_themeModeKey, 'system');
       print('Initialized default theme mode to system');
+    }
+    if (!prefs.containsKey(_weeklyWorkoutGoalKey)) {
+      await prefs.setInt(_weeklyWorkoutGoalKey, 3); // Default weekly goal: 3 workouts
+      print('Initialized default weekly workout goal to 3');
     }
     if (!prefs.containsKey(_programsKey)) {
       await _initializeDefaultData();
@@ -407,6 +413,34 @@ class DatabaseHelper {
     }
     await prefs.setString(_weightUnitKey, unit);
     print('Set weight unit to: $unit');
+    unitNotifier.value = unit; // Now accessible due to import
+  }
+
+  static Future<List<Map<String, dynamic>>> getWorkoutsForWeek(DateTime startOfWeek, DateTime endOfWeek) async {
+    final workouts = await getWorkouts();
+    final startTimestamp = startOfWeek.millisecondsSinceEpoch;
+    final endTimestamp = endOfWeek.millisecondsSinceEpoch;
+    final weeklyWorkouts = workouts.where((workout) {
+      final timestamp = workout['timestamp'] as int?;
+      if (timestamp == null) {
+        print('Skipping workout with null timestamp: $workout'); // Debug log
+        return false;
+      }
+      return timestamp >= startTimestamp && timestamp <= endTimestamp;
+    }).toList();
+    print('Workouts for week ${startOfWeek.toIso8601String()} to ${endOfWeek.toIso8601String()}: $weeklyWorkouts'); // Debug log
+    return weeklyWorkouts;
+  }
+
+  static Future<void> setWeeklyWorkoutGoal(int goal) async {
+    final prefs = await _prefs;
+    await prefs.setInt(_weeklyWorkoutGoalKey, goal);
+    print('Set weekly workout goal to: $goal');
+  }
+
+  static Future<int> getWeeklyWorkoutGoal() async {
+    final prefs = await _prefs;
+    return prefs.getInt(_weeklyWorkoutGoalKey) ?? 3; // Default to 3 if not set
   }
 
   static Future<List<Map<String, dynamic>>> getAllPrograms() async {
@@ -475,5 +509,6 @@ class DatabaseHelper {
     }
     await prefs.setString(_themeModeKey, modeString);
     print('Set theme mode to: $modeString');
+    themeNotifier.value = mode; // Now accessible due to import
   }
 }

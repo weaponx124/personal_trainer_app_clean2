@@ -15,9 +15,12 @@ dependencies:
   shared_preferences: ^2.0.0
   uuid: ^3.0.7
   animate_do: ^3.3.4
+  path_provider: ^2.1.1
   cupertino_icons: ^1.0.2
   provider: ^6.1.2
   google_fonts: ^6.1.0
+  sqflite: ^2.3.0
+  confetti: ^0.7.0
 
 dev_dependencies:
   flutter_test:
@@ -28,3 +31,69 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo_512_transparent.png
+    - assets/scriptures_genesis.json
+    - assets/scriptures_exodus.json
+    - assets/scriptures_leviticus.json
+    - assets/scriptures_numbers.json
+    - assets/scriptures_deuteronomy.json
+    - assets/scriptures_joshua.json
+    - assets/scriptures_judges.json
+    - assets/scriptures_ruth.json
+    - assets/scriptures_1_samuel.json
+    - assets/scriptures_2_samuel.json
+    - assets/scriptures_1_kings.json
+    - assets/scriptures_2_kings.json
+    - assets/scriptures_1_chronicles.json
+    - assets/scriptures_2_chronicles.json
+    - assets/scriptures_ezra.json
+    - assets/scriptures_nehemiah.json
+    - assets/scriptures_esther.json
+    - assets/scriptures_job.json
+    - assets/scriptures_psalms.json
+    - assets/scriptures_proverbs.json
+    - assets/scriptures_ecclesiastes.json
+    - assets/scriptures_song_of_solomon.json
+    - assets/scriptures_isaiah.json
+    - assets/scriptures_jeremiah.json
+    - assets/scriptures_lamentations.json
+    - assets/scriptures_ezekiel.json
+    - assets/scriptures_daniel.json
+    - assets/scriptures_hosea.json
+    - assets/scriptures_joel.json
+    - assets/scriptures_amos.json
+    - assets/scriptures_obadiah.json
+    - assets/scriptures_jonah.json
+    - assets/scriptures_micah.json
+    - assets/scriptures_nahum.json
+    - assets/scriptures_habakkuk.json
+    - assets/scriptures_zephaniah.json
+    - assets/scriptures_haggai.json
+    - assets/scriptures_zechariah.json
+    - assets/scriptures_malachi.json
+    - assets/scriptures_matthew.json
+    - assets/scriptures_mark.json
+    - assets/scriptures_luke.json
+    - assets/scriptures_john.json
+    - assets/scriptures_acts.json
+    - assets/scriptures_romans.json
+    - assets/scriptures_1_corinthians.json
+    - assets/scriptures_2_corinthians.json
+    - assets/scriptures_galatians.json
+    - assets/scriptures_ephesians.json
+    - assets/scriptures_philippians.json
+    - assets/scriptures_colossians.json
+    - assets/scriptures_1_thessalonians.json
+    - assets/scriptures_2_thessalonians.json
+    - assets/scriptures_1_timothy.json
+    - assets/scriptures_2_timothy.json
+    - assets/scriptures_titus.json
+    - assets/scriptures_philemon.json
+    - assets/scriptures_hebrews.json
+    - assets/scriptures_james.json
+    - assets/scriptures_1_peter.json
+    - assets/scriptures_2_peter.json
+    - assets/scriptures_1_john.json
+    - assets/scriptures_2_john.json
+    - assets/scriptures_3_john.json
+    - assets/scriptures_jude.json
+    - assets/scriptures_revelation.json

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:personal_trainer_app_clean/main.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:animate_do/animate_do.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,8 +11,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String unit = 'lbs';
-  String themeMode = 'System'; // Default to system
+  String _weightUnit = 'lbs';
+  ThemeMode _themeMode = ThemeMode.system;
+  int _weeklyWorkoutGoal = 3; // Default value
+  final TextEditingController _goalController = TextEditingController();
 
   @override
   void initState() {
@@ -22,188 +23,218 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final loadedUnit = await DatabaseHelper.getWeightUnit();
-    final loadedThemeMode = await DatabaseHelper.getThemeMode();
+    final weightUnit = await DatabaseHelper.getWeightUnit();
+    final themeMode = await DatabaseHelper.getThemeMode();
+    final weeklyGoal = await DatabaseHelper.getWeeklyWorkoutGoal();
     setState(() {
-      unit = loadedUnit;
-      themeMode = _themeModeToString(loadedThemeMode);
+      _weightUnit = weightUnit;
+      _themeMode = themeMode;
+      _weeklyWorkoutGoal = weeklyGoal;
+      _goalController.text = _weeklyWorkoutGoal.toString();
     });
   }
 
-  Future<void> _setUnit(String newUnit) async {
-    final oldUnit = unit;
-    setState(() => unit = newUnit);
-    await DatabaseHelper.setWeightUnit(newUnit, currentUnit: oldUnit);
-    unitNotifier.value = newUnit;
-    Navigator.pop(context);
-  }
-
-  Future<void> _setThemeMode(String newThemeMode) async {
-    setState(() => themeMode = newThemeMode);
-    final mode = _stringToThemeMode(newThemeMode);
-    await DatabaseHelper.setThemeMode(mode);
-    themeNotifier.value = mode;
-  }
-
-  String _themeModeToString(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return 'Light';
-      case ThemeMode.dark:
-        return 'Dark';
-      case ThemeMode.system:
-      default:
-        return 'System';
-    }
-  }
-
-  ThemeMode _stringToThemeMode(String mode) {
-    switch (mode) {
-      case 'Light':
-        return ThemeMode.light;
-      case 'Dark':
-        return ThemeMode.dark;
-      case 'System':
-      default:
-        return ThemeMode.system;
-    }
+  @override
+  void dispose() {
+    _goalController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<String>(
-      valueListenable: unitNotifier,
-      builder: (context, unit, child) {
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Settings'),
-            backgroundColor: const Color(0xFF1C2526), // Matte Black
-            foregroundColor: const Color(0xFFB0B7BF), // Silver
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
-              onPressed: () {
-                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
-              },
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: const Color(0xFF1C2526),
+        foregroundColor: const Color(0xFFB0B7BF),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
+          onPressed: () {
+            Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+          },
+        ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
           ),
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Units',
+                style: GoogleFonts.oswald(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFB22222),
+                ),
               ),
-            ),
-            child: Stack(
-              children: [
-                // Subtle Cross Background
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.1,
-                    child: CustomPaint(
-                      painter: CrossPainter(),
-                      child: Container(),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title: Text(
+                        'lbs',
+                        style: GoogleFonts.roboto(
+                          fontSize: 16,
+                          color: const Color(0xFF808080),
+                        ),
+                      ),
+                      value: 'lbs',
+                      groupValue: _weightUnit,
+                      onChanged: (value) {
+                        setState(() {
+                          _weightUnit = value!;
+                          DatabaseHelper.setWeightUnit(_weightUnit);
+                        });
+                      },
+                      activeColor: const Color(0xFFB22222),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FadeIn(
-                        duration: const Duration(milliseconds: 800),
-                        child: const Text(
-                          'Settings',
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFB22222)),
+                  Expanded(
+                    child: RadioListTile<String>(
+                      title: Text(
+                        'kg',
+                        style: GoogleFonts.roboto(
+                          fontSize: 16,
+                          color: const Color(0xFF808080),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Weight Unit',
-                        style: GoogleFonts.oswald(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFB22222), // Red
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButton<String>(
-                        value: unit,
-                        items: <String>['lbs', 'kg'].map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            _setUnit(newValue);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Theme Mode',
-                        style: GoogleFonts.oswald(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFB22222), // Red
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButton<String>(
-                        value: themeMode,
-                        items: <String>['System', 'Light', 'Dark'].map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            _setThemeMode(newValue);
-                          }
-                        },
-                      ),
-                    ],
+                      value: 'kg',
+                      groupValue: _weightUnit,
+                      onChanged: (value) {
+                        setState(() {
+                          _weightUnit = value!;
+                          DatabaseHelper.setWeightUnit(_weightUnit);
+                        });
+                      },
+                      activeColor: const Color(0xFFB22222),
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Theme',
+                style: GoogleFonts.oswald(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFB22222),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<ThemeMode>(
+                      title: Text(
+                        'System',
+                        style: GoogleFonts.roboto(
+                          fontSize: 16,
+                          color: const Color(0xFF808080),
+                        ),
+                      ),
+                      value: ThemeMode.system,
+                      groupValue: _themeMode,
+                      onChanged: (value) {
+                        setState(() {
+                          _themeMode = value!;
+                          DatabaseHelper.setThemeMode(_themeMode);
+                        });
+                      },
+                      activeColor: const Color(0xFFB22222),
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<ThemeMode>(
+                      title: Text(
+                        'Light',
+                        style: GoogleFonts.roboto(
+                          fontSize: 16,
+                          color: const Color(0xFF808080),
+                        ),
+                      ),
+                      value: ThemeMode.light,
+                      groupValue: _themeMode,
+                      onChanged: (value) {
+                        setState(() {
+                          _themeMode = value!;
+                          DatabaseHelper.setThemeMode(_themeMode);
+                        });
+                      },
+                      activeColor: const Color(0xFFB22222),
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<ThemeMode>(
+                      title: Text(
+                        'Dark',
+                        style: GoogleFonts.roboto(
+                          fontSize: 16,
+                          color: const Color(0xFF808080),
+                        ),
+                      ),
+                      value: ThemeMode.dark,
+                      groupValue: _themeMode,
+                      onChanged: (value) {
+                        setState(() {
+                          _themeMode = value!;
+                          DatabaseHelper.setThemeMode(_themeMode);
+                        });
+                      },
+                      activeColor: const Color(0xFFB22222),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Weekly Workout Goal',
+                style: GoogleFonts.oswald(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFB22222),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _goalController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Workouts per Week',
+                  labelStyle: GoogleFonts.roboto(
+                    fontSize: 16,
+                    color: const Color(0xFF808080),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFB0B7BF),
+                ),
+                style: GoogleFonts.roboto(
+                  fontSize: 16,
+                  color: const Color(0xFF1C2526),
+                ),
+                onChanged: (value) {
+                  final goal = int.tryParse(value) ?? 3;
+                  setState(() {
+                    _weeklyWorkoutGoal = goal;
+                  });
+                  DatabaseHelper.setWeeklyWorkoutGoal(goal);
+                },
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
-}
-
-// Custom painter for cross background
-class CrossPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF87CEEB) // Soft Sky Blue
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    const double crossSize = 100.0;
-    for (double x = 0; x < size.width; x += crossSize * 1.5) {
-      for (double y = 0; y < size.height; y += crossSize * 1.5) {
-        canvas.drawLine(
-          Offset(x + crossSize / 2, y),
-          Offset(x + crossSize / 2, y + crossSize),
-          paint,
-        );
-        canvas.drawLine(
-          Offset(x + crossSize / 4, y + crossSize / 2),
-          Offset(x + 3 * crossSize / 4, y + crossSize / 2),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -7,10 +7,11 @@ import 'package:personal_trainer_app_clean/screens/home_screen.dart' as home;
 import 'package:personal_trainer_app_clean/screens/program_selection_screen.dart' as programs;
 import 'package:personal_trainer_app_clean/screens/progress_screen.dart' as progress;
 import 'package:personal_trainer_app_clean/screens/diet_screen.dart' as diet;
+import 'package:personal_trainer_app_clean/screens/workout_screen.dart' as workout;
 import 'package:personal_trainer_app_clean/screens/programs_overview_screen.dart';
 import 'package:personal_trainer_app_clean/screens/program_details_screen.dart';
 import 'package:personal_trainer_app_clean/screens/settings_screen.dart';
-import 'package:personal_trainer_app_clean/screens/workout_screen.dart';
+import 'package:personal_trainer_app_clean/screens/scripture_reading_screen.dart';
 
 // Global unit state
 ValueNotifier<String> unitNotifier = ValueNotifier('lbs');
@@ -139,11 +140,20 @@ class MyApp extends StatelessWidget {
               );
             },
             '/settings': (context) => const SettingsScreen(),
-            '/workout': (context) => const WorkoutScreen(),
+            '/workout': (context) => workout.WorkoutScreen(),
             '/programs': (context) => ProgramsOverviewScreen(
               unit: unitNotifier.value,
               programName: (ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?)?['programName'] as String? ?? '',
             ),
+            '/scriptures': (context) {
+              final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+              print('Scriptures route args: $args'); // Debug log
+              return ScriptureReadingScreen(
+                book: args?['book'] as String?,
+                chapter: args?['chapter'] as int?,
+                verse: args?['verse'] as int?,
+              );
+            },
           },
         );
       },
@@ -187,13 +197,22 @@ class _MainScreenState extends State<MainScreen> {
               BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Active Programs'),
               BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Progress'),
               BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
+              BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Scriptures'),
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Theme.of(context).colorScheme.secondary, // Red
             unselectedItemColor: const Color(0xFF808080), // Medium gray
             backgroundColor: const Color(0xFF1C2526), // Matte Black
             elevation: 12,
-            onTap: _onItemTapped,
+            onTap: (index) {
+              setState(() {
+                _selectedIndex = index;
+                if (index == 4) { // Scriptures tab
+                  // Navigate with the last known arguments (if any)
+                  Navigator.pushNamed(context, '/scriptures');
+                }
+              });
+            },
           ),
         );
       },
@@ -204,10 +223,7 @@ class _MainScreenState extends State<MainScreen> {
     home.HomeScreen(unit: unit),
     ProgramsOverviewScreen(unit: unit, programName: ''),
     progress.ProgressScreen(unit: unit),
-    const diet.DietScreen(),
+    diet.DietScreen(),
+    const ScriptureReadingScreen(), // Default instance for nav bar
   ];
-
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
-  }
 }
