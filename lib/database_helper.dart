@@ -20,6 +20,7 @@ class DatabaseHelper {
   static const String _verseOfTheDayDateKey = 'verseOfTheDayDate'; // Added to track the date of the verse
   static const String _dietPreferencesKey = 'dietPreferences'; // Added for diet preferences
   static const String _waterIntakeKey = 'waterIntake'; // Added for water intake
+  static const String _customFoodsKey = 'customFoods'; // Added for custom foods
 
   static Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
 
@@ -603,5 +604,30 @@ class DatabaseHelper {
     final prefs = await _prefs;
     await prefs.setString(_waterIntakeKey, jsonEncode([]));
     print('Cleared water intake');
+  }
+
+  // Custom Foods Management
+  static Future<List<Map<String, dynamic>>> getCustomFoods() async {
+    final prefs = await _prefs;
+    final customFoodsJson = prefs.getString(_customFoodsKey);
+    return customFoodsJson != null ? jsonDecode(customFoodsJson).cast<Map<String, dynamic>>() : [];
+  }
+
+  static Future<void> addCustomFood(Map<String, dynamic> food) async {
+    final prefs = await _prefs;
+    final customFoods = await getCustomFoods();
+    final foodWithId = Map<String, dynamic>.from(food);
+    foodWithId['id'] = Uuid().v4();
+    customFoods.add(foodWithId);
+    await prefs.setString(_customFoodsKey, jsonEncode(customFoods));
+    print('Added custom food: $foodWithId');
+  }
+
+  static Future<void> deleteCustomFood(String foodId) async {
+    final prefs = await _prefs;
+    final customFoods = await getCustomFoods();
+    final updatedFoods = customFoods.where((f) => f['id'] != foodId).toList();
+    await prefs.setString(_customFoodsKey, jsonEncode(updatedFoods));
+    print('Deleted custom food with ID: $foodId');
   }
 }

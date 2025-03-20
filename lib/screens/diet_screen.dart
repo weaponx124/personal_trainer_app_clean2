@@ -14,6 +14,7 @@ class DietScreen extends StatefulWidget {
 class _DietScreenState extends State<DietScreen> {
   List<Map<String, dynamic>> _meals = [];
   List<Map<String, dynamic>> _foodDatabase = [];
+  List<Map<String, dynamic>> _customFoods = [];
   List<Map<String, dynamic>> _waterIntake = [];
   Map<String, dynamic> _dietPreferences = {};
   double _dailyCalories = 0.0;
@@ -35,6 +36,7 @@ class _DietScreenState extends State<DietScreen> {
     // Load meals
     final meals = await DatabaseHelper.getMeals();
     final waterIntake = await DatabaseHelper.getWaterIntake();
+    final customFoods = await DatabaseHelper.getCustomFoods();
     var dietPreferences = await DatabaseHelper.getDietPreferences();
 
     // Ensure dietPreferences is not null and has default values
@@ -85,6 +87,7 @@ class _DietScreenState extends State<DietScreen> {
     setState(() {
       _meals = meals;
       _waterIntake = waterIntake;
+      _customFoods = customFoods;
       _dietPreferences = dietPreferences;
       _foodDatabase = foodDatabase.cast<Map<String, dynamic>>();
       _dailyCalories = calories;
@@ -151,8 +154,129 @@ class _DietScreenState extends State<DietScreen> {
     return recommendations.take(5).toList(); // Limit to top 5 recommendations
   }
 
+  Future<void> _addCustomFood() async {
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController caloriesController = TextEditingController();
+    final TextEditingController proteinController = TextEditingController();
+    final TextEditingController carbsController = TextEditingController();
+    final TextEditingController fatController = TextEditingController();
+    final TextEditingController sodiumController = TextEditingController();
+    final TextEditingController fiberController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Custom Food'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Food Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: caloriesController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Calories (kcal)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: proteinController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Protein (g)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: carbsController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Carbs (g)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: fatController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Fat (g)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: sodiumController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Sodium (mg)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: fiberController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Fiber (g)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (nameController.text.isNotEmpty) {
+                Navigator.pop(context, true);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a food name')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final customFood = {
+        'name': nameController.text,
+        'calories': double.tryParse(caloriesController.text) ?? 0.0,
+        'protein': double.tryParse(proteinController.text) ?? 0.0,
+        'carbs': double.tryParse(carbsController.text) ?? 0.0,
+        'fat': double.tryParse(fatController.text) ?? 0.0,
+        'sodium': double.tryParse(sodiumController.text) ?? 0.0,
+        'fiber': double.tryParse(fiberController.text) ?? 0.0,
+        'suitable_for': ['custom'],
+      };
+      print('Saving custom food: $customFood');
+      await DatabaseHelper.addCustomFood(customFood);
+      await _loadData();
+    }
+  }
+
   Future<void> _addMeal() async {
-    String? selectedFood = _foodDatabase.isNotEmpty ? _foodDatabase[0]['name'] as String : null;
+    // Combine food database and custom foods
+    final allFoods = [..._foodDatabase, ..._customFoods];
+    String? selectedFood = allFoods.isNotEmpty ? allFoods[0]['name'] as String : null;
     final TextEditingController amountController = TextEditingController();
 
     final result = await showDialog<bool>(
@@ -167,7 +291,7 @@ class _DietScreenState extends State<DietScreen> {
                 value: selectedFood,
                 hint: const Text('Select Food'),
                 isExpanded: true,
-                items: _foodDatabase.map((food) {
+                items: allFoods.map((food) {
                   return DropdownMenuItem<String>(
                     value: food['name'] as String,
                     child: Text(food['name'] as String),
@@ -214,16 +338,16 @@ class _DietScreenState extends State<DietScreen> {
 
     if (result == true) {
       final servings = double.tryParse(amountController.text) ?? 1.0;
-      final food = _foodDatabase.firstWhere((f) => f['name'] == selectedFood);
+      final food = allFoods.firstWhere((f) => f['name'] == selectedFood);
       final meal = {
         'food': food['name'],
         'mealType': _selectedMealType,
-        'calories': (food['calories'] as num?)?.toDouble() ?? 0.0,
-        'protein': (food['protein'] as num?)?.toDouble() ?? 0.0,
-        'carbs': (food['carbs'] as num?)?.toDouble() ?? 0.0,
-        'fat': (food['fat'] as num?)?.toDouble() ?? 0.0,
-        'sodium': (food['sodium'] as num?)?.toDouble() ?? 0.0,
-        'fiber': (food['fiber'] as num?)?.toDouble() ?? 0.0,
+        'calories': ((food['calories'] as num?)?.toDouble() ?? 0.0) * servings,
+        'protein': ((food['protein'] as num?)?.toDouble() ?? 0.0) * servings,
+        'carbs': ((food['carbs'] as num?)?.toDouble() ?? 0.0) * servings,
+        'fat': ((food['fat'] as num?)?.toDouble() ?? 0.0) * servings,
+        'sodium': ((food['sodium'] as num?)?.toDouble() ?? 0.0) * servings,
+        'fiber': ((food['fiber'] as num?)?.toDouble() ?? 0.0) * servings,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
       print('Saving meal: $meal');
@@ -541,6 +665,19 @@ class _DietScreenState extends State<DietScreen> {
                       icon: const Icon(Icons.settings, size: 24),
                       label: const Text('Edit Diet Preferences', style: TextStyle(fontSize: 18)),
                       onPressed: _editDietPreferences,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFB22222),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Add Custom Food
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.add_circle, size: 24),
+                      label: const Text('Add Custom Food', style: TextStyle(fontSize: 18)),
+                      onPressed: _addCustomFood,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFB22222),
                         foregroundColor: Colors.white,
