@@ -6,6 +6,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter/services.dart';
 import 'package:confetti/confetti.dart';
 import 'dart:convert';
+import 'package:personal_trainer_app_clean/utils/cross_painter.dart'; // Import CrossPainter
 
 class HomeScreen extends StatefulWidget {
   final String unit;
@@ -55,7 +56,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<Map<String, dynamic>> _loadDailyScripture() async {
     try {
-      // Get all asset file names dynamically
+      // Check if we have a stored verse of the day
+      final storedVerse = await DatabaseHelper.getVerseOfTheDay();
+      if (storedVerse != null) {
+        _currentScripture = storedVerse;
+        print('Loaded stored verse of the day: ${storedVerse['book']} ${storedVerse['chapter']}:${storedVerse['verse']}');
+        return storedVerse;
+      }
+
+      // If no stored verse or date has changed, select a new verse
       final manifestJson = await DefaultAssetBundle.of(context).loadString('AssetManifest.json');
       final assets = jsonDecode(manifestJson) as Map<String, dynamic>;
       final scriptureFiles = assets.keys.where((String key) => key.startsWith('assets/scriptures_') && key.endsWith('.json')).toList();
@@ -102,9 +111,10 @@ class _HomeScreenState extends State<HomeScreen> {
         'text': verse['text'] as String? ?? 'No text available'
       };
 
-      // Store the current scripture after the future completes
+      // Store the new verse of the day
+      await DatabaseHelper.setVerseOfTheDay(scripture);
       _currentScripture = scripture;
-      print('Loaded scripture: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']} - ${scripture['text']}'); // Debug log
+      print('Loaded new verse of the day: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']} - ${scripture['text']}');
       return scripture;
     } catch (e) {
       print('Error loading scriptures: $e');
@@ -179,198 +189,213 @@ class _HomeScreenState extends State<HomeScreen> {
                   colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
                 ),
               ),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 40.0, bottom: 40.0),
-                        child: Column(
-                          children: [
-                            FadeIn(
-                              duration: const Duration(milliseconds: 800),
-                              child: Image.asset(
-                                'assets/logo_512_transparent.png',
-                                height: 180,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Seek First, Lift Strong',
-                              style: GoogleFonts.oswald(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFB22222),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.1,
+                      child: CustomPaint(
+                        painter: CrossPainter(),
+                        child: Container(),
                       ),
-                      Card(
-                        elevation: 8,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        color: const Color(0xFFB0B7BF),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: FutureBuilder<Map<String, dynamic>?>(
-                            future: _lastWorkoutFuture,
+                    ),
+                  ),
+                  SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 40.0, bottom: 40.0),
+                            child: Column(
+                              children: [
+                                FadeIn(
+                                  duration: const Duration(milliseconds: 800),
+                                  child: Image.asset(
+                                    'assets/logo_512_transparent.png',
+                                    height: 180,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Seek First, Lift Strong',
+                                  style: GoogleFonts.oswald(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFB22222),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Card(
+                            elevation: 8,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            color: const Color(0xFFB0B7BF),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: FutureBuilder<Map<String, dynamic>?>(
+                                future: _lastWorkoutFuture,
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                    return const CircularProgressIndicator(color: Color(0xFFB22222));
+                                  }
+                                  if (snapshot.hasError || !snapshot.hasData) {
+                                    return Text('Failed to load workout: ${snapshot.error}');
+                                  }
+                                  final lastWorkout = snapshot.data;
+                                  return Column(
+                                    children: [
+                                      Text(
+                                        lastWorkout != null
+                                            ? 'Last Lift: ${lastWorkout['exercise']} ${lastWorkout['weight']} $unit'
+                                            : 'No Lifts Yet',
+                                        style: GoogleFonts.roboto(
+                                          fontSize: 18,
+                                          color: const Color(0xFF1C2526),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Card(
+                            elevation: 8,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            color: const Color(0xFFB0B7BF),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Text(
+                                'Streak: 3 Days', // Placeholder for now
+                                style: GoogleFonts.roboto(
+                                  fontSize: 18,
+                                  color: const Color(0xFF1C2526),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.fitness_center, size: 24),
+                            label: const Text('Start Today’s Lift', style: TextStyle(fontSize: 18)),
+                            onPressed: () async {
+                              await Navigator.pushNamed(context, '/workout');
+                              // Refresh last workout and check for milestones
+                              setState(() {
+                                _lastWorkoutFuture = _getLastWorkout();
+                              });
+                              await _checkForMilestones();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFB22222),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.list_alt, size: 24),
+                            label: const Text('Choose a Program', style: TextStyle(fontSize: 18)),
+                            onPressed: () => Navigator.pushNamed(context, '/program_selection'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFB22222),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.settings, size: 24),
+                            label: const Text('Settings', style: TextStyle(fontSize: 18)),
+                            onPressed: () async {
+                              await Navigator.pushNamed(context, '/settings');
+                              if (mounted) setState(() {});
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFB22222),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          FutureBuilder<Map<String, dynamic>>(
+                            future: _dailyScriptureFuture,
                             builder: (context, snapshot) {
                               if (snapshot.connectionState == ConnectionState.waiting) {
                                 return const CircularProgressIndicator(color: Color(0xFFB22222));
                               }
                               if (snapshot.hasError || !snapshot.hasData) {
-                                return Text('Failed to load workout: ${snapshot.error}');
+                                return Text('Failed to load scripture: ${snapshot.error}');
                               }
-                              final lastWorkout = snapshot.data;
-                              return Column(
-                                children: [
-                                  Text(
-                                    lastWorkout != null
-                                        ? 'Last Lift: ${lastWorkout['exercise']} ${lastWorkout['weight']} $unit'
-                                        : 'No Lifts Yet',
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 18,
-                                      color: const Color(0xFF1C2526),
+                              final scripture = snapshot.data!;
+                              return Card(
+                                elevation: 8,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                color: const Color(0xFFB0B7BF),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      print('Navigating to Scriptures with: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']}'); // Debug log
+                                      Navigator.pushNamed(
+                                        context,
+                                        '/scriptures',
+                                        arguments: {
+                                          'book': scripture['book'],
+                                          'chapter': scripture['chapter'],
+                                          'verse': scripture['verse'],
+                                        },
+                                      );
+                                    },
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          'Verse of the Day',
+                                          style: GoogleFonts.oswald(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFFB22222),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          '${scripture['book']} ${scripture['chapter']}:${scripture['verse']}',
+                                          style: GoogleFonts.oswald(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color(0xFFB22222),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          scripture['text'],
+                                          style: GoogleFonts.roboto(
+                                            fontSize: 14,
+                                            color: const Color(0xFF1C2526),
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 12),
-                                  LinearProgressIndicator(
-                                    value: lastWorkout != null ? 0.6 : 0.0,
-                                    backgroundColor: Colors.grey[400],
-                                    color: const Color(0xFFB22222),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ],
+                                ),
                               );
                             },
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                      Card(
-                        elevation: 8,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        color: const Color(0xFFB0B7BF),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Text(
-                            'Streak: 3 Days', // Placeholder for now
-                            style: GoogleFonts.roboto(
-                              fontSize: 18,
-                              color: const Color(0xFF1C2526),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.fitness_center, size: 24),
-                        label: const Text('Start Today’s Lift', style: TextStyle(fontSize: 18)),
-                        onPressed: () async {
-                          await Navigator.pushNamed(context, '/workout');
-                          // Refresh last workout and check for milestones
-                          setState(() {
-                            _lastWorkoutFuture = _getLastWorkout();
-                          });
-                          await _checkForMilestones();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFB22222),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.list_alt, size: 24),
-                        label: const Text('Choose a Program', style: TextStyle(fontSize: 18)),
-                        onPressed: () => Navigator.pushNamed(context, '/program_selection'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFB22222),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.settings, size: 24),
-                        label: const Text('Settings', style: TextStyle(fontSize: 18)),
-                        onPressed: () async {
-                          await Navigator.pushNamed(context, '/settings');
-                          if (mounted) setState(() {});
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFB22222),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FutureBuilder<Map<String, dynamic>>(
-                        future: _dailyScriptureFuture,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const CircularProgressIndicator(color: Color(0xFFB22222));
-                          }
-                          if (snapshot.hasError || !snapshot.hasData) {
-                            return Text('Failed to load scripture: ${snapshot.error}');
-                          }
-                          final scripture = snapshot.data!;
-                          return Card(
-                            elevation: 8,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            color: const Color(0xFFB0B7BF),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: GestureDetector(
-                                onTap: () {
-                                  print('Navigating to Scriptures with: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']}'); // Debug log
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/scriptures',
-                                    arguments: {
-                                      'book': scripture['book'],
-                                      'chapter': scripture['chapter'],
-                                      'verse': scripture['verse'],
-                                    },
-                                  );
-                                },
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      '${scripture['book']} ${scripture['chapter']}:${scripture['verse']}',
-                                      style: GoogleFonts.oswald(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFFB22222),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      scripture['text'],
-                                      style: GoogleFonts.roboto(
-                                        fontSize: 16,
-                                        color: const Color(0xFF1C2526),
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
             // Celebration Overlay
@@ -434,34 +459,4 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-}
-
-// Custom painter for cross background
-class CrossPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF87CEEB)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    const double crossSize = 100.0;
-    for (double x = 0; x < size.width; x += crossSize * 1.5) {
-      for (double y = 0; y < size.height; y += crossSize * 1.5) {
-        canvas.drawLine(
-          Offset(x + crossSize / 2, y),
-          Offset(x + crossSize / 2, y + crossSize),
-          paint,
-        );
-        canvas.drawLine(
-          Offset(x + crossSize / 4, y + crossSize / 2),
-          Offset(x + 3 * crossSize / 4, y + crossSize / 2),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

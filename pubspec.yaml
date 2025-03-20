@@ -20,6 +20,7 @@ dependencies:
   provider: ^6.1.2
   google_fonts: ^6.1.0
   sqflite: ^2.3.0
+  fl_chart: ^0.68.0
   confetti: ^0.7.0
 
 dev_dependencies:
@@ -30,6 +31,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/food_database.json
     - assets/logo_512_transparent.png
     - assets/scriptures_genesis.json
     - assets/scriptures_exodus.json

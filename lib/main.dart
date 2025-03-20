@@ -18,6 +18,8 @@ import 'package:personal_trainer_app_clean/screens/workout_log_screen.dart';
 ValueNotifier<String> unitNotifier = ValueNotifier('lbs');
 // Global theme state
 ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
+// Global scripture arguments to persist across tab switches
+ValueNotifier<Map<String, dynamic>?> scriptureArgsNotifier = ValueNotifier(null);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -149,11 +151,8 @@ class MyApp extends StatelessWidget {
             '/scriptures': (context) {
               final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
               print('Scriptures route args: $args'); // Debug log
-              return ScriptureReadingScreen(
-                book: args?['book'] as String?,
-                chapter: args?['chapter'] as int?,
-                verse: args?['verse'] as int?,
-              );
+              scriptureArgsNotifier.value = args; // Update global scripture args
+              return const MainScreen(initialTab: 4); // Redirect to MainScreen with Scriptures tab
             },
           },
         );
@@ -163,26 +162,21 @@ class MyApp extends StatelessWidget {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialTab;
+
+  const MainScreen({super.key, this.initialTab = 0});
 
   @override
   _MainScreenState createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
   @override
   void initState() {
     super.initState();
-    // Ensure Home tab is selected when navigated to
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ModalRoute.of(context)?.settings.name == '/main') {
-        setState(() {
-          _selectedIndex = 0; // Force Home tab
-        });
-      }
-    });
+    _selectedIndex = widget.initialTab;
   }
 
   @override
@@ -199,7 +193,7 @@ class _MainScreenState extends State<MainScreen> {
               BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Progress'),
               BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
               BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Scriptures'),
-              BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Workout Log'), // New tab
+              BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Workout Log'),
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Theme.of(context).colorScheme.secondary, // Red
@@ -209,10 +203,6 @@ class _MainScreenState extends State<MainScreen> {
             onTap: (index) {
               setState(() {
                 _selectedIndex = index;
-                if (index == 4) { // Scriptures tab
-                  // Navigate with the last known arguments (if any)
-                  Navigator.pushNamed(context, '/scriptures');
-                }
               });
             },
           ),
@@ -221,12 +211,21 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  static List<Widget> _screens(String unit) => <Widget>[
+  List<Widget> _screens(String unit) => <Widget>[
     home.HomeScreen(unit: unit),
     ProgramsOverviewScreen(unit: unit, programName: ''),
     progress.ProgressScreen(unit: unit),
     diet.DietScreen(),
-    const ScriptureReadingScreen(), // Default instance for nav bar
-    WorkoutLogScreen(unit: unit), // New tab
+    ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: scriptureArgsNotifier,
+      builder: (context, args, child) {
+        return ScriptureReadingScreen(
+          book: args?['book'] as String?,
+          chapter: args?['chapter'] as int?,
+          verse: args?['verse'] as int?,
+        );
+      },
+    ),
+    WorkoutLogScreen(unit: unit),
   ];
 }
