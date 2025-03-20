@@ -9,7 +9,6 @@ class DatabaseHelper {
   static const String _programLogKeyPrefix = 'programLog_';
   static const String _workoutsKey = 'workouts';
   static const String _suggestedExercisesKey = 'suggestedExercises';
-  static const String _mealsKey = 'meals';
   static const String _progressKey = 'progress';
   static const String _weightUnitKey = 'weightUnit';
   static const String _themeModeKey = 'themeMode';
@@ -18,9 +17,6 @@ class DatabaseHelper {
   static const String _milestoneWeekKey = 'milestoneWeek'; // Added to track the week of the last celebration
   static const String _verseOfTheDayKey = 'verseOfTheDay'; // Added for verse of the day
   static const String _verseOfTheDayDateKey = 'verseOfTheDayDate'; // Added to track the date of the verse
-  static const String _dietPreferencesKey = 'dietPreferences'; // Added for diet preferences
-  static const String _waterIntakeKey = 'waterIntake'; // Added for water intake
-  static const String _customFoodsKey = 'customFoods'; // Added for custom foods
 
   static Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
 
@@ -356,30 +352,6 @@ class DatabaseHelper {
     print('Deleted workout with ID: $workoutId');
   }
 
-  static Future<List<Map<String, dynamic>>> getMeals() async {
-    final prefs = await _prefs;
-    final mealsJson = prefs.getString(_mealsKey);
-    return mealsJson != null ? jsonDecode(mealsJson).cast<Map<String, dynamic>>() : [];
-  }
-
-  static Future<void> insertMeal(Map<String, dynamic> meal) async {
-    final prefs = await _prefs;
-    final meals = await getMeals();
-    final mealWithId = Map<String, dynamic>.from(meal);
-    mealWithId['id'] = Uuid().v4();
-    meals.add(mealWithId);
-    await prefs.setString(_mealsKey, jsonEncode(meals));
-    print('Inserted meal: $mealWithId');
-  }
-
-  static Future<void> deleteMeal(String mealId) async {
-    final prefs = await _prefs;
-    final meals = await getMeals();
-    final updatedMeals = meals.where((m) => m['id'] != mealId).toList();
-    await prefs.setString(_mealsKey, jsonEncode(updatedMeals));
-    print('Deleted meal with ID: $mealId');
-  }
-
   static Future<List<Map<String, dynamic>>> getProgress() async {
     final prefs = await _prefs;
     final progressJson = prefs.getString(_progressKey);
@@ -559,75 +531,5 @@ class DatabaseHelper {
     await prefs.setString(_themeModeKey, modeString);
     print('Set theme mode to: $modeString');
     themeNotifier.value = mode; // Now accessible due to import
-  }
-
-  // Diet Preferences Management
-  static Future<Map<String, dynamic>> getDietPreferences() async {
-    final prefs = await _prefs;
-    final preferencesJson = prefs.getString(_dietPreferencesKey);
-    return preferencesJson != null ? jsonDecode(preferencesJson) as Map<String, dynamic> : {
-      'goal': 'maintain', // Options: lose, gain, maintain
-      'dietaryPreference': 'none', // Options: none, vegan, vegetarian, low-carb, high-protein
-      'calorieGoal': 2000, // Default calorie goal
-      'macroGoals': {'protein': 25, 'carbs': 50, 'fat': 25}, // Default macro percentages
-      'allergies': [] // List of allergies (e.g., ['peanuts', 'dairy'])
-    };
-  }
-
-  static Future<void> setDietPreferences(Map<String, dynamic> preferences) async {
-    final prefs = await _prefs;
-    await prefs.setString(_dietPreferencesKey, jsonEncode(preferences));
-    print('Set diet preferences: $preferences');
-  }
-
-  // Water Intake Management
-  static Future<List<Map<String, dynamic>>> getWaterIntake() async {
-    final prefs = await _prefs;
-    final waterIntakeJson = prefs.getString(_waterIntakeKey);
-    return waterIntakeJson != null ? jsonDecode(waterIntakeJson).cast<Map<String, dynamic>>() : [];
-  }
-
-  static Future<void> addWaterIntake(double amount) async {
-    final prefs = await _prefs;
-    final waterIntake = await getWaterIntake();
-    final entry = {
-      'id': Uuid().v4(),
-      'amount': amount,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-    };
-    waterIntake.add(entry);
-    await prefs.setString(_waterIntakeKey, jsonEncode(waterIntake));
-    print('Added water intake: $entry');
-  }
-
-  static Future<void> clearWaterIntake() async {
-    final prefs = await _prefs;
-    await prefs.setString(_waterIntakeKey, jsonEncode([]));
-    print('Cleared water intake');
-  }
-
-  // Custom Foods Management
-  static Future<List<Map<String, dynamic>>> getCustomFoods() async {
-    final prefs = await _prefs;
-    final customFoodsJson = prefs.getString(_customFoodsKey);
-    return customFoodsJson != null ? jsonDecode(customFoodsJson).cast<Map<String, dynamic>>() : [];
-  }
-
-  static Future<void> addCustomFood(Map<String, dynamic> food) async {
-    final prefs = await _prefs;
-    final customFoods = await getCustomFoods();
-    final foodWithId = Map<String, dynamic>.from(food);
-    foodWithId['id'] = Uuid().v4();
-    customFoods.add(foodWithId);
-    await prefs.setString(_customFoodsKey, jsonEncode(customFoods));
-    print('Added custom food: $foodWithId');
-  }
-
-  static Future<void> deleteCustomFood(String foodId) async {
-    final prefs = await _prefs;
-    final customFoods = await getCustomFoods();
-    final updatedFoods = customFoods.where((f) => f['id'] != foodId).toList();
-    await prefs.setString(_customFoodsKey, jsonEncode(updatedFoods));
-    print('Deleted custom food with ID: $foodId');
   }
 }

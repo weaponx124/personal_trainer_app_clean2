@@ -6,7 +6,7 @@ import 'package:personal_trainer_app_clean/screens/splash_screen.dart';
 import 'package:personal_trainer_app_clean/screens/home_screen.dart' as home;
 import 'package:personal_trainer_app_clean/screens/program_selection_screen.dart' as programs;
 import 'package:personal_trainer_app_clean/screens/progress_screen.dart' as progress;
-import 'package:personal_trainer_app_clean/screens/diet_screen.dart' as diet;
+import 'package:personal_trainer_app_clean/features/diet/diet_screen.dart' as diet; // Updated import
 import 'package:personal_trainer_app_clean/screens/workout_screen.dart' as workout;
 import 'package:personal_trainer_app_clean/screens/programs_overview_screen.dart';
 import 'package:personal_trainer_app_clean/screens/program_details_screen.dart';
