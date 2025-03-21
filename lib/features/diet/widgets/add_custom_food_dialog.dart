@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-class AddCustomFoodDialog extends StatelessWidget {
+class AddCustomFoodDialog extends StatefulWidget {
   final Function(Map<String, dynamic>) onSave;
 
-  const AddCustomFoodDialog({Key? key, required this.onSave}) : super(key: key);
+  const AddCustomFoodDialog({super.key, required this.onSave});
+
+  @override
+  _AddCustomFoodDialogState createState() => _AddCustomFoodDialogState();
+}
+
+class _AddCustomFoodDialogState extends State<AddCustomFoodDialog> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _caloriesController = TextEditingController();
+  final TextEditingController _proteinController = TextEditingController();
+  final TextEditingController _carbsController = TextEditingController();
+  final TextEditingController _fatController = TextEditingController();
+  final TextEditingController _sodiumController = TextEditingController();
+  final TextEditingController _fiberController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
-    final TextEditingController nameController = TextEditingController();
-    final TextEditingController caloriesController = TextEditingController();
-    final TextEditingController proteinController = TextEditingController();
-    final TextEditingController carbsController = TextEditingController();
-    final TextEditingController fatController = TextEditingController();
-    final TextEditingController sodiumController = TextEditingController();
-    final TextEditingController fiberController = TextEditingController();
-
     return AlertDialog(
       title: const Text('Add Custom Food'),
       content: SingleChildScrollView(
@@ -23,7 +27,7 @@ class AddCustomFoodDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: nameController,
+              controller: _nameController,
               decoration: const InputDecoration(
                 labelText: 'Food Name',
                 border: OutlineInputBorder(),
@@ -31,7 +35,7 @@ class AddCustomFoodDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: caloriesController,
+              controller: _caloriesController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Calories (kcal)',
@@ -40,7 +44,7 @@ class AddCustomFoodDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: proteinController,
+              controller: _proteinController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Protein (g)',
@@ -49,7 +53,7 @@ class AddCustomFoodDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: carbsController,
+              controller: _carbsController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Carbs (g)',
@@ -58,7 +62,7 @@ class AddCustomFoodDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: fatController,
+              controller: _fatController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Fat (g)',
@@ -67,7 +71,7 @@ class AddCustomFoodDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: sodiumController,
+              controller: _sodiumController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Sodium (mg)',
@@ -76,7 +80,7 @@ class AddCustomFoodDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: fiberController,
+              controller: _fiberController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Fiber (g)',
@@ -93,22 +97,30 @@ class AddCustomFoodDialog extends StatelessWidget {
         ),
         TextButton(
           onPressed: () {
-            if (nameController.text.isNotEmpty) {
-              final customFood = {
-                'name': nameController.text,
-                'calories': double.tryParse(caloriesController.text) ?? 0.0,
-                'protein': double.tryParse(proteinController.text) ?? 0.0,
-                'carbs': double.tryParse(carbsController.text) ?? 0.0,
-                'fat': double.tryParse(fatController.text) ?? 0.0,
-                'sodium': double.tryParse(sodiumController.text) ?? 0.0,
-                'fiber': double.tryParse(fiberController.text) ?? 0.0,
-                'suitable_for': ['custom'],
-              };
-              onSave(customFood);
-              Navigator.pop(context, true);
-            } else {
+            try {
+              if (_nameController.text.isNotEmpty) {
+                final customFood = {
+                  'name': _nameController.text,
+                  'calories': double.tryParse(_caloriesController.text) ?? 0.0,
+                  'protein': double.tryParse(_proteinController.text) ?? 0.0,
+                  'carbs': double.tryParse(_carbsController.text) ?? 0.0,
+                  'fat': double.tryParse(_fatController.text) ?? 0.0,
+                  'sodium': double.tryParse(_sodiumController.text) ?? 0.0,
+                  'fiber': double.tryParse(_fiberController.text) ?? 0.0,
+                  'suitable_for': ['custom'],
+                  'allergies': [],
+                };
+                widget.onSave(customFood);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a food name')),
+                );
+              }
+            } catch (e, stackTrace) {
+              print('Error in AddCustomFoodDialog save: $e');
+              print('Stack trace: $stackTrace');
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please enter a food name')),
+                SnackBar(content: Text('Failed to save custom food: $e')),
               );
             }
           },

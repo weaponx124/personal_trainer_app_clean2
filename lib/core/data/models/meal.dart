@@ -25,7 +25,7 @@ class Meal {
     required this.fiber,
     required this.timestamp,
     required this.servings,
-    this.isRecipe = false,
+    required this.isRecipe,
     this.ingredients,
   });
 
@@ -48,10 +48,20 @@ class Meal {
   }
 
   factory Meal.fromMap(Map<String, dynamic> map) {
+    // Provide default values for required String fields if they are null
+    final String id = map['id'] as String? ?? 'unknown_id';
+    final String food = map['food'] as String? ?? 'Unknown Food';
+    final String mealType = map['mealType'] as String? ?? 'Unknown Meal Type';
+
+    // Log warnings if any required field is null
+    if (map['id'] == null) print('Warning: Meal map has null id: $map');
+    if (map['food'] == null) print('Warning: Meal map has null food: $map');
+    if (map['mealType'] == null) print('Warning: Meal map has null mealType: $map');
+
     return Meal(
-      id: map['id'] as String,
-      food: map['food'] as String,
-      mealType: map['mealType'] as String,
+      id: id,
+      food: food,
+      mealType: mealType,
       calories: (map['calories'] as num?)?.toDouble() ?? 0.0,
       protein: (map['protein'] as num?)?.toDouble() ?? 0.0,
       carbs: (map['carbs'] as num?)?.toDouble() ?? 0.0,
@@ -61,7 +71,7 @@ class Meal {
       timestamp: map['timestamp'] as int? ?? 0,
       servings: (map['servings'] as num?)?.toDouble() ?? 1.0,
       isRecipe: map['isRecipe'] as bool? ?? false,
-      ingredients: map['ingredients'] != null ? List<Map<String, dynamic>>.from(map['ingredients']) : null,
+      ingredients: (map['ingredients'] as List<dynamic>?)?.cast<Map<String, dynamic>>(),
     );
   }
 }

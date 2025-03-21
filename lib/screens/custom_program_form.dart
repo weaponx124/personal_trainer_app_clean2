@@ -1,148 +1,327 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:personal_trainer_app_clean/core/data/models/program.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
 
 class CustomProgramForm extends StatefulWidget {
-  final String unit;
-  final Function(String, Map<String, dynamic>) onSave;
-  final GlobalKey<FormState>? key;
-
-  const CustomProgramForm({
-    this.key,
-    required this.unit,
-    required this.onSave,
-  });
+  const CustomProgramForm({super.key});
 
   @override
   _CustomProgramFormState createState() => _CustomProgramFormState();
 }
 
 class _CustomProgramFormState extends State<CustomProgramForm> {
-  late final GlobalKey<FormState> _formKey;
-  String programName = '';
-  String movement = 'Squat';
-  double oneRM = 0.0;
-  int sets = 5;
-  int reps = 5;
-  List<double> percentages = [65.0, 70.0, 75.0, 80.0, 85.0];
-  double increment = 2.5;
-  bool isPercentageBased = true;
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _programNameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _durationController = TextEditingController();
+  List<Map<String, dynamic>> _workouts = [];
 
-  final List<String> movements = ['Squat', 'Bench Press', 'Deadlift', 'Overhead Press', 'Pull-up'];
+  void _addWorkout() {
+    setState(() {
+      _workouts.add({
+        'day': 'Day ${_workouts.length + 1}',
+        'exercises': <Map<String, dynamic>>[],
+      });
+    });
+  }
+
+  void _addExercise(int workoutIndex) {
+    setState(() {
+      _workouts[workoutIndex]['exercises'].add({
+        'name': '',
+        'sets': 0,
+        'reps': 0,
+        'weight': 0.0,
+      });
+    });
+  }
+
+  Future<void> _saveProgram() async {
+    if (_formKey.currentState!.validate()) {
+      final programRepository = ProgramRepository();
+      final program = Program(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: _programNameController.text,
+        description: _descriptionController.text + '\nDuration: ${_durationController.text}\nWorkouts: ${_workouts.toString()}',
+      );
+      await programRepository.insertProgram(program);
+      Navigator.pop(context);
+    }
+  }
 
   @override
-  void initState() {
-    super.initState();
-    _formKey = widget.key ?? GlobalKey<FormState>();
+  void dispose() {
+    _programNameController.dispose();
+    _descriptionController.dispose();
+    _durationController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Program Name'),
-              validator: (value) => value?.isEmpty ?? true ? 'Enter a program name' : null,
-              onSaved: (value) => programName = value!,
-              onChanged: (value) => programName = value ?? '',
-            ),
-            DropdownButtonFormField<String>(
-              value: movement,
-              hint: const Text('Select Movement'),
-              items: movements.map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (value) => setState(() => movement = value!),
-              decoration: const InputDecoration(labelText: 'Movement'),
-            ),
-            TextFormField(
-              decoration: InputDecoration(labelText: '1RM (${widget.unit})'),
-              keyboardType: TextInputType.number,
-              validator: (value) => double.tryParse(value ?? '') == null ? 'Enter a valid 1RM' : null,
-              onSaved: (value) => oneRM = double.parse(value!),
-              onChanged: (value) => oneRM = double.tryParse(value) ?? 0.0,
-            ),
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Sets'),
-              keyboardType: TextInputType.number,
-              validator: (value) => int.tryParse(value ?? '') == null ? 'Enter a valid number' : null,
-              onSaved: (value) => sets = int.parse(value!),
-              onChanged: (value) => sets = int.tryParse(value) ?? 5,
-            ),
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Reps'),
-              keyboardType: TextInputType.number,
-              validator: (value) => int.tryParse(value ?? '') == null ? 'Enter a valid number' : null,
-              onSaved: (value) => reps = int.parse(value!),
-              onChanged: (value) => reps = int.tryParse(value) ?? 5,
-            ),
-            SwitchListTile(
-              title: const Text('Percentage Based'),
-              value: isPercentageBased,
-              onChanged: (value) => setState(() => isPercentageBased = value),
-            ),
-            if (isPercentageBased)
-              Column(
-                children: List.generate(5, (index) {
-                  final controller = TextEditingController(text: percentages[index].toStringAsFixed(1));
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: TextField(
-                      controller: controller,
-                      decoration: InputDecoration(labelText: 'Set ${index + 1} Percentage (%)'),
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        final newValue = double.tryParse(value) ?? percentages[index];
-                        setState(() => percentages[index] = newValue);
-                        controller.value = TextEditingController(text: newValue.toStringAsFixed(1)).value;
-                      },
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Create Custom Program'),
+        backgroundColor: const Color(0xFF1C2526),
+        foregroundColor: const Color(0xFFB0B7BF),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _programNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Program Name',
+                      labelStyle: GoogleFonts.roboto(
+                        fontSize: 16,
+                        color: const Color(0xFF808080),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFB0B7BF),
                     ),
-                  );
-                }),
+                    style: GoogleFonts.roboto(
+                      fontSize: 16,
+                      color: const Color(0xFF1C2526),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a program name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      labelStyle: GoogleFonts.roboto(
+                        fontSize: 16,
+                        color: const Color(0xFF808080),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFB0B7BF),
+                    ),
+                    style: GoogleFonts.roboto(
+                      fontSize: 16,
+                      color: const Color(0xFF1C2526),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _durationController,
+                    decoration: InputDecoration(
+                      labelText: 'Duration (e.g., 8 weeks)',
+                      labelStyle: GoogleFonts.roboto(
+                        fontSize: 16,
+                        color: const Color(0xFF808080),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFB0B7BF),
+                    ),
+                    style: GoogleFonts.roboto(
+                      fontSize: 16,
+                      color: const Color(0xFF1C2526),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Workouts',
+                    style: GoogleFonts.oswald(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFFB22222),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ..._workouts.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final workout = entry.value;
+                    return Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      color: const Color(0xFFB0B7BF),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              workout['day'],
+                              style: GoogleFonts.oswald(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFB22222),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...List.generate(workout['exercises'].length, (exIndex) {
+                              final exercise = workout['exercises'][exIndex];
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        decoration: InputDecoration(
+                                          labelText: 'Exercise ${exIndex + 1}',
+                                          labelStyle: GoogleFonts.roboto(
+                                            fontSize: 14,
+                                            color: const Color(0xFF808080),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            workout['exercises'][exIndex]['name'] = value;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    SizedBox(
+                                      width: 60,
+                                      child: TextField(
+                                        decoration: InputDecoration(
+                                          labelText: 'Sets',
+                                          labelStyle: GoogleFonts.roboto(
+                                            fontSize: 14,
+                                            color: const Color(0xFF808080),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            workout['exercises'][exIndex]['sets'] = int.tryParse(value) ?? 0;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    SizedBox(
+                                      width: 60,
+                                      child: TextField(
+                                        decoration: InputDecoration(
+                                          labelText: 'Reps',
+                                          labelStyle: GoogleFonts.roboto(
+                                            fontSize: 14,
+                                            color: const Color(0xFF808080),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            workout['exercises'][exIndex]['reps'] = int.tryParse(value) ?? 0;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    SizedBox(
+                                      width: 80,
+                                      child: TextField(
+                                        decoration: InputDecoration(
+                                          labelText: 'Weight',
+                                          labelStyle: GoogleFonts.roboto(
+                                            fontSize: 14,
+                                            color: const Color(0xFF808080),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            workout['exercises'][exIndex]['weight'] = double.tryParse(value) ?? 0.0;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: () => _addExercise(index),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFB22222),
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Add Exercise'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _addWorkout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFB22222),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Add Workout Day', style: TextStyle(fontSize: 18)),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _saveProgram,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFB22222),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Save Program', style: TextStyle(fontSize: 18)),
+                  ),
+                ],
               ),
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Increment per Workout (%)'),
-              keyboardType: TextInputType.number,
-              validator: (value) => double.tryParse(value ?? '') == null ? 'Enter a valid increment' : null,
-              onSaved: (value) => increment = double.parse(value!),
-              onChanged: (value) => increment = double.tryParse(value) ?? 2.5,
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[700]),
-              onPressed: () async {
-                if (_formKey.currentState!.validate()) {
-                  _formKey.currentState!.save();
-                  final details = {
-                    'movement': movement,
-                    '1RM': oneRM,
-                    'sets': sets,
-                    'reps': reps,
-                    'percentages': percentages,
-                    'increment': increment,
-                    'isPercentageBased': isPercentageBased,
-                    'goal': 'Custom Program',
-                    'unit': widget.unit,
-                  };
-                  print('Saving custom program: $programName with details: $details');
-                  try {
-                    await widget.onSave(programName, details);
-                  } catch (e) {
-                    print('Error saving custom program: $e');
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving program: $e')));
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all fields correctly!')));
-                }
-              },
-              child: const Text('Save Program', style: TextStyle(color: Colors.white)),
-            ),
-          ],
+          ),
         ),
       ),
     );

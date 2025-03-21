@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/settings_repository.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/verse_of_the_day_repository.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -11,9 +12,11 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final SettingsRepository _settingsRepository = SettingsRepository();
+  final VerseOfTheDayRepository _verseOfTheDayRepository = VerseOfTheDayRepository();
   String _weightUnit = 'lbs';
   ThemeMode _themeMode = ThemeMode.system;
-  int _weeklyWorkoutGoal = 3; // Default value
+  int _weeklyWorkoutGoal = 3;
   final TextEditingController _goalController = TextEditingController();
 
   @override
@@ -23,9 +26,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final weightUnit = await DatabaseHelper.getWeightUnit();
-    final themeMode = await DatabaseHelper.getThemeMode();
-    final weeklyGoal = await DatabaseHelper.getWeeklyWorkoutGoal();
+    final weightUnit = await _settingsRepository.getWeightUnit();
+    final themeMode = await _settingsRepository.getThemeMode();
+    final weeklyGoal = await _verseOfTheDayRepository.getWeeklyWorkoutGoal();
     setState(() {
       _weightUnit = weightUnit;
       _themeMode = themeMode;
@@ -92,7 +95,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (value) {
                         setState(() {
                           _weightUnit = value!;
-                          DatabaseHelper.setWeightUnit(_weightUnit);
+                          _settingsRepository.setWeightUnit(_weightUnit);
+                          unitNotifier.value = _weightUnit;
                         });
                       },
                       activeColor: const Color(0xFFB22222),
@@ -112,7 +116,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (value) {
                         setState(() {
                           _weightUnit = value!;
-                          DatabaseHelper.setWeightUnit(_weightUnit);
+                          _settingsRepository.setWeightUnit(_weightUnit);
+                          unitNotifier.value = _weightUnit;
                         });
                       },
                       activeColor: const Color(0xFFB22222),
@@ -146,7 +151,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (value) {
                         setState(() {
                           _themeMode = value!;
-                          DatabaseHelper.setThemeMode(_themeMode);
+                          _settingsRepository.setThemeMode(_themeMode);
+                          themeModeNotifier.value = _themeMode;
                         });
                       },
                       activeColor: const Color(0xFFB22222),
@@ -166,7 +172,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (value) {
                         setState(() {
                           _themeMode = value!;
-                          DatabaseHelper.setThemeMode(_themeMode);
+                          _settingsRepository.setThemeMode(_themeMode);
+                          themeModeNotifier.value = _themeMode;
                         });
                       },
                       activeColor: const Color(0xFFB22222),
@@ -186,7 +193,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (value) {
                         setState(() {
                           _themeMode = value!;
-                          DatabaseHelper.setThemeMode(_themeMode);
+                          _settingsRepository.setThemeMode(_themeMode);
+                          themeModeNotifier.value = _themeMode;
                         });
                       },
                       activeColor: const Color(0xFFB22222),
@@ -228,7 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   setState(() {
                     _weeklyWorkoutGoal = goal;
                   });
-                  DatabaseHelper.setWeeklyWorkoutGoal(goal);
+                  _verseOfTheDayRepository.setWeeklyWorkoutGoal(goal);
                 },
               ),
             ],

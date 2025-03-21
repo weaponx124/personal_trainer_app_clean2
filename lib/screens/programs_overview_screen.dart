@@ -1,71 +1,60 @@
 import 'package:flutter/material.dart';
-import 'package:personal_trainer_app_clean/database_helper.dart';
-import 'package:personal_trainer_app_clean/screens/program_actions.dart';
-import 'package:personal_trainer_app_clean/screens/program_list_builder.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:personal_trainer_app_clean/core/data/models/program.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
 import 'package:personal_trainer_app_clean/main.dart';
-import 'package:animate_do/animate_do.dart';
+import 'package:personal_trainer_app_clean/screens/program_details_screen.dart';
+import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 
 class ProgramsOverviewScreen extends StatefulWidget {
   final String unit;
   final String programName;
 
-  const ProgramsOverviewScreen({super.key, required this.unit, required this.programName});
+  const ProgramsOverviewScreen({
+    super.key,
+    required this.unit,
+    required this.programName,
+  });
 
   @override
   _ProgramsOverviewScreenState createState() => _ProgramsOverviewScreenState();
 }
 
 class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
-  List<Map<String, dynamic>> programs = [];
-  bool isLoading = true;
-  late Future<void> _fetchProgramsFuture;
+  final ProgramRepository _programRepository = ProgramRepository();
+  late Future<List<Program>> _programsFuture;
+  List<Program> _programs = [];
 
   @override
   void initState() {
     super.initState();
-    print('ProgramsOverviewScreen initState with unit: ${widget.unit}, programName: ${widget.programName}');
-    _fetchProgramsFuture = _loadPrograms();
+    _programsFuture = _loadPrograms();
+    _loadProgramsData();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    print('ProgramsOverviewScreen didChangeDependencies with unit: ${widget.unit}, setting up fetch');
-    _fetchProgramsFuture = _loadPrograms();
-  }
-
-  Future<void> _loadPrograms() async {
+  Future<List<Program>> _loadPrograms() async {
     try {
-      print('Loading programs for unit: ${unitNotifier.value} - Starting fetch');
-      final loadedPrograms = await DatabaseHelper.getPrograms();
-      print('Programs fetched: $loadedPrograms');
-      if (mounted) {
-        setState(() {
-          programs = loadedPrograms;
-          isLoading = false;
-          print('Programs set in state: $programs');
-        });
-      }
+      final programs = await _programRepository.getPrograms();
+      return programs;
     } catch (e) {
       print('Error loading programs: $e');
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading programs: $e')));
+      return [];
     }
   }
 
-  void _refreshPrograms() async {
-    await _loadPrograms();
-    print('Programs refreshed after async operation');
+  Future<void> _loadProgramsData() async {
+    final programs = await _programsFuture;
+    setState(() {
+      _programs = List.from(programs);
+    });
   }
 
-  double calculateProgress(Map<String, dynamic> program) {
-    int sessionsCompleted = program['sessionsCompleted'] as int? ?? 0;
-    int totalSessions = program['totalSessions'] as int? ?? 1;
-    return totalSessions > 0 ? sessionsCompleted / totalSessions : 0.0;
+  Future<void> _deleteProgram(String programId) async {
+    await _programRepository.deleteProgram(programId);
+    setState(() {
+      _programsFuture = _loadPrograms();
+      _loadProgramsData();
+    });
   }
 
   @override
@@ -73,22 +62,11 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
     return ValueListenableBuilder<String>(
       valueListenable: unitNotifier,
       builder: (context, unit, child) {
-        print('ProgramsOverviewScreen build with unit: $unit, programs: $programs');
-        final currentPrograms = programs.where((p) => p['completed'] != true).toList();
-        final completedPrograms = programs.where((p) => p['completed'] == true).toList();
-
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Active Programs'),
+            title: Text(widget.programName.isNotEmpty ? widget.programName : 'Active Programs'),
             backgroundColor: const Color(0xFF1C2526),
             foregroundColor: const Color(0xFFB0B7BF),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () {
-                print('Back button pressed on ProgramsOverviewScreen, popping route');
-                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
-              },
-            ),
           ),
           body: Container(
             decoration: BoxDecoration(
@@ -100,7 +78,6 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
             ),
             child: Stack(
               children: [
-                // Subtle Cross Background
                 Positioned.fill(
                   child: Opacity(
                     opacity: 0.1,
@@ -110,52 +87,62 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
                     ),
                   ),
                 ),
-                FutureBuilder<void>(
-                  future: _fetchProgramsFuture,
+                FutureBuilder<List<Program>>(
+                  future: _programsFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      print('FutureBuilder waiting for _fetchProgramsFuture to complete');
                       return const Center(child: CircularProgressIndicator(color: Color(0xFFB22222)));
-                    } else if (snapshot.hasError) {
-                      print('FutureBuilder error: ${snapshot.error}');
-                      return Center(child: Text('Error loading programs: ${snapshot.error}'));
                     }
-                    print('FutureBuilder completed, building UI with programs: $programs');
-                    return SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add New Program'),
-                              onPressed: () {
-                                print('Navigating to ProgramSelectionScreen to add a new program');
-                                Navigator.pushNamed(context, '/program_selection');
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFB22222),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12.0),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No active programs.',
+                          style: GoogleFonts.roboto(
+                            fontSize: 16,
+                            color: const Color(0xFF1C2526),
+                          ),
+                        ),
+                      );
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: _programs.length,
+                      itemBuilder: (context, index) {
+                        final program = _programs[index];
+                        return Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          color: const Color(0xFFB0B7BF),
+                          child: ListTile(
+                            title: Text(
+                              program.name,
+                              style: GoogleFonts.oswald(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFB22222),
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            buildProgramList(
-                              context: context,
-                              currentPrograms: currentPrograms,
-                              completedPrograms: completedPrograms,
-                              unit: unit,
-                              startProgram: startProgram,
-                              editProgram: editProgram,
-                              deleteProgram: deleteProgram,
-                              refreshPrograms: _refreshPrograms,
-                              progressCalculator: calculateProgress,
+                            subtitle: Text(
+                              'Started: ${program.toMap()['startDate'] ?? 'Unknown'}',
+                              style: GoogleFonts.roboto(
+                                fontSize: 14,
+                                color: const Color(0xFF808080),
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Color(0xFFB22222)),
+                              onPressed: () => _deleteProgram(program.id),
+                            ),
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                '/program_details',
+                                arguments: program.id,
+                              );
+                            },
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -163,44 +150,12 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
             ),
           ),
           floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/program_selection');
-            },
+            onPressed: () => Navigator.pushNamed(context, '/program_selection'),
             backgroundColor: const Color(0xFFB22222),
-            child: const Icon(Icons.add),
+            child: const Icon(Icons.add, color: Colors.white),
           ),
         );
       },
     );
   }
-}
-
-// Custom painter for cross background
-class CrossPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF87CEEB) // Soft Sky Blue
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    const double crossSize = 100.0;
-    for (double x = 0; x < size.width; x += crossSize * 1.5) {
-      for (double y = 0; y < size.height; y += crossSize * 1.5) {
-        canvas.drawLine(
-          Offset(x + crossSize / 2, y),
-          Offset(x + crossSize / 2, y + crossSize),
-          paint,
-        );
-        canvas.drawLine(
-          Offset(x + crossSize / 4, y + crossSize / 2),
-          Offset(x + 3 * crossSize / 4, y + crossSize / 2),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

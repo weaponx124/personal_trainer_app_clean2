@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:personal_trainer_app_clean/core/data/models/progress.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/progress_repository.dart';
+import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 
 class BodyWeightProgressScreen extends StatefulWidget {
   final String unit;
@@ -12,181 +15,347 @@ class BodyWeightProgressScreen extends StatefulWidget {
 }
 
 class _BodyWeightProgressScreenState extends State<BodyWeightProgressScreen> {
-  List<Map<String, dynamic>> progress = [];
-  bool isLoading = true;
+  final ProgressRepository _progressRepository = ProgressRepository();
+  late Future<List<Progress>> _progressFuture;
+  List<Progress> _progress = [];
+  double _maxWeight = 0.0;
+  double _minWeight = double.infinity;
+  double _totalChange = 0.0;
+  int _entryCount = 0;
 
   @override
   void initState() {
     super.initState();
+    _progressFuture = _progressRepository.getProgress();
     _loadProgress();
   }
 
   Future<void> _loadProgress() async {
-    try {
-      setState(() => isLoading = true);
-      progress = await DatabaseHelper.getProgress();
-      setState(() => isLoading = false);
-      print('Loaded progress in BodyWeightProgressScreen: $progress');
-    } catch (e) {
-      print('Error loading progress: $e');
-      setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading progress: $e')));
+    final progress = await _progressFuture;
+    setState(() {
+      _progress = List.from(progress);
+      _updateStats();
+    });
+  }
+
+  void _updateStats() {
+    if (_progress.isEmpty) {
+      _maxWeight = 0.0;
+      _minWeight = 0.0;
+      _totalChange = 0.0;
+      _entryCount = 0;
+      return;
+    }
+
+    _entryCount = _progress.length;
+    _maxWeight = _progress
+        .map((p) => p.weight)
+        .reduce((a, b) => a > b ? a : b);
+    _minWeight = _progress
+        .map((p) => p.weight)
+        .reduce((a, b) => a < b ? a : b);
+    if (_progress.length >= 2) {
+      final firstWeight = _progress.first.weight;
+      final lastWeight = _progress.last.weight;
+      _totalChange = lastWeight - firstWeight;
+    } else {
+      _totalChange = 0.0;
     }
   }
 
-  Future<void> _addProgress() async {
-    final weightController = TextEditingController();
+  List<FlSpot> _getSpots() {
+    if (_progress.isEmpty) return [];
 
-    showDialog(
+    _progress.sort((a, b) => a.date.compareTo(b.date));
+
+    return _progress.asMap().entries.map((entry) {
+      final index = entry.key.toDouble();
+      final weight = entry.value.weight;
+      return FlSpot(index, weight);
+    }).toList();
+  }
+
+  Future<void> _addProgressEntry() async {
+    final TextEditingController weightController = TextEditingController();
+    final TextEditingController bodyFatController = TextEditingController();
+
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Body Weight Progress'),
-        content: TextField(
-          controller: weightController,
-          decoration: InputDecoration(
-            labelText: 'Weight (${widget.unit})',
-            border: const OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.number,
+        title: const Text('Add Progress Entry'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: weightController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Weight (${widget.unit})',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: bodyFatController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Body Fat (%)',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () async {
-              final weight = double.tryParse(weightController.text) ?? 0.0;
-
-              if (weight <= 0) {
+            onPressed: () {
+              final weight = double.tryParse(weightController.text);
+              if (weight != null && weight > 0) {
+                Navigator.pop(context, true);
+              } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Please enter a valid weight')),
                 );
-                return;
               }
-
-              final newProgress = {
-                'id': DateTime.now().toString(),
-                'date': DateTime.now().toIso8601String(),
-                'weight': weight,
-              };
-              await DatabaseHelper.insertProgress(newProgress);
-              Navigator.pop(context);
-              await _loadProgress();
             },
-            child: const Text('Add'),
+            child: const Text('Save'),
           ),
         ],
       ),
     );
-  }
 
-  Future<void> _deleteProgress(String progressId) async {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Progress Entry'),
-        content: const Text('Are you sure you want to delete this progress entry?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await DatabaseHelper.deleteProgress(progressId);
-              Navigator.pop(context);
-              await _loadProgress();
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+    if (result == true) {
+      final progressEntry = Progress(
+        id: '',
+        date: DateTime.now().millisecondsSinceEpoch,
+        weight: double.tryParse(weightController.text) ?? 0.0,
+        bodyFat: double.tryParse(bodyFatController.text),
+        measurements: null,
+      );
+      await _progressRepository.insertProgress(progressEntry);
+      setState(() {
+        _progressFuture = _progressRepository.getProgress();
+        _loadProgress();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF1C2526), // Matte Black
-      child: Stack(
-        children: [
-          // Subtle Cross Background
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.1,
-              child: CustomPaint(
-                painter: CrossPainter(),
-                child: Container(),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Body Weight Progress'),
+        backgroundColor: const Color(0xFF1C2526),
+        foregroundColor: const Color(0xFFB0B7BF),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.1,
+                child: CustomPaint(
+                  painter: CrossPainter(),
+                  child: Container(),
+                ),
               ),
             ),
-          ),
-          isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFFB22222))) // Red
-              : progress.isEmpty
-              ? const Center(
-            child: Text(
-              'No progress entries yet. Tap the + button to add one.',
-              style: TextStyle(fontSize: 16, color: Color(0xFF808080)), // Darker gray
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    color: const Color(0xFFB0B7BF),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Progress Statistics',
+                            style: GoogleFonts.oswald(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFFB22222),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Entries: $_entryCount',
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              color: const Color(0xFF1C2526),
+                            ),
+                          ),
+                          Text(
+                            'Max Weight: ${_maxWeight.toStringAsFixed(1)} ${widget.unit}',
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              color: const Color(0xFF1C2526),
+                            ),
+                          ),
+                          Text(
+                            'Min Weight: ${_minWeight == double.infinity ? 0.0 : _minWeight.toStringAsFixed(1)} ${widget.unit}',
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              color: const Color(0xFF1C2526),
+                            ),
+                          ),
+                          Text(
+                            'Total Change: ${_totalChange.toStringAsFixed(1)} ${widget.unit}',
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              color: const Color(0xFF1C2526),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: FutureBuilder<List<Progress>>(
+                      future: _progressFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator(color: Color(0xFFB22222)));
+                        }
+                        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No progress data available.',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                color: const Color(0xFF1C2526),
+                              ),
+                            ),
+                          );
+                        }
+                        final spots = _getSpots();
+                        if (spots.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No progress data to display.',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                color: const Color(0xFF1C2526),
+                              ),
+                            ),
+                          );
+                        }
+                        return Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          color: const Color(0xFFB0B7BF),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Weight Over Time',
+                                  style: GoogleFonts.oswald(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFB22222),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Expanded(
+                                  child: LineChart(
+                                    LineChartData(
+                                      gridData: const FlGridData(show: false),
+                                      titlesData: FlTitlesData(
+                                        leftTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 40,
+                                            getTitlesWidget: (value, meta) {
+                                              return Text(
+                                                value.toInt().toString(),
+                                                style: GoogleFonts.roboto(
+                                                  fontSize: 12,
+                                                  color: const Color(0xFF808080),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          axisNameWidget: Text(
+                                            'Weight (${widget.unit})',
+                                            style: GoogleFonts.roboto(
+                                              fontSize: 14,
+                                              color: const Color(0xFF1C2526),
+                                            ),
+                                          ),
+                                        ),
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            getTitlesWidget: (value, meta) {
+                                              return Text(
+                                                '',
+                                              );
+                                            },
+                                          ),
+                                          axisNameWidget: Text(
+                                            'Progress Over Time',
+                                            style: GoogleFonts.roboto(
+                                              fontSize: 14,
+                                              color: const Color(0xFF1C2526),
+                                            ),
+                                          ),
+                                        ),
+                                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                      ),
+                                      borderData: FlBorderData(show: false),
+                                      lineBarsData: [
+                                        LineChartBarData(
+                                          spots: spots,
+                                          isCurved: true,
+                                          color: const Color(0xFFB22222),
+                                          barWidth: 3,
+                                          dotData: const FlDotData(show: false),
+                                          belowBarData: BarAreaData(
+                                            show: true,
+                                            color: const Color(0xFFB22222).withOpacity(0.2),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
-          )
-              : ListView.builder(
-            itemCount: progress.length,
-            itemBuilder: (context, index) {
-              final entry = progress[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                color: Theme.of(context).colorScheme.surface, // Silver
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                child: ListTile(
-                  title: Text(
-                    (entry['date'] as String).split('T')[0],
-                    style: const TextStyle(color: Color(0xFF1C2526)), // Matte Black
-                  ),
-                  subtitle: Text(
-                    'Weight: ${(entry['weight'] as double?)?.toString() ?? 'N/A'} ${widget.unit}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteProgress(entry['id'] as String),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addProgressEntry,
+        backgroundColor: const Color(0xFFB22222),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
-}
-
-// Custom painter for cross background
-class CrossPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF87CEEB) // Soft Sky Blue
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    const double crossSize = 100.0;
-    for (double x = 0; x < size.width; x += crossSize * 1.5) {
-      for (double y = 0; y < size.height; y += crossSize * 1.5) {
-        canvas.drawLine(
-          Offset(x + crossSize / 2, y),
-          Offset(x + crossSize / 2, y + crossSize),
-          paint,
-        );
-        canvas.drawLine(
-          Offset(x + crossSize / 4, y + crossSize / 2),
-          Offset(x + 3 * crossSize / 4, y + crossSize / 2),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

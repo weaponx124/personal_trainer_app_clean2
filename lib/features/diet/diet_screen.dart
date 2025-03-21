@@ -47,92 +47,150 @@ class _DietScreenState extends State<DietScreen> {
   String _selectedMealType = 'Breakfast'; // Options: Breakfast, Lunch, Dinner, Snack
   List<Map<String, dynamic>> _recommendedFoods = [];
   List<ShoppingListItem> _shoppingList = [];
+  bool _isLoading = true; // Added to show loading state
+  String? _errorMessage; // Added to display error message
+
+  static const String _customFoodsKey = 'customFoods';
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // Delay loading data until after the first frame to ensure context is valid
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   Future<void> _loadData() async {
-    print('Loading data...');
-    // Load meals
-    final meals = await _mealRepository.getMeals();
-    final waterIntake = await _waterIntakeRepository.getWaterIntake();
-    final customFoods = await _dietService.loadFoodDatabase();
-    final recipes = await _recipeRepository.getRecipes();
-    final shoppingList = await _shoppingListRepository.getShoppingList();
-    final prefs = await SharedPreferences.getInstance();
-    var dietPreferences = prefs.getString('dietPreferences') != null
-        ? jsonDecode(prefs.getString('dietPreferences')!) as Map<String, dynamic>
-        : {
-      'goal': 'maintain',
-      'dietaryPreference': 'none',
-      'calorieGoal': 2000,
-      'macroGoals': {'protein': 25, 'carbs': 50, 'fat': 25},
-      'allergies': [],
-    };
-
-    // Ensure diet preferences are saved
-    if (prefs.getString('dietPreferences') == null) {
-      await prefs.setString('dietPreferences', jsonEncode(dietPreferences));
-    }
-
-    // Calculate daily totals with null checks
-    double calories = 0.0;
-    double protein = 0.0;
-    double carbs = 0.0;
-    double fat = 0.0;
-    double water = 0.0;
-
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).millisecondsSinceEpoch;
-
-    for (var meal in meals) {
-      final timestamp = meal.timestamp;
-      if (timestamp < startOfDay || timestamp > endOfDay) continue;
-      calories += meal.calories;
-      protein += meal.protein;
-      carbs += meal.carbs;
-      fat += meal.fat;
-    }
-
-    for (var entry in waterIntake) {
-      final timestamp = entry.timestamp;
-      if (timestamp < startOfDay || timestamp > endOfDay) continue;
-      water += entry.amount;
-    }
-
-    // Generate food recommendations
-    final foodDatabase = await _dietService.loadFoodDatabase();
-    final recommendedFoods = _dietService.generateRecommendations(foodDatabase, dietPreferences);
-
     setState(() {
-      _meals = meals;
-      _waterIntake = waterIntake;
-      _customFoods = customFoods;
-      _recipes = recipes;
-      _shoppingList = shoppingList;
-      _dietPreferences = dietPreferences;
-      _foodDatabase = foodDatabase;
-      _dailyCalories = calories;
-      _dailyProtein = protein;
-      _dailyCarbs = carbs;
-      _dailyFat = fat;
-      _dailyWater = water;
-      _recommendedFoods = recommendedFoods;
-      print('Data loaded: ${meals.length} meals, ${recommendedFoods.length} recommendations, ${shoppingList.length} shopping list items, ${recipes.length} recipes');
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      print('Loading data... Step 1: Fetching meals');
+      final meals = await _mealRepository.getMeals();
+      print('Step 2: Fetching water intake');
+      final waterIntake = await _waterIntakeRepository.getWaterIntake();
+      print('Step 3: Loading food database');
+      final foodDatabaseFoods = await _dietService.loadFoodDatabase(context);
+      print('Step 4: Loading custom foods');
+      final prefs = await SharedPreferences.getInstance();
+      final customFoodsJson = prefs.getString(_customFoodsKey);
+      final customFoods = customFoodsJson != null
+          ? (jsonDecode(customFoodsJson) as List<dynamic>).cast<Map<String, dynamic>>()
+          : [];
+      print('Step 5: Fetching recipes');
+      final recipes = await _recipeRepository.getRecipes();
+      print('Step 6: Fetching shopping list');
+      final shoppingList = await _shoppingListRepository.getShoppingList();
+      print('Step 7: Fetching diet preferences');
+      var dietPreferences = prefs.getString('dietPreferences') != null
+          ? jsonDecode(prefs.getString('dietPreferences')!) as Map<String, dynamic>
+          : {
+        'goal': 'maintain',
+        'dietaryPreference': 'none',
+        'calorieGoal': 2000,
+        'macroGoals': {'protein': 25, 'carbs': 50, 'fat': 25},
+        'allergies': [],
+      };
+
+      // Ensure diet preferences are saved
+      if (prefs.getString('dietPreferences') == null) {
+        print('Step 8: Saving default diet preferences');
+        await prefs.setString('dietPreferences', jsonEncode(dietPreferences));
+      }
+
+      // Deduplicate _foodDatabase
+      final Map<String, Map<String, dynamic>> uniqueFoodDatabase = {};
+      for (var food in foodDatabaseFoods) {
+        final name = food['name'] as String;
+        if (!uniqueFoodDatabase.containsKey(name)) {
+          uniqueFoodDatabase[name] = food;
+        } else {
+          print('Warning: Duplicate food name "$name" found in food_database.json. Keeping the first occurrence.');
+        }
+      }
+      final deduplicatedFoodDatabase = uniqueFoodDatabase.values.toList();
+
+      // Deduplicate _customFoods
+      final Map<String, Map<String, dynamic>> uniqueCustomFoods = {};
+      for (var food in customFoods) {
+        final name = food['name'] as String;
+        if (!uniqueCustomFoods.containsKey(name)) {
+          uniqueCustomFoods[name] = food;
+        } else {
+          print('Warning: Duplicate food name "$name" found in customFoods. Keeping the first occurrence.');
+        }
+      }
+      final deduplicatedCustomFoods = uniqueCustomFoods.values.toList();
+
+      // Calculate daily totals with null checks
+      print('Step 9: Calculating daily totals');
+      double calories = 0.0;
+      double protein = 0.0;
+      double carbs = 0.0;
+      double fat = 0.0;
+      double water = 0.0;
+
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).millisecondsSinceEpoch;
+
+      for (var meal in meals) {
+        final timestamp = meal.timestamp;
+        if (timestamp < startOfDay || timestamp > endOfDay) continue;
+        calories += meal.calories;
+        protein += meal.protein;
+        carbs += meal.carbs;
+        fat += meal.fat;
+      }
+
+      for (var entry in waterIntake) {
+        final timestamp = entry.timestamp;
+        if (timestamp < startOfDay || timestamp > endOfDay) continue;
+        water += entry.amount;
+      }
+
+      // Generate food recommendations
+      print('Step 10: Generating recommendations');
+      final recommendedFoods = _dietService.generateRecommendations(deduplicatedFoodDatabase, dietPreferences);
+
+      print('Step 11: Updating state');
+      setState(() {
+        _meals = meals;
+        _waterIntake = waterIntake;
+        _customFoods = deduplicatedCustomFoods;
+        _recipes = recipes;
+        _shoppingList = shoppingList;
+        _dietPreferences = dietPreferences;
+        _foodDatabase = deduplicatedFoodDatabase;
+        _dailyCalories = calories;
+        _dailyProtein = protein;
+        _dailyCarbs = carbs;
+        _dailyFat = fat;
+        _dailyWater = water;
+        _recommendedFoods = recommendedFoods;
+        _isLoading = false;
+        print('Data loaded: ${meals.length} meals, ${recommendedFoods.length} recommendations, ${shoppingList.length} shopping list items, ${recipes.length} recipes');
+      });
+    } catch (e, stackTrace) {
+      print('Error in _loadData: $e');
+      print('Stack trace: $stackTrace');
+      // Clear meals and recipes data to prevent future errors
+      await _mealRepository.clearMeals();
+      await _recipeRepository.clearRecipes();
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Failed to load diet data: $e\nCleared meal and recipe data. Please try again.';
+      });
+    }
   }
 
   Future<void> _generateShoppingList() async {
     final newShoppingList = _dietService.generateShoppingList(_meals);
     await _shoppingListRepository.saveShoppingList(
-      newShoppingList.map((item) {
-        final map = item as Map<String, dynamic>;
-        return ShoppingListItem.fromMap(map);
-      }).toList(),
+      newShoppingList.map((item) => ShoppingListItem.fromMap(item)).toList(),
     );
     await _loadData();
   }
@@ -159,42 +217,128 @@ class _DietScreenState extends State<DietScreen> {
   }
 
   Future<void> _addCustomFood() async {
-    await showDialog(
-      context: context,
-      builder: (context) => AddCustomFoodDialog(
-        onSave: (customFood) async {
-          print('Saving custom food: $customFood');
-          setState(() {
-            _foodDatabase.add(customFood);
-          });
-        },
-      ),
-    );
-    await _loadData();
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (context) => AddCustomFoodDialog(
+          onSave: (customFood) async {
+            try {
+              final foodName = customFood['name'] as String;
+              // Check for duplicates in _foodDatabase and _customFoods
+              final existsInDatabase = _foodDatabase.any((food) => food['name'] == foodName);
+              final existsInCustom = _customFoods.any((food) => food['name'] == foodName);
+              if (existsInDatabase || existsInCustom) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('A food with the name "$foodName" already exists.')),
+                );
+                return;
+              }
+              print('Saving custom food: $customFood');
+              setState(() {
+                _customFoods.add(customFood);
+              });
+              // Save _customFoods to SharedPreferences
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(_customFoodsKey, jsonEncode(_customFoods));
+              print('Saved custom foods to SharedPreferences: $_customFoods');
+              Navigator.pop(context, true);
+            } catch (e, stackTrace) {
+              print('Error in AddCustomFoodDialog onSave: $e');
+              print('Stack trace: $stackTrace');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to save custom food: $e')),
+              );
+            }
+          },
+        ),
+      );
+
+      if (result == true) {
+        print('Custom food saved successfully, calling _loadData');
+        await _loadData();
+      } else {
+        print('Custom food dialog closed without saving');
+      }
+    } catch (e, stackTrace) {
+      print('Error in _addCustomFood: $e');
+      print('Stack trace: $stackTrace');
+      setState(() {
+        _errorMessage = 'Failed to add custom food: $e';
+      });
+    }
   }
 
   Future<void> _addRecipe() async {
-    await showDialog(
+    // Combine _foodDatabase and _customFoods, and deduplicate
+    final combinedFoods = [..._foodDatabase, ..._customFoods];
+    final Map<String, Map<String, dynamic>> uniqueFoods = {};
+    for (var food in combinedFoods) {
+      final name = food['name'] as String;
+      if (!uniqueFoods.containsKey(name)) {
+        uniqueFoods[name] = food;
+      } else {
+        print('Warning: Duplicate food name "$name" found in combined foods for recipe dialog. Keeping the first occurrence.');
+      }
+    }
+    final deduplicatedFoods = uniqueFoods.values.toList();
+
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => AddRecipeDialog(
-        allFoods: [..._foodDatabase, ..._customFoods],
+        allFoods: deduplicatedFoods,
         onSave: (recipe) async {
-          await _recipeRepository.addRecipe(Recipe.fromMap(recipe));
-          await _loadData();
+          try {
+            final recipeName = recipe['name'] as String;
+            // Check for duplicates in _recipes
+            final existsInRecipes = _recipes.any((r) => r.name == recipeName);
+            if (existsInRecipes) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('A recipe with the name "$recipeName" already exists.')),
+              );
+              return;
+            }
+            await _recipeRepository.addRecipe(recipe);
+            // Manually update _recipes to ensure the UI refreshes
+            final updatedRecipes = await _recipeRepository.getRecipes();
+            setState(() {
+              _recipes = updatedRecipes;
+            });
+            await _loadData();
+          } catch (e, stackTrace) {
+            print('Error saving recipe: $e');
+            print('Stack trace: $stackTrace');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to save recipe: $e')),
+            );
+          }
         },
       ),
     );
+
+    // If the dialog was closed without saving, still refresh the data
+    if (result != true) {
+      await _loadData();
+    }
   }
 
   Future<void> _deleteRecipe(String recipeId) async {
-    await _recipeRepository.deleteRecipe(recipeId);
-    await _loadData();
+    try {
+      await _recipeRepository.deleteRecipe(recipeId);
+      await _loadData();
+    } catch (e, stackTrace) {
+      print('Error deleting recipe: $e');
+      print('Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete recipe: $e')),
+      );
+    }
   }
 
   Future<void> _addMeal() async {
-    final allFoods = [
-      ..._foodDatabase,
-      ..._customFoods,
+    // Combine _foodDatabase, _customFoods, and _recipes
+    final combinedFoods = [
+      ..._foodDatabase.map((food) => ({...food, 'isRecipe': false})),
+      ..._customFoods.map((food) => ({...food, 'isRecipe': false})),
       ..._recipes.map((recipe) => ({
         'name': recipe.name,
         'calories': recipe.calories,
@@ -208,7 +352,32 @@ class _DietScreenState extends State<DietScreen> {
         'ingredients': recipe.ingredients,
       })),
     ];
-    String? selectedFood = allFoods.isNotEmpty ? allFoods[0]['name'] as String : null;
+
+    // Deduplicate combinedFoods, preserving both foods and recipes even if they have the same name
+    final Map<String, List<Map<String, dynamic>>> groupedFoods = {};
+    for (var food in combinedFoods) {
+      final name = food['name'] as String;
+      final key = '$name:${food['isRecipe'] ? 'recipe' : 'food'}';
+      if (!groupedFoods.containsKey(key)) {
+        groupedFoods[key] = [];
+      }
+      groupedFoods[key]!.add(food);
+    }
+    final deduplicatedFoods = groupedFoods.values.expand((list) => list).toList();
+
+    // Create a list of foods with unique identifiers
+    final allFoods = deduplicatedFoods.asMap().entries.map((entry) {
+      final index = entry.key;
+      final food = entry.value;
+      final type = food['isRecipe'] == true ? 'recipe' : (food.containsKey('uniqueId') && (food['uniqueId'] as String).startsWith('custom') ? 'custom' : 'food');
+      return {
+        ...food,
+        'uniqueId': '$type:$index:${food['name']}', // Unique identifier
+      };
+    }).toList();
+
+    // Select the first item by its uniqueId, or null if the list is empty
+    String? selectedFoodId = allFoods.isNotEmpty ? allFoods[0]['uniqueId'] as String : null;
     final TextEditingController amountController = TextEditingController();
 
     final result = await showDialog<bool>(
@@ -220,18 +389,18 @@ class _DietScreenState extends State<DietScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButton<String>(
-                value: selectedFood,
+                value: selectedFoodId,
                 hint: const Text('Select Food or Recipe'),
                 isExpanded: true,
                 items: allFoods.map((food) {
                   return DropdownMenuItem<String>(
-                    value: food['name'] as String,
-                    child: Text(food['name'] as String),
+                    value: food['uniqueId'] as String,
+                    child: Text(food['isRecipe'] == true ? '${food['name']} (Recipe)' : food['name'] as String),
                   );
                 }).toList(),
                 onChanged: (value) {
                   setDialogState(() {
-                    selectedFood = value;
+                    selectedFoodId = value;
                   });
                 },
               ),
@@ -253,7 +422,7 @@ class _DietScreenState extends State<DietScreen> {
             ),
             TextButton(
               onPressed: () {
-                if (selectedFood != null && amountController.text.isNotEmpty) {
+                if (selectedFoodId != null && amountController.text.isNotEmpty) {
                   Navigator.pop(context, true);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -270,10 +439,11 @@ class _DietScreenState extends State<DietScreen> {
 
     if (result == true) {
       final servings = double.tryParse(amountController.text) ?? 1.0;
-      final food = allFoods.firstWhere((f) => f['name'] == selectedFood);
+      // Find the food by its uniqueId
+      final food = allFoods.firstWhere((f) => f['uniqueId'] == selectedFoodId);
       final meal = Meal(
         id: '', // Will be set in the repository
-        food: food['name'] as String,
+        food: food['name'],
         mealType: _selectedMealType,
         calories: ((food['calories'] as num?)?.toDouble() ?? 0.0) * servings,
         protein: ((food['protein'] as num?)?.toDouble() ?? 0.0) * servings,
@@ -517,7 +687,27 @@ class _DietScreenState extends State<DietScreen> {
         backgroundColor: const Color(0xFF1C2526),
         foregroundColor: const Color(0xFFB0B7BF),
       ),
-      body: Container(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _errorMessage!,
+              style: const TextStyle(color: Colors.red, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      )
+          : Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,

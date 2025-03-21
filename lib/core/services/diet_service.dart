@@ -1,13 +1,12 @@
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart'; // Added for DefaultAssetBundle
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
 import 'package:personal_trainer_app_clean/core/data/models/meal.dart';
 import 'package:personal_trainer_app_clean/core/data/models/recipe.dart';
 
 class DietService {
-  Future<List<Map<String, dynamic>>> loadFoodDatabase() async {
-    // Use rootBundle directly to load the asset
-    final foodDatabaseJson = await rootBundle.loadString('assets/food_database.json');
+  Future<List<Map<String, dynamic>>> loadFoodDatabase(BuildContext context) async {
+    final foodDatabaseJson = await DefaultAssetBundle.of(context).loadString('assets/food_database.json');
     final foodDatabase = jsonDecode(foodDatabaseJson) as List<dynamic>;
     return foodDatabase.cast<Map<String, dynamic>>();
   }

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:personal_trainer_app_clean/database_helper.dart';
-import 'package:personal_trainer_app_clean/main.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/services.dart';
 import 'package:confetti/confetti.dart';
 import 'dart:convert';
-import 'package:personal_trainer_app_clean/utils/cross_painter.dart'; // Import CrossPainter
+import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/verse_of_the_day_repository.dart';
+import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 
 class HomeScreen extends StatefulWidget {
   final String unit;
@@ -18,13 +20,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final WorkoutRepository _workoutRepository = WorkoutRepository();
+  final VerseOfTheDayRepository _verseOfTheDayRepository = VerseOfTheDayRepository();
+
   late Future<Map<String, dynamic>?> _lastWorkoutFuture;
   late Future<Map<String, dynamic>> _dailyScriptureFuture;
   Map<String, dynamic>? _currentScripture;
   bool _showCelebration = false;
   String _celebrationMessage = '';
   late ConfettiController _confettiController;
-  int _previousWorkoutCount = 0; // Track the previous workout count to detect milestone achievement
+  int _previousWorkoutCount = 0;
 
   @override
   void initState() {
@@ -32,8 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _lastWorkoutFuture = _getLastWorkout();
     _dailyScriptureFuture = _loadDailyScripture();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
-    print('HomeScreen initialized'); // Debug log for rebuilds
-    // Check for milestones after initialization
+    print('HomeScreen initialized');
     _checkForMilestones();
   }
 
@@ -45,52 +49,79 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<Map<String, dynamic>?> _getLastWorkout() async {
     try {
-      final workouts = await DatabaseHelper.getWorkouts();
-      print('Fetched workouts for last workout: ${workouts.length}'); // Debug log
-      return workouts.isNotEmpty ? workouts.first : null;
+      final programs = ['default_program'];
+      List<Workout> allWorkouts = [];
+      for (var programId in programs) {
+        final workouts = await _workoutRepository.getWorkouts(programId);
+        allWorkouts.addAll(workouts);
+      }
+      allWorkouts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      print('Fetched workouts for last workout: ${allWorkouts.length}');
+      if (allWorkouts.isEmpty) return null;
+      final lastWorkout = allWorkouts.first;
+      return {
+        'exercise': lastWorkout.name,
+        'weight': lastWorkout.exercises.isNotEmpty ? lastWorkout.exercises.first['weight'] ?? 0.0 : 0.0,
+        'timestamp': lastWorkout.timestamp,
+      };
     } catch (e) {
       print('Error fetching last workout: $e');
       return null;
     }
   }
 
+  Future<List<Workout>> _getWorkoutsForWeek(DateTime startOfWeek, DateTime endOfWeek) async {
+    try {
+      final programs = ['default_program'];
+      List<Workout> allWorkouts = [];
+      for (var programId in programs) {
+        final workouts = await _workoutRepository.getWorkouts(programId);
+        allWorkouts.addAll(workouts);
+      }
+      return allWorkouts.where((workout) {
+        final timestamp = workout.timestamp;
+        return timestamp >= startOfWeek.millisecondsSinceEpoch && timestamp <= endOfWeek.millisecondsSinceEpoch;
+      }).toList();
+    } catch (e) {
+      print('Error fetching workouts for week: $e');
+      return [];
+    }
+  }
+
   Future<Map<String, dynamic>> _loadDailyScripture() async {
     try {
-      // Check if we have a stored verse of the day
-      final storedVerse = await DatabaseHelper.getVerseOfTheDay();
+      final storedVerse = await _verseOfTheDayRepository.getVerseOfTheDay();
       if (storedVerse != null) {
         _currentScripture = storedVerse;
         print('Loaded stored verse of the day: ${storedVerse['book']} ${storedVerse['chapter']}:${storedVerse['verse']}');
         return storedVerse;
       }
 
-      // If no stored verse or date has changed, select a new verse
       final manifestJson = await DefaultAssetBundle.of(context).loadString('AssetManifest.json');
       final assets = jsonDecode(manifestJson) as Map<String, dynamic>;
       final scriptureFiles = assets.keys.where((String key) => key.startsWith('assets/scriptures_') && key.endsWith('.json')).toList();
 
       if (scriptureFiles.isEmpty) {
-        print('No scripture files found in assets'); // Debug log
+        print('No scripture files found in assets');
         throw Exception('No scripture files found in assets');
       }
 
-      print('Found scripture files: $scriptureFiles'); // Debug log
-      // Select a random scripture file
+      print('Found scripture files: $scriptureFiles');
       final randomFileIndex = DateTime.now().millisecondsSinceEpoch % scriptureFiles.length;
       final selectedFile = scriptureFiles[randomFileIndex];
-      print('Loading scripture from: $selectedFile'); // Debug log
+      print('Loading scripture from: $selectedFile');
 
       final asset = await DefaultAssetBundle.of(context).loadString(selectedFile);
       final List<Map<String, dynamic>> books = (jsonDecode(asset) as List).cast<Map<String, dynamic>>();
       if (books.isEmpty) {
-        print('No books found in $selectedFile'); // Debug log
+        print('No books found in $selectedFile');
         throw Exception('No books found in $selectedFile');
       }
-      final book = books[0]; // Single book per file
+      final book = books[0];
 
       final chapters = (book['chapters'] as List).cast<Map<String, dynamic>>();
       if (chapters.isEmpty) {
-        print('No chapters found in $selectedFile'); // Debug log
+        print('No chapters found in $selectedFile');
         throw Exception('No chapters found in $selectedFile');
       }
       final randomChapterIndex = DateTime.now().millisecondsSinceEpoch % chapters.length;
@@ -98,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final verses = (chapter['verses'] as List).cast<Map<String, dynamic>>();
       if (verses.isEmpty) {
-        print('No verses found in chapter $randomChapterIndex of $selectedFile'); // Debug log
+        print('No verses found in chapter $randomChapterIndex of $selectedFile');
         throw Exception('No verses found in chapter');
       }
       final randomVerseIndex = DateTime.now().millisecondsSinceEpoch % verses.length;
@@ -111,8 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'text': verse['text'] as String? ?? 'No text available'
       };
 
-      // Store the new verse of the day
-      await DatabaseHelper.setVerseOfTheDay(scripture);
+      await _verseOfTheDayRepository.setVerseOfTheDay(scripture);
       _currentScripture = scripture;
       print('Loaded new verse of the day: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']} - ${scripture['text']}');
       return scripture;
@@ -128,54 +158,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkForMilestones() async {
-    print('Checking for milestones...'); // Debug log
-    // Get the current week range (Monday to Sunday)
+    print('Checking for milestones...');
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
     final endOfWeek = startOfWeek.add(const Duration(days: 6));
     final startOfWeekDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
     final endOfWeekDate = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59);
 
-    // Get workouts for the current week
-    final weeklyWorkouts = await DatabaseHelper.getWorkoutsForWeek(startOfWeekDate, endOfWeekDate);
+    final weeklyWorkouts = await _getWorkoutsForWeek(startOfWeekDate, endOfWeekDate);
     final workoutCount = weeklyWorkouts.length;
-    print('Weekly workouts count: $workoutCount'); // Debug log
+    print('Weekly workouts count: $workoutCount');
 
-    // Get the user's weekly goal
-    final weeklyGoal = await DatabaseHelper.getWeeklyWorkoutGoal();
-    print('Weekly goal: $weeklyGoal'); // Debug log
+    final weeklyGoal = await _verseOfTheDayRepository.getWeeklyWorkoutGoal();
+    print('Weekly goal: $weeklyGoal');
 
-    // Check if the milestone has already been celebrated this week
-    final hasCelebrated = await DatabaseHelper.hasCelebratedMilestoneThisWeek(startOfWeekDate);
-    print('Has celebrated this week: $hasCelebrated'); // Debug log
+    final hasCelebrated = await _verseOfTheDayRepository.hasCelebratedMilestoneThisWeek(startOfWeekDate);
+    print('Has celebrated this week: $hasCelebrated');
 
-    // Check if the user has met or exceeded their weekly goal and hasn't celebrated yet
     if (workoutCount >= weeklyGoal && !hasCelebrated) {
-      // Check if this is the first time the milestone is achieved (i.e., previous count was below goal)
       if (_previousWorkoutCount < weeklyGoal) {
-        print('Milestone met! Triggering celebration...'); // Debug log
+        print('Milestone met! Triggering celebration...');
         setState(() {
           _showCelebration = true;
           _celebrationMessage = 'Great Job! You’ve met your weekly goal of $weeklyGoal workouts!';
           _confettiController.play();
         });
-        await DatabaseHelper.setCelebratedMilestoneThisWeek(startOfWeekDate, true);
+        await _verseOfTheDayRepository.setCelebratedMilestoneThisWeek(startOfWeekDate, true);
       } else {
-        print('Milestone already met this week, but no new achievement. Previous count: $_previousWorkoutCount'); // Debug log
+        print('Milestone already met this week, but no new achievement. Previous count: $_previousWorkoutCount');
       }
     } else if (hasCelebrated) {
-      print('Milestone already celebrated this week.'); // Debug log
+      print('Milestone already celebrated this week.');
     } else {
-      print('Milestone not met. Workouts: $workoutCount, Goal: $weeklyGoal'); // Debug log
+      print('Milestone not met. Workouts: $workoutCount, Goal: $weeklyGoal');
     }
 
-    // Update the previous workout count for the next check
     _previousWorkoutCount = workoutCount;
   }
 
   @override
   Widget build(BuildContext context) {
-    print('HomeScreen rebuilt'); // Debug log for rebuilds
+    print('HomeScreen rebuilt');
     return ValueListenableBuilder<String>(
       valueListenable: unitNotifier,
       builder: (context, unit, child) {
@@ -286,7 +309,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             label: const Text('Start Today’s Lift', style: TextStyle(fontSize: 18)),
                             onPressed: () async {
                               await Navigator.pushNamed(context, '/workout');
-                              // Refresh last workout and check for milestones
                               setState(() {
                                 _lastWorkoutFuture = _getLastWorkout();
                               });
@@ -345,7 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   padding: const EdgeInsets.all(16.0),
                                   child: GestureDetector(
                                     onTap: () {
-                                      print('Navigating to Scriptures with: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']}'); // Debug log
+                                      print('Navigating to Scriptures with: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']}');
                                       Navigator.pushNamed(
                                         context,
                                         '/scriptures',
@@ -398,7 +420,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            // Celebration Overlay
             if (_showCelebration)
               FadeIn(
                 duration: const Duration(milliseconds: 500),

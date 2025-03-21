@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 
 class ProgressScreen extends StatefulWidget {
@@ -14,8 +15,9 @@ class ProgressScreen extends StatefulWidget {
 }
 
 class _ProgressScreenState extends State<ProgressScreen> {
-  late Future<List<Map<String, dynamic>>> _workoutsFuture;
-  List<Map<String, dynamic>> _workouts = [];
+  final WorkoutRepository _workoutRepository = WorkoutRepository();
+  late Future<List<Workout>> _workoutsFuture;
+  List<Workout> _workouts = [];
   String _selectedExercise = 'All Exercises';
   List<String> _exerciseOptions = ['All Exercises'];
   double _maxWeight = 0.0;
@@ -25,8 +27,23 @@ class _ProgressScreenState extends State<ProgressScreen> {
   @override
   void initState() {
     super.initState();
-    _workoutsFuture = DatabaseHelper.getWorkouts();
+    _workoutsFuture = _loadAllWorkouts();
     _loadWorkouts();
+  }
+
+  Future<List<Workout>> _loadAllWorkouts() async {
+    try {
+      final programs = ['default_program'];
+      List<Workout> allWorkouts = [];
+      for (var programId in programs) {
+        final workouts = await _workoutRepository.getWorkouts(programId);
+        allWorkouts.addAll(workouts);
+      }
+      return allWorkouts;
+    } catch (e) {
+      print('Error loading workouts: $e');
+      return [];
+    }
   }
 
   Future<void> _loadWorkouts() async {
@@ -38,8 +55,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
     });
   }
 
-  void _updateExerciseOptions(List<Map<String, dynamic>> workouts) {
-    final exercises = workouts.map((w) => w['exercise'] as String).toSet().toList();
+  void _updateExerciseOptions(List<Workout> workouts) {
+    final exercises = workouts.map((w) => w.name).toSet().toList();
     exercises.sort();
     _exerciseOptions = ['All Exercises', ...exercises];
     if (!_exerciseOptions.contains(_selectedExercise)) {
@@ -48,9 +65,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 
   void _updateStats() {
-    List<Map<String, dynamic>> filteredWorkouts = _workouts;
+    List<Workout> filteredWorkouts = _workouts;
     if (_selectedExercise != 'All Exercises') {
-      filteredWorkouts = _workouts.where((w) => w['exercise'] == _selectedExercise).toList();
+      filteredWorkouts = _workouts.where((w) => w.name == _selectedExercise).toList();
     }
 
     if (filteredWorkouts.isEmpty) {
@@ -61,27 +78,29 @@ class _ProgressScreenState extends State<ProgressScreen> {
     }
 
     _workoutCount = filteredWorkouts.length;
-    _totalWeight = filteredWorkouts.fold(0.0, (sum, w) => sum + (w['weight'] as num).toDouble());
+    _totalWeight = filteredWorkouts.fold(0.0, (sum, w) {
+      return sum + (w.exercises.isNotEmpty ? (w.exercises.first['weight'] as num?)?.toDouble() ?? 0.0 : 0.0);
+    });
     _maxWeight = filteredWorkouts
-        .map((w) => (w['weight'] as num).toDouble())
+        .map((w) => w.exercises.isNotEmpty ? (w.exercises.first['weight'] as num?)?.toDouble() ?? 0.0 : 0.0)
         .reduce((a, b) => a > b ? a : b);
   }
 
   List<FlSpot> _getSpots() {
-    List<Map<String, dynamic>> filteredWorkouts = _workouts;
+    List<Workout> filteredWorkouts = _workouts;
     if (_selectedExercise != 'All Exercises') {
-      filteredWorkouts = _workouts.where((w) => w['exercise'] == _selectedExercise).toList();
+      filteredWorkouts = _workouts.where((w) => w.name == _selectedExercise).toList();
     }
 
     if (filteredWorkouts.isEmpty) return [];
 
-    // Sort by timestamp to ensure chronological order
-    filteredWorkouts.sort((a, b) => (a['timestamp'] as int).compareTo(b['timestamp'] as int));
+    filteredWorkouts.sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-    // Normalize timestamps to x-axis (0 to length-1)
     return filteredWorkouts.asMap().entries.map((entry) {
       final index = entry.key.toDouble();
-      final weight = (entry.value['weight'] as num).toDouble();
+      final weight = entry.value.exercises.isNotEmpty
+          ? (entry.value.exercises.first['weight'] as num?)?.toDouble() ?? 0.0
+          : 0.0;
       return FlSpot(index, weight);
     }).toList();
   }
@@ -118,7 +137,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Exercise Selection Dropdown
                   DropdownButton<String>(
                     value: _selectedExercise,
                     isExpanded: true,
@@ -144,7 +162,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  // Statistics Section
                   Card(
                     elevation: 4,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -189,9 +206,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Line Graph Section
                   Expanded(
-                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                    child: FutureBuilder<List<Workout>>(
                       future: _workoutsFuture,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -270,7 +286,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                                             showTitles: true,
                                             getTitlesWidget: (value, meta) {
                                               return Text(
-                                                '', // Hide x-axis labels for simplicity
+                                                '',
                                               );
                                             },
                                           ),
@@ -318,9 +334,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.pushNamed(context, '/workout');
-          // Refresh workouts after adding a new one
           setState(() {
-            _workoutsFuture = DatabaseHelper.getWorkouts();
+            _workoutsFuture = _loadAllWorkouts();
             _loadWorkouts();
           });
         },

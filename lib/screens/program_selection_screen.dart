@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:personal_trainer_app_clean/database_helper.dart';
 import 'package:personal_trainer_app_clean/screens/program_actions.dart';
 import 'package:personal_trainer_app_clean/main.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -271,7 +270,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
     startProgram(
       context,
       programName,
-      true,
+      requires1RM,
       null,
       requires1RM,
       lifts,
@@ -294,8 +293,8 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Choose Your Program'),
-            backgroundColor: const Color(0xFF1C2526), // Matte Black
-            foregroundColor: const Color(0xFFB0B7BF), // Silver
+            backgroundColor: const Color(0xFF1C2526),
+            foregroundColor: const Color(0xFFB0B7BF),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
               onPressed: () {
@@ -313,7 +312,6 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
             ),
             child: Stack(
               children: [
-                // Subtle Cross Background
                 Positioned.fill(
                   child: Opacity(
                     opacity: 0.1,
@@ -379,7 +377,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
                                         : program['category'] == 'General Fitness'
                                         ? Icons.health_and_safety
                                         : Icons.bolt,
-                                    color: Theme.of(context).colorScheme.secondary, // Red
+                                    color: Theme.of(context).colorScheme.secondary,
                                   ),
                                   title: Text(
                                     program['name'],
@@ -430,7 +428,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
           onSelected(label);
         }
       },
-      selectedColor: Theme.of(context).colorScheme.secondary, // Red
+      selectedColor: Theme.of(context).colorScheme.secondary,
       labelStyle: TextStyle(
         color: selectedValue == label ? Colors.white : Theme.of(context).colorScheme.onSurface,
       ),
@@ -438,12 +436,11 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
   }
 }
 
-// Custom painter for cross background
 class CrossPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF87CEEB) // Soft Sky Blue
+      ..color = const Color(0xFF87CEEB)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
