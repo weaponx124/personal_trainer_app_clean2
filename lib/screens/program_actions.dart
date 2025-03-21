@@ -1,90 +1,174 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
+import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
+import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
+import 'package:uuid/uuid.dart';
 
-void startProgram(
-    BuildContext context,
-    String programName,
-    bool requires1RM,
-    Map<String, dynamic>? oneRMs,
-    bool requires1RMInput,
-    List<String>? lifts,
-    Function refreshCallback,
-    String unit,
-    ) {
-  if (requires1RMInput && (oneRMs == null || oneRMs.isEmpty)) {
-    _show1RMDialog(context, programName, lifts ?? [], refreshCallback, unit);
-  } else {
-    _saveAndStartProgram(context, programName, oneRMs, refreshCallback);
-  }
+class ProgramActions extends StatefulWidget {
+  final String programName;
+  final List<String> lifts;
+  final String unit;
+
+  const ProgramActions({
+    super.key,
+    required this.programName,
+    required this.lifts,
+    required this.unit,
+  });
+
+  @override
+  _ProgramActionsState createState() => _ProgramActionsState();
 }
 
-void _show1RMDialog(
-    BuildContext context,
-    String programName,
-    List<String> lifts,
-    Function refreshCallback,
-    String unit,
-    ) {
-  final oneRMs = <String, double>{};
-  final controllers = lifts.map((lift) => TextEditingController()).toList();
+class _ProgramActionsState extends State<ProgramActions> {
+  final ProgramRepository _programRepository = ProgramRepository();
+  Map<String, TextEditingController> _oneRMControllers = {};
+  bool _isStarting = false;
 
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text('Enter Your 1RMs ($unit)'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(lifts.length, (index) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: TextField(
-                controller: controllers[index],
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: '${lifts[index]} 1RM ($unit)',
-                  border: const OutlineInputBorder(),
+  @override
+  void initState() {
+    super.initState();
+    for (var lift in widget.lifts) {
+      _oneRMControllers[lift] = TextEditingController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _oneRMControllers.forEach((key, controller) => controller.dispose());
+    super.dispose();
+  }
+
+  Future<void> _startProgram() async {
+    setState(() {
+      _isStarting = true;
+    });
+
+    try {
+      final programId = Uuid().v4();
+      final startDate = DateTime.now().toIso8601String().split('T')[0];
+      Map<String, dynamic> oneRMs = {};
+      Map<String, dynamic> details = {
+        'unit': widget.unit,
+      };
+
+      for (var lift in widget.lifts) {
+        final controller = _oneRMControllers[lift];
+        oneRMs[lift] = double.tryParse(controller?.text ?? '0') ?? 0.0;
+      }
+      details['original1RMs'] = Map<String, double>.from(oneRMs);
+      details['originalUnit'] = widget.unit;
+
+      final newProgram = Program(
+        id: programId,
+        name: widget.programName,
+        description: 'Custom Program',
+        oneRMs: oneRMs,
+        details: details,
+        completed: false,
+        startDate: startDate,
+        currentWeek: 1,
+        currentSession: 1,
+        sessionsCompleted: 0,
+      );
+
+      await _programRepository.insertProgram(newProgram);
+      AppSnackBar.showSuccess(context, 'Program started successfully!');
+      Navigator.pushNamed(context, '/main', arguments: 1);
+    } catch (e) {
+      AppSnackBar.showError(context, 'Failed to start program: $e');
+    } finally {
+      setState(() {
+        _isStarting = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Start ${widget.programName}'),
+        backgroundColor: const Color(0xFF1C2526),
+        foregroundColor: const Color(0xFFB0B7BF),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.1,
+                child: CustomPaint(
+                  painter: CrossPainter(),
+                  child: Container(),
                 ),
               ),
-            );
-          }),
+            ),
+            if (_isStarting)
+              const Center(child: LoadingIndicator())
+            else
+              SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Enter your 1RMs (${widget.unit}):',
+                        style: GoogleFonts.oswald(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFFB22222),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ...widget.lifts.map((lift) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: TextField(
+                            controller: _oneRMControllers[lift],
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: '$lift 1RM',
+                              labelStyle: GoogleFonts.roboto(
+                                fontSize: 14,
+                                color: const Color(0xFF808080),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: const Color(0xFFB0B7BF),
+                            ),
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              color: const Color(0xFF1C2526),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _startProgram,
+                        child: const Text('Start Program'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () {
-            for (int i = 0; i < lifts.length; i++) {
-              final value = double.tryParse(controllers[i].text) ?? 0.0;
-              oneRMs[lifts[i]] = value;
-            }
-            Navigator.pop(context);
-            _saveAndStartProgram(context, programName, oneRMs, refreshCallback);
-          },
-          child: const Text('Start Program'),
-        ),
-      ],
-    ),
-  );
-}
-
-void _saveAndStartProgram(
-    BuildContext context,
-    String programName,
-    Map<String, dynamic>? oneRMs,
-    Function refreshCallback,
-    ) async {
-  final programRepository = ProgramRepository();
-  final program = Program(
-    id: DateTime.now().millisecondsSinceEpoch.toString(),
-    name: programName,
-    description: oneRMs != null ? '1RMs: ${oneRMs.toString()}' : '',
-  );
-  await programRepository.insertProgram(program);
-  refreshCallback();
-  Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+    );
+  }
 }

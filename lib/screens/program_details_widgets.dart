@@ -1,22 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
 
 class WorkoutCard extends StatelessWidget {
-  final Map<String, dynamic> workout;
+  final Program program;
   final String unit;
   final VoidCallback onTap;
+  final Function(Workout) onLogWorkout;
 
   const WorkoutCard({
     super.key,
-    required this.workout,
+    required this.program,
     required this.unit,
     required this.onTap,
+    required this.onLogWorkout,
   });
+
+  Workout getTodayWorkout(Program program) {
+    return Workout(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      programId: program.id,
+      name: 'Today\'s Workout',
+      exercises: [
+        {
+          'name': 'Squat',
+          'sets': 3,
+          'reps': 5,
+          'weight': program.oneRMs['Squat'] ?? 0.0,
+        },
+        {
+          'name': 'Bench',
+          'sets': 3,
+          'reps': 5,
+          'weight': program.oneRMs['Bench'] ?? 0.0,
+        },
+      ],
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final workout = getTodayWorkout(program);
     return GestureDetector(
       onTap: onTap,
       child: Card(
@@ -29,7 +56,7 @@ class WorkoutCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                workout['name'] ?? 'Workout',
+                'Workout on ${DateTime.fromMillisecondsSinceEpoch(workout.timestamp).toString().split(' ')[0]}',
                 style: GoogleFonts.oswald(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -37,8 +64,8 @@ class WorkoutCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              if (workout['exercises'] != null && workout['exercises'].isNotEmpty)
-                ...workout['exercises'].map<Widget>((exercise) {
+              if (workout.exercises.isNotEmpty)
+                ...workout.exercises.map<Widget>((exercise) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4.0),
                     child: Text(
@@ -58,6 +85,20 @@ class WorkoutCard extends StatelessWidget {
                     color: const Color(0xFF808080),
                   ),
                 ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: onTap,
+                    child: const Text('Start Workout'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => onLogWorkout(workout),
+                    child: const Text('Log Workout'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

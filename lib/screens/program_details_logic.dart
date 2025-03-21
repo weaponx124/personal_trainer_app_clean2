@@ -1,3 +1,4 @@
+import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
@@ -56,5 +57,29 @@ class ProgramDetailsLogic {
     } else {
       await _workoutRepository.insertWorkout(programId, updatedWorkout);
     }
+  }
+
+  // Added missing method
+  Workout getTodayWorkout(Program program) {
+    return Workout(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      programId: program.id,
+      name: 'Today\'s Workout',
+      exercises: [
+        {
+          'name': 'Squat',
+          'sets': 3,
+          'reps': 5,
+          'weight': program.oneRMs['Squat'] ?? 0.0,
+        },
+        {
+          'name': 'Bench',
+          'sets': 3,
+          'reps': 5,
+          'weight': program.oneRMs['Bench'] ?? 0.0,
+        },
+      ],
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+    );
   }
 }

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
-import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
+import 'package:personal_trainer_app_clean/core/data/models/progress.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/progress_repository.dart';
+import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
+import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 
 class ProgressScreen extends StatefulWidget {
   final String unit;
@@ -15,333 +18,249 @@ class ProgressScreen extends StatefulWidget {
 }
 
 class _ProgressScreenState extends State<ProgressScreen> {
-  final WorkoutRepository _workoutRepository = WorkoutRepository();
-  late Future<List<Workout>> _workoutsFuture;
-  List<Workout> _workouts = [];
-  String _selectedExercise = 'All Exercises';
-  List<String> _exerciseOptions = ['All Exercises'];
-  double _maxWeight = 0.0;
-  double _totalWeight = 0.0;
-  int _workoutCount = 0;
+  final ProgressRepository _progressRepository = ProgressRepository();
+  late Future<List<Progress>> _progressFuture;
+  List<Progress> _progressData = [];
+  bool _isAdding = false;
 
   @override
   void initState() {
     super.initState();
-    _workoutsFuture = _loadAllWorkouts();
-    _loadWorkouts();
+    _progressFuture = _loadProgress();
+    _loadProgressData();
   }
 
-  Future<List<Workout>> _loadAllWorkouts() async {
+  Future<List<Progress>> _loadProgress() async {
     try {
-      final programs = ['default_program'];
-      List<Workout> allWorkouts = [];
-      for (var programId in programs) {
-        final workouts = await _workoutRepository.getWorkouts(programId);
-        allWorkouts.addAll(workouts);
-      }
-      return allWorkouts;
+      final progress = await _progressRepository.getProgress();
+      return progress;
     } catch (e) {
-      print('Error loading workouts: $e');
+      print('Error loading progress: $e');
+      AppSnackBar.showError(context, 'Failed to load progress: $e');
       return [];
     }
   }
 
-  Future<void> _loadWorkouts() async {
-    final workouts = await _workoutsFuture;
+  Future<void> _loadProgressData() async {
+    final progress = await _progressFuture;
     setState(() {
-      _workouts = List.from(workouts);
-      _updateExerciseOptions(workouts);
-      _updateStats();
+      _progressData = List.from(progress);
     });
   }
 
-  void _updateExerciseOptions(List<Workout> workouts) {
-    final exercises = workouts.map((w) => w.name).toSet().toList();
-    exercises.sort();
-    _exerciseOptions = ['All Exercises', ...exercises];
-    if (!_exerciseOptions.contains(_selectedExercise)) {
-      _selectedExercise = 'All Exercises';
-    }
-  }
-
-  void _updateStats() {
-    List<Workout> filteredWorkouts = _workouts;
-    if (_selectedExercise != 'All Exercises') {
-      filteredWorkouts = _workouts.where((w) => w.name == _selectedExercise).toList();
-    }
-
-    if (filteredWorkouts.isEmpty) {
-      _maxWeight = 0.0;
-      _totalWeight = 0.0;
-      _workoutCount = 0;
-      return;
-    }
-
-    _workoutCount = filteredWorkouts.length;
-    _totalWeight = filteredWorkouts.fold(0.0, (sum, w) {
-      return sum + (w.exercises.isNotEmpty ? (w.exercises.first['weight'] as num?)?.toDouble() ?? 0.0 : 0.0);
+  Future<void> _addProgressEntry() async {
+    setState(() {
+      _isAdding = true;
     });
-    _maxWeight = filteredWorkouts
-        .map((w) => w.exercises.isNotEmpty ? (w.exercises.first['weight'] as num?)?.toDouble() ?? 0.0 : 0.0)
-        .reduce((a, b) => a > b ? a : b);
-  }
-
-  List<FlSpot> _getSpots() {
-    List<Workout> filteredWorkouts = _workouts;
-    if (_selectedExercise != 'All Exercises') {
-      filteredWorkouts = _workouts.where((w) => w.name == _selectedExercise).toList();
+    try {
+      final now = DateTime.now();
+      final newEntry = Progress(
+        id: now.millisecondsSinceEpoch.toString(),
+        weight: 70.0, // Placeholder; in a real app, this would come from user input
+        date: now.millisecondsSinceEpoch,
+      );
+      await _progressRepository.insertProgress(newEntry);
+      AppSnackBar.showSuccess(context, 'Progress entry added successfully!');
+      setState(() {
+        _progressFuture = _loadProgress();
+        _loadProgressData();
+      });
+    } catch (e) {
+      AppSnackBar.showError(context, 'Failed to add progress entry: $e');
+    } finally {
+      setState(() {
+        _isAdding = false;
+      });
     }
-
-    if (filteredWorkouts.isEmpty) return [];
-
-    filteredWorkouts.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-
-    return filteredWorkouts.asMap().entries.map((entry) {
-      final index = entry.key.toDouble();
-      final weight = entry.value.exercises.isNotEmpty
-          ? (entry.value.exercises.first['weight'] as num?)?.toDouble() ?? 0.0
-          : 0.0;
-      return FlSpot(index, weight);
-    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Progress'),
-        backgroundColor: const Color(0xFF1C2526),
-        foregroundColor: const Color(0xFFB0B7BF),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+    return ValueListenableBuilder<String>(
+      valueListenable: unitNotifier,
+      builder: (context, unit, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Progress'),
+            backgroundColor: const Color(0xFF1C2526),
+            foregroundColor: const Color(0xFFB0B7BF),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+              },
+            ),
           ),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.1,
-                child: CustomPaint(
-                  painter: CrossPainter(),
-                  child: Container(),
-                ),
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  DropdownButton<String>(
-                    value: _selectedExercise,
-                    isExpanded: true,
-                    items: _exerciseOptions.map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(
-                          value,
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF1C2526),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _selectedExercise = newValue;
-                          _updateStats();
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    color: const Color(0xFFB0B7BF),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Progress Statistics',
-                            style: GoogleFonts.oswald(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFFB22222),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Workouts: $_workoutCount',
-                            style: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: const Color(0xFF1C2526),
-                            ),
-                          ),
-                          Text(
-                            'Total Weight Lifted: ${_totalWeight.toStringAsFixed(1)} ${widget.unit}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: const Color(0xFF1C2526),
-                            ),
-                          ),
-                          Text(
-                            'Max Weight: ${_maxWeight.toStringAsFixed(1)} ${widget.unit}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: const Color(0xFF1C2526),
-                            ),
-                          ),
-                        ],
-                      ),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.1,
+                    child: CustomPaint(
+                      painter: CrossPainter(),
+                      child: Container(),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: FutureBuilder<List<Workout>>(
-                      future: _workoutsFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator(color: Color(0xFFB22222)));
-                        }
-                        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No workout data available.',
-                              style: GoogleFonts.roboto(
-                                fontSize: 16,
-                                color: const Color(0xFF1C2526),
-                              ),
-                            ),
-                          );
-                        }
-                        final spots = _getSpots();
-                        if (spots.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No data for selected exercise.',
-                              style: GoogleFonts.roboto(
-                                fontSize: 16,
-                                color: const Color(0xFF1C2526),
-                              ),
-                            ),
-                          );
-                        }
-                        return Card(
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          color: const Color(0xFFB0B7BF),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Weight Lifted Over Time',
-                                  style: GoogleFonts.oswald(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFFB22222),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Expanded(
-                                  child: LineChart(
-                                    LineChartData(
-                                      gridData: const FlGridData(show: false),
-                                      titlesData: FlTitlesData(
-                                        leftTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: true,
-                                            reservedSize: 40,
-                                            getTitlesWidget: (value, meta) {
-                                              return Text(
-                                                value.toInt().toString(),
-                                                style: GoogleFonts.roboto(
-                                                  fontSize: 12,
-                                                  color: const Color(0xFF808080),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                          axisNameWidget: Text(
-                                            'Weight (${widget.unit})',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF1C2526),
-                                            ),
-                                          ),
-                                        ),
-                                        bottomTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: true,
-                                            getTitlesWidget: (value, meta) {
-                                              return Text(
-                                                '',
-                                              );
-                                            },
-                                          ),
-                                          axisNameWidget: Text(
-                                            'Workouts Over Time',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF1C2526),
-                                            ),
-                                          ),
-                                        ),
-                                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                      ),
-                                      borderData: FlBorderData(show: false),
-                                      lineBarsData: [
-                                        LineChartBarData(
-                                          spots: spots,
-                                          isCurved: true,
-                                          color: const Color(0xFFB22222),
-                                          barWidth: 3,
-                                          dotData: const FlDotData(show: false),
-                                          belowBarData: BarAreaData(
-                                            show: true,
-                                            color: const Color(0xFFB22222).withOpacity(0.2),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
+                ),
+                if (_isAdding)
+                  const Center(child: LoadingIndicator())
+                else
+                  FutureBuilder<List<Progress>>(
+                    future: _progressFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const LoadingIndicator();
+                      }
+                      if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No progress data available.',
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              color: const Color(0xFF1C2526),
                             ),
                           ),
                         );
-                      },
-                    ),
+                      }
+                      final progressData = snapshot.data!;
+                      return SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Card(
+                                elevation: 4,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                color: const Color(0xFFB0B7BF),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Weight Progress',
+                                        style: GoogleFonts.oswald(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFFB22222),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      SizedBox(
+                                        height: 200,
+                                        child: LineChart(
+                                          LineChartData(
+                                            gridData: FlGridData(show: false),
+                                            titlesData: FlTitlesData(
+                                              leftTitles: AxisTitles(
+                                                sideTitles: SideTitles(
+                                                  showTitles: true,
+                                                  reservedSize: 40,
+                                                  getTitlesWidget: (value, meta) {
+                                                    return Text(
+                                                      '${value.toInt()} ${widget.unit}',
+                                                      style: GoogleFonts.roboto(
+                                                        fontSize: 12,
+                                                        color: const Color(0xFF808080),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              bottomTitles: AxisTitles(
+                                                sideTitles: SideTitles(
+                                                  showTitles: true,
+                                                  getTitlesWidget: (value, meta) {
+                                                    final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                                                    return SideTitleWidget(
+                                                      axisSide: meta.axisSide,
+                                                      child: Text(
+                                                        '${date.month}/${date.day}',
+                                                        style: GoogleFonts.roboto(
+                                                          fontSize: 12,
+                                                          color: const Color(0xFF808080),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                            ),
+                                            borderData: FlBorderData(show: false),
+                                            lineBarsData: [
+                                              LineChartBarData(
+                                                spots: progressData
+                                                    .asMap()
+                                                    .entries
+                                                    .map((entry) {
+                                                  final date = DateTime.fromMillisecondsSinceEpoch(entry.value.date);
+                                                  return FlSpot(
+                                                    date.millisecondsSinceEpoch.toDouble(),
+                                                    entry.value.weight,
+                                                  );
+                                                })
+                                                    .toList(),
+                                                isCurved: true,
+                                                color: const Color(0xFFB22222),
+                                                barWidth: 2,
+                                                dotData: FlDotData(show: true),
+                                              ),
+                                            ],
+                                            lineTouchData: LineTouchData(
+                                              touchTooltipData: LineTouchTooltipData(
+                                                getTooltipColor: (_) => const Color(0xFFB0B7BF),
+                                                getTooltipItems: (touchedSpots) {
+                                                  return touchedSpots.map((spot) {
+                                                    final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
+                                                    return LineTooltipItem(
+                                                      '${date.month}/${date.day}: ${spot.y} ${widget.unit}',
+                                                      GoogleFonts.roboto(
+                                                        fontSize: 12,
+                                                        color: const Color(0xFF1C2526),
+                                                      ),
+                                                    );
+                                                  }).toList();
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _addProgressEntry,
+                                child: const Text('Add Progress Entry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.pushNamed(context, '/workout');
-          setState(() {
-            _workoutsFuture = _loadAllWorkouts();
-            _loadWorkouts();
-          });
-        },
-        backgroundColor: const Color(0xFFB22222),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => Navigator.pushNamed(context, '/body_weight_progress'),
+            child: const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 }

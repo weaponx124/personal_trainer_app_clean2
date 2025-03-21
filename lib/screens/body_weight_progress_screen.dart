@@ -3,7 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:personal_trainer_app_clean/core/data/models/progress.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/progress_repository.dart';
+import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
+import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 
 class BodyWeightProgressScreen extends StatefulWidget {
   final String unit;
@@ -17,345 +20,357 @@ class BodyWeightProgressScreen extends StatefulWidget {
 class _BodyWeightProgressScreenState extends State<BodyWeightProgressScreen> {
   final ProgressRepository _progressRepository = ProgressRepository();
   late Future<List<Progress>> _progressFuture;
-  List<Progress> _progress = [];
-  double _maxWeight = 0.0;
-  double _minWeight = double.infinity;
-  double _totalChange = 0.0;
-  int _entryCount = 0;
+  List<Progress> _progressData = [];
+  final TextEditingController _weightController = TextEditingController();
+  bool _isAdding = false;
 
   @override
   void initState() {
     super.initState();
-    _progressFuture = _progressRepository.getProgress();
-    _loadProgress();
+    _progressFuture = _loadProgress();
+    _loadProgressData();
   }
 
-  Future<void> _loadProgress() async {
+  Future<List<Progress>> _loadProgress() async {
+    try {
+      final progress = await _progressRepository.getProgress();
+      return progress;
+    } catch (e) {
+      print('Error loading progress: $e');
+      AppSnackBar.showError(context, 'Failed to load progress: $e');
+      return [];
+    }
+  }
+
+  Future<void> _loadProgressData() async {
     final progress = await _progressFuture;
     setState(() {
-      _progress = List.from(progress);
-      _updateStats();
+      _progressData = List.from(progress);
     });
   }
 
-  void _updateStats() {
-    if (_progress.isEmpty) {
-      _maxWeight = 0.0;
-      _minWeight = 0.0;
-      _totalChange = 0.0;
-      _entryCount = 0;
-      return;
-    }
-
-    _entryCount = _progress.length;
-    _maxWeight = _progress
-        .map((p) => p.weight)
+  double get _maxWeight {
+    if (_progressData.isEmpty) return 0.0;
+    return _progressData
+        .map((progress) => progress.weight) // weight is required in Progress
         .reduce((a, b) => a > b ? a : b);
-    _minWeight = _progress
-        .map((p) => p.weight)
-        .reduce((a, b) => a < b ? a : b);
-    if (_progress.length >= 2) {
-      final firstWeight = _progress.first.weight;
-      final lastWeight = _progress.last.weight;
-      _totalChange = lastWeight - firstWeight;
-    } else {
-      _totalChange = 0.0;
-    }
   }
 
-  List<FlSpot> _getSpots() {
-    if (_progress.isEmpty) return [];
-
-    _progress.sort((a, b) => a.date.compareTo(b.date));
-
-    return _progress.asMap().entries.map((entry) {
-      final index = entry.key.toDouble();
-      final weight = entry.value.weight;
-      return FlSpot(index, weight);
-    }).toList();
+  double get _minWeight {
+    if (_progressData.isEmpty) return 0.0;
+    return _progressData
+        .map((progress) => progress.weight) // weight is required in Progress
+        .reduce((a, b) => a < b ? a : b);
   }
 
   Future<void> _addProgressEntry() async {
-    final TextEditingController weightController = TextEditingController();
-    final TextEditingController bodyFatController = TextEditingController();
+    if (_weightController.text.isEmpty) {
+      AppSnackBar.showError(context, 'Please enter your weight');
+      return;
+    }
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Progress Entry'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: weightController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Weight (${widget.unit})',
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: bodyFatController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Body Fat (%)',
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final weight = double.tryParse(weightController.text);
-              if (weight != null && weight > 0) {
-                Navigator.pop(context, true);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid weight')),
-                );
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+    setState(() {
+      _isAdding = true;
+    });
 
-    if (result == true) {
-      final progressEntry = Progress(
-        id: '',
-        date: DateTime.now().millisecondsSinceEpoch,
-        weight: double.tryParse(weightController.text) ?? 0.0,
-        bodyFat: double.tryParse(bodyFatController.text),
-        measurements: null,
+    try {
+      final now = DateTime.now();
+      final newEntry = Progress(
+        id: now.millisecondsSinceEpoch.toString(),
+        weight: double.tryParse(_weightController.text) ?? 0.0,
+        date: now.millisecondsSinceEpoch,
       );
-      await _progressRepository.insertProgress(progressEntry);
+      await _progressRepository.insertProgress(newEntry);
+      AppSnackBar.showSuccess(context, 'Progress entry added successfully!');
       setState(() {
-        _progressFuture = _progressRepository.getProgress();
-        _loadProgress();
+        _progressFuture = _loadProgress();
+        _loadProgressData();
+        _weightController.clear();
+      });
+    } catch (e) {
+      AppSnackBar.showError(context, 'Failed to add progress entry: $e');
+    } finally {
+      setState(() {
+        _isAdding = false;
+      });
+    }
+  }
+
+  Future<void> _deleteProgressEntry(String progressId) async {
+    setState(() {
+      _isAdding = true;
+    });
+
+    try {
+      await _progressRepository.deleteProgress(progressId);
+      AppSnackBar.showSuccess(context, 'Progress entry deleted successfully!');
+      setState(() {
+        _progressFuture = _loadProgress();
+        _loadProgressData();
+      });
+    } catch (e) {
+      AppSnackBar.showError(context, 'Failed to delete progress entry: $e');
+    } finally {
+      setState(() {
+        _isAdding = false;
       });
     }
   }
 
   @override
+  void dispose() {
+    _weightController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Body Weight Progress'),
-        backgroundColor: const Color(0xFF1C2526),
-        foregroundColor: const Color(0xFFB0B7BF),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+    return ValueListenableBuilder<String>(
+      valueListenable: unitNotifier,
+      builder: (context, unit, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Body Weight Progress'),
+            backgroundColor: const Color(0xFF1C2526),
+            foregroundColor: const Color(0xFFB0B7BF),
           ),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.1,
-                child: CustomPaint(
-                  painter: CrossPainter(),
-                  child: Container(),
-                ),
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    color: const Color(0xFFB0B7BF),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.1,
+                    child: CustomPaint(
+                      painter: CrossPainter(),
+                      child: Container(),
+                    ),
+                  ),
+                ),
+                if (_isAdding)
+                  const Center(child: LoadingIndicator())
+                else
+                  SingleChildScrollView(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            'Progress Statistics',
-                            style: GoogleFonts.oswald(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFFB22222),
+                          Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            color: const Color(0xFFB0B7BF),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Body Weight Progress',
+                                    style: GoogleFonts.oswald(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFB22222),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    height: 200,
+                                    child: FutureBuilder<List<Progress>>(
+                                      future: _progressFuture,
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState == ConnectionState.waiting) {
+                                          return const LoadingIndicator();
+                                        }
+                                        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                                          return Center(
+                                            child: Text(
+                                              'No progress data available.',
+                                              style: GoogleFonts.roboto(
+                                                fontSize: 14,
+                                                color: const Color(0xFF808080),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                        final progressData = snapshot.data!;
+                                        return LineChart(
+                                          LineChartData(
+                                            gridData: FlGridData(show: false),
+                                            titlesData: FlTitlesData(
+                                              leftTitles: AxisTitles(
+                                                sideTitles: SideTitles(
+                                                  showTitles: true,
+                                                  reservedSize: 40,
+                                                  getTitlesWidget: (value, meta) {
+                                                    return Text(
+                                                      '${value.toInt()} ${widget.unit}',
+                                                      style: GoogleFonts.roboto(
+                                                        fontSize: 12,
+                                                        color: const Color(0xFF808080),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              bottomTitles: AxisTitles(
+                                                sideTitles: SideTitles(
+                                                  showTitles: true,
+                                                  getTitlesWidget: (value, meta) {
+                                                    final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                                                    return SideTitleWidget(
+                                                      axisSide: meta.axisSide,
+                                                      child: Text(
+                                                        '${date.month}/${date.day}',
+                                                        style: GoogleFonts.roboto(
+                                                          fontSize: 12,
+                                                          color: const Color(0xFF808080),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                            ),
+                                            borderData: FlBorderData(show: false),
+                                            minY: _minWeight - 5,
+                                            maxY: _maxWeight + 5,
+                                            lineBarsData: [
+                                              LineChartBarData(
+                                                spots: progressData
+                                                    .asMap()
+                                                    .entries
+                                                    .map((entry) {
+                                                  final progress = entry.value;
+                                                  final date = DateTime.fromMillisecondsSinceEpoch(progress.date);
+                                                  return FlSpot(
+                                                    date.millisecondsSinceEpoch.toDouble(),
+                                                    progress.weight,
+                                                  );
+                                                })
+                                                    .toList(),
+                                                isCurved: true,
+                                                color: const Color(0xFFB22222),
+                                                barWidth: 2,
+                                                dotData: FlDotData(show: true),
+                                              ),
+                                            ],
+                                            lineTouchData: LineTouchData(
+                                              touchTooltipData: LineTouchTooltipData(
+                                                getTooltipColor: (_) => const Color(0xFFB0B7BF),
+                                                getTooltipItems: (touchedSpots) {
+                                                  return touchedSpots.map((spot) {
+                                                    final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
+                                                    return LineTooltipItem(
+                                                      '${date.month}/${date.day}: ${spot.y} ${widget.unit}',
+                                                      GoogleFonts.roboto(
+                                                        fontSize: 12,
+                                                        color: const Color(0xFF1C2526),
+                                                      ),
+                                                    );
+                                                  }).toList();
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Entries: $_entryCount',
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _weightController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Weight (${widget.unit})',
+                              labelStyle: GoogleFonts.roboto(
+                                fontSize: 14,
+                                color: const Color(0xFF808080),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: const Color(0xFFB0B7BF),
+                            ),
                             style: GoogleFonts.roboto(
                               fontSize: 16,
                               color: const Color(0xFF1C2526),
                             ),
                           ),
-                          Text(
-                            'Max Weight: ${_maxWeight.toStringAsFixed(1)} ${widget.unit}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: const Color(0xFF1C2526),
-                            ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _addProgressEntry,
+                            child: const Text('Add Weight Entry'),
                           ),
-                          Text(
-                            'Min Weight: ${_minWeight == double.infinity ? 0.0 : _minWeight.toStringAsFixed(1)} ${widget.unit}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: const Color(0xFF1C2526),
-                            ),
-                          ),
-                          Text(
-                            'Total Change: ${_totalChange.toStringAsFixed(1)} ${widget.unit}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: const Color(0xFF1C2526),
-                            ),
+                          const SizedBox(height: 16),
+                          FutureBuilder<List<Progress>>(
+                            future: _progressFuture,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const LoadingIndicator();
+                              }
+                              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              final progressData = snapshot.data!;
+                              return ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: progressData.length,
+                                itemBuilder: (context, index) {
+                                  final progress = progressData[index];
+                                  return Card(
+                                    elevation: 4,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    color: const Color(0xFFB0B7BF),
+                                    child: ListTile(
+                                      title: Text(
+                                        '${progress.weight} ${widget.unit}',
+                                        style: GoogleFonts.oswald(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFFB22222),
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        DateTime.fromMillisecondsSinceEpoch(progress.date).toString(),
+                                        style: GoogleFonts.roboto(
+                                          fontSize: 14,
+                                          color: const Color(0xFF808080),
+                                        ),
+                                      ),
+                                      trailing: IconButton(
+                                        icon: const Icon(Icons.delete, color: Color(0xFFB22222)),
+                                        onPressed: () => _deleteProgressEntry(progress.id),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: FutureBuilder<List<Progress>>(
-                      future: _progressFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator(color: Color(0xFFB22222)));
-                        }
-                        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No progress data available.',
-                              style: GoogleFonts.roboto(
-                                fontSize: 16,
-                                color: const Color(0xFF1C2526),
-                              ),
-                            ),
-                          );
-                        }
-                        final spots = _getSpots();
-                        if (spots.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No progress data to display.',
-                              style: GoogleFonts.roboto(
-                                fontSize: 16,
-                                color: const Color(0xFF1C2526),
-                              ),
-                            ),
-                          );
-                        }
-                        return Card(
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          color: const Color(0xFFB0B7BF),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Weight Over Time',
-                                  style: GoogleFonts.oswald(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFFB22222),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Expanded(
-                                  child: LineChart(
-                                    LineChartData(
-                                      gridData: const FlGridData(show: false),
-                                      titlesData: FlTitlesData(
-                                        leftTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: true,
-                                            reservedSize: 40,
-                                            getTitlesWidget: (value, meta) {
-                                              return Text(
-                                                value.toInt().toString(),
-                                                style: GoogleFonts.roboto(
-                                                  fontSize: 12,
-                                                  color: const Color(0xFF808080),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                          axisNameWidget: Text(
-                                            'Weight (${widget.unit})',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF1C2526),
-                                            ),
-                                          ),
-                                        ),
-                                        bottomTitles: AxisTitles(
-                                          sideTitles: SideTitles(
-                                            showTitles: true,
-                                            getTitlesWidget: (value, meta) {
-                                              return Text(
-                                                '',
-                                              );
-                                            },
-                                          ),
-                                          axisNameWidget: Text(
-                                            'Progress Over Time',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF1C2526),
-                                            ),
-                                          ),
-                                        ),
-                                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                      ),
-                                      borderData: FlBorderData(show: false),
-                                      lineBarsData: [
-                                        LineChartBarData(
-                                          spots: spots,
-                                          isCurved: true,
-                                          color: const Color(0xFFB22222),
-                                          barWidth: 3,
-                                          dotData: const FlDotData(show: false),
-                                          belowBarData: BarAreaData(
-                                            show: true,
-                                            color: const Color(0xFFB22222).withOpacity(0.2),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addProgressEntry,
-        backgroundColor: const Color(0xFFB22222),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+          ),
+        );
+      },
     );
   }
 }

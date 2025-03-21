@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
+import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
+import 'package:personal_trainer_app_clean/core/theme/app_theme.dart'; // Added import
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -18,6 +21,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   final TextEditingController _repsController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   List<Map<String, dynamic>> _exercises = [];
+  bool _isSaving = false;
 
   void _addExercise() {
     if (_exerciseController.text.isNotEmpty &&
@@ -36,28 +40,37 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         _repsController.clear();
         _weightController.clear();
       });
+      AppSnackBar.showSuccess(context, 'Exercise added to workout');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
+      AppSnackBar.showError(context, 'Please fill in all fields');
     }
   }
 
   Future<void> _saveWorkout() async {
     if (_exercises.isNotEmpty) {
-      final workout = Workout(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        programId: 'default_program',
-        name: _exercises.first['name'],
-        exercises: _exercises,
-        timestamp: DateTime.now().millisecondsSinceEpoch, // Added timestamp
-      );
-      await _workoutRepository.insertWorkout('default_program', workout);
-      Navigator.pop(context);
+      setState(() {
+        _isSaving = true;
+      });
+      try {
+        final workout = Workout(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          programId: 'default_program',
+          name: _exercises.first['name'],
+          exercises: _exercises,
+          timestamp: DateTime.now().millisecondsSinceEpoch,
+        );
+        await _workoutRepository.insertWorkout('default_program', workout);
+        AppSnackBar.showSuccess(context, 'Workout saved successfully');
+        Navigator.pop(context);
+      } catch (e) {
+        AppSnackBar.showError(context, 'Failed to save workout: $e');
+      } finally {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least one exercise')),
-      );
+      AppSnackBar.showError(context, 'Please add at least one exercise');
     }
   }
 
@@ -75,10 +88,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Log Workout'),
-        backgroundColor: const Color(0xFF1C2526),
-        foregroundColor: const Color(0xFFB0B7BF),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
             Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
           },
@@ -89,7 +102,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+            colors: [AppTheme.lightBlue.withOpacity(0.2), AppTheme.matteBlack],
           ),
         ),
         child: Stack(
@@ -103,159 +116,116 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextField(
-                    controller: _exerciseController,
-                    decoration: InputDecoration(
-                      labelText: 'Exercise Name',
-                      labelStyle: GoogleFonts.roboto(
-                        fontSize: 16,
-                        color: const Color(0xFF808080),
+            if (_isSaving)
+              const Center(child: LoadingIndicator())
+            else
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _exerciseController,
+                      decoration: InputDecoration(
+                        labelText: 'Exercise Name',
+                        labelStyle: Theme.of(context).textTheme.bodySmall,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surface,
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFFB0B7BF),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    style: GoogleFonts.roboto(
-                      fontSize: 16,
-                      color: const Color(0xFF1C2526),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _setsController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Sets',
-                            labelStyle: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: const Color(0xFF808080),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _setsController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Sets',
+                              labelStyle: Theme.of(context).textTheme.bodySmall,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFFB0B7BF),
-                          ),
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF1C2526),
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _repsController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Reps',
-                            labelStyle: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: const Color(0xFF808080),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _repsController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Reps',
+                              labelStyle: Theme.of(context).textTheme.bodySmall,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFFB0B7BF),
-                          ),
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF1C2526),
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _weightController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Weight',
-                            labelStyle: GoogleFonts.roboto(
-                              fontSize: 16,
-                              color: const Color(0xFF808080),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _weightController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Weight',
+                              labelStyle: Theme.of(context).textTheme.bodySmall,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              filled: true,
+                              fillColor: Theme.of(context).colorScheme.surface,
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFFB0B7BF),
-                          ),
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF1C2526),
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _addExercise,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFB22222),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ],
                     ),
-                    child: const Text('Add Exercise', style: TextStyle(fontSize: 18)),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _exercises.length,
-                      itemBuilder: (context, index) {
-                        final exercise = _exercises[index];
-                        return Card(
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          color: const Color(0xFFB0B7BF),
-                          child: ListTile(
-                            title: Text(
-                              exercise['name'],
-                              style: GoogleFonts.oswald(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFB22222),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _addExercise,
+                      child: const Text('Add Exercise'),
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _exercises.length,
+                        itemBuilder: (context, index) {
+                          final exercise = _exercises[index];
+                          return Card(
+                            child: ListTile(
+                              title: Text(
+                                exercise['name'],
+                                style: Theme.of(context).textTheme.headlineMedium,
+                              ),
+                              subtitle: Text(
+                                '${exercise['sets']} sets x ${exercise['reps']} reps @ ${exercise['weight']}',
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ),
-                            subtitle: Text(
-                              '${exercise['sets']} sets x ${exercise['reps']} reps @ ${exercise['weight']}',
-                              style: GoogleFonts.roboto(
-                                fontSize: 16,
-                                color: const Color(0xFF1C2526),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _saveWorkout,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFB22222),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _saveWorkout,
+                      child: const Text('Save Workout'),
                     ),
-                    child: const Text('Save Workout', style: TextStyle(fontSize: 18)),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),

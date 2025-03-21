@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:personal_trainer_app_clean/screens/program_actions.dart';
-import 'package:personal_trainer_app_clean/main.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:animate_do/animate_do.dart';
+import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/core/data/models/program.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
+import 'package:personal_trainer_app_clean/screens/custom_program_form.dart';
+import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
+import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
+import 'package:uuid/uuid.dart';
 
 class ProgramSelectionScreen extends StatefulWidget {
   const ProgramSelectionScreen({super.key});
@@ -12,291 +17,149 @@ class ProgramSelectionScreen extends StatefulWidget {
 }
 
 class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
-  String selectedGoal = 'All';
-  String selectedLevel = 'All';
-  final List<Map<String, dynamic>> programs = [
-    {
-      'name': '5/3/1 Program',
-      'category': 'Powerlifting',
-      'level': 'Intermediate',
-      'description': 'Build strength with a focus on squat, bench, deadlift, and overhead press.',
-      'duration': 'Ongoing',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift', 'Overhead']
-    },
-    {
-      'name': 'Texas Method',
-      'category': 'Powerlifting',
-      'level': 'Intermediate',
-      'description': 'Weekly strength progression with volume, recovery, and intensity days.',
-      'duration': 'Ongoing',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift']
-    },
-    {
-      'name': 'Madcow 5x5',
-      'category': 'Powerlifting',
-      'level': 'Intermediate',
-      'description': 'Structured weekly progression for squat, bench, and deadlift.',
-      'duration': '12-16 weeks',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift']
-    },
-    {
-      'name': 'Sheiko Beginner',
-      'category': 'Powerlifting',
-      'level': 'Beginner',
-      'description': 'High-volume strength training for new powerlifters.',
-      'duration': '8-12 weeks',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift']
-    },
-    {
-      'name': 'Sheiko Intermediate',
-      'category': 'Powerlifting',
-      'level': 'Intermediate',
-      'description': 'High-volume strength training for intermediate powerlifters.',
-      'duration': '8-12 weeks',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift']
-    },
-    {
-      'name': 'Sheiko Advanced',
-      'category': 'Powerlifting',
-      'level': 'Advanced',
-      'description': 'High-volume strength training for advanced powerlifters.',
-      'duration': '8-12 weeks',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift']
-    },
-    {
-      'name': 'Smolov Base Cycle',
-      'category': 'Powerlifting',
-      'level': 'Advanced',
-      'description': 'Rapidly increase squat strength with high intensity.',
-      'duration': '13 weeks',
-      'requires1RM': true,
-      'lifts': ['Squat']
-    },
-    {
-      'name': 'Smolov Jr. (Bench)',
-      'category': 'Powerlifting',
-      'level': 'Advanced',
-      'description': 'Rapidly increase bench press strength with high intensity.',
-      'duration': '3-4 weeks',
-      'requires1RM': true,
-      'lifts': ['Bench']
-    },
-    {
-      'name': 'Candito 6-Week Program',
-      'category': 'Powerlifting',
-      'level': 'Intermediate',
-      'description': 'Build strength with phases for hypertrophy and peaking.',
-      'duration': '6 weeks',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift']
-    },
-    {
-      'name': 'Push/Pull/Legs (PPL)',
-      'category': 'Bodybuilding',
-      'level': 'All',
-      'description': 'Build muscle with a 6-day split focusing on push, pull, and legs.',
-      'duration': 'Ongoing',
-      'requires1RM': false
-    },
-    {
-      'name': 'Arnold Split',
-      'category': 'Bodybuilding',
-      'level': 'Intermediate',
-      'description': 'Maximize hypertrophy with a high-volume 6-day split.',
-      'duration': 'Ongoing',
-      'requires1RM': false
-    },
-    {
-      'name': 'Bro Split',
-      'category': 'Bodybuilding',
-      'level': 'Beginner',
-      'description': 'Target one muscle group per day for maximum growth.',
-      'duration': 'Ongoing',
-      'requires1RM': false
-    },
-    {
-      'name': 'PHUL',
-      'category': 'Bodybuilding',
-      'level': 'Intermediate',
-      'description': 'Combine strength and hypertrophy with an upper/lower split.',
-      'duration': 'Ongoing',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift']
-    },
-    {
-      'name': 'PHAT',
-      'category': 'Bodybuilding',
-      'level': 'Advanced',
-      'description': 'Blend powerlifting and bodybuilding for strength and size.',
-      'duration': 'Ongoing',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift']
-    },
-    {
-      'name': 'German Volume Training',
-      'category': 'Bodybuilding',
-      'level': 'Intermediate',
-      'description': 'Rapid muscle growth through extreme volume (10x10).',
-      'duration': '4-6 weeks',
-      'requires1RM': true,
-      'lifts': ['Squat', 'Bench', 'Deadlift']
-    },
-    {
-      'name': 'Starting Strength',
-      'category': 'General Fitness',
-      'level': 'Beginner',
-      'description': 'Build foundational strength with linear progression.',
-      'duration': '3-6 months',
-      'requires1RM': false
-    },
-    {
-      'name': 'StrongLifts 5x5',
-      'category': 'General Fitness',
-      'level': 'Beginner',
-      'description': 'Build strength and muscle with a simple 5x5 program.',
-      'duration': '3-6 months',
-      'requires1RM': false
-    },
-    {
-      'name': 'Greyskull LP',
-      'category': 'General Fitness',
-      'level': 'Beginner',
-      'description': 'Build strength with a focus on upper body frequency.',
-      'duration': '3-6 months',
-      'requires1RM': false
-    },
-    {
-      'name': 'Full Body 3x/Week',
-      'category': 'General Fitness',
-      'level': 'Beginner',
-      'description': 'Improve overall fitness with compound lifts and accessories.',
-      'duration': 'Ongoing',
-      'requires1RM': false
-    },
-    {
-      'name': 'Couch to 5K',
-      'category': 'General Fitness',
-      'level': 'Beginner',
-      'description': 'Build running endurance to run 5K in 9 weeks.',
-      'duration': '9 weeks',
-      'requires1RM': false
-    },
-    {
-      'name': 'Bodyweight Fitness',
-      'category': 'General Fitness',
-      'level': 'Beginner',
-      'description': 'Build strength using bodyweight exercises.',
-      'duration': 'Ongoing',
-      'requires1RM': false
-    },
-    {
-      'name': 'Russian Squat Program',
-      'category': 'Specific Body Part',
-      'level': 'Intermediate',
-      'description': 'Increase squat strength rapidly with high frequency.',
-      'duration': '6 weeks',
-      'requires1RM': true,
-      'lifts': ['Squat']
-    },
-    {
-      'name': 'Super Squats',
-      'category': 'Specific Body Part',
-      'level': 'Intermediate',
-      'description': 'Build leg size and strength with 20-rep squats.',
-      'duration': '6 weeks',
-      'requires1RM': true,
-      'lifts': ['Squat']
-    },
-    {
-      'name': '30-Day Squat Challenge',
-      'category': 'Specific Body Part',
-      'level': 'Beginner',
-      'description': 'Improve squat endurance with bodyweight squats.',
-      'duration': '30 days',
-      'requires1RM': false
-    },
-    {
-      'name': 'Bench Press Specialization',
-      'category': 'Specific Body Part',
-      'level': 'Intermediate',
-      'description': 'Increase bench press strength with high frequency.',
-      'duration': '3 weeks',
-      'requires1RM': true,
-      'lifts': ['Bench']
-    },
-    {
-      'name': 'Deadlift Builder',
-      'category': 'Specific Body Part',
-      'level': 'Intermediate',
-      'description': 'Improve deadlift strength with deficit deadlifts.',
-      'duration': '6 weeks',
-      'requires1RM': true,
-      'lifts': ['Deadlift']
-    },
-    {
-      'name': 'Arm Blaster',
-      'category': 'Specific Body Part',
-      'level': 'Intermediate',
-      'description': 'Build bigger biceps and triceps with high volume.',
-      'duration': '4 weeks',
-      'requires1RM': false
-    },
-    {
-      'name': 'Shoulder Sculptor',
-      'category': 'Specific Body Part',
-      'level': 'Intermediate',
-      'description': 'Build wider, stronger shoulders with focused training.',
-      'duration': '6 weeks',
-      'requires1RM': false
-    },
-    {
-      'name': 'Pull-Up Progression',
-      'category': 'Specific Body Part',
-      'level': 'Beginner',
-      'description': 'Achieve or increase pull-up reps with progressions.',
-      'duration': '6 weeks',
-      'requires1RM': false
-    },
-  ];
+  final ProgramRepository _programRepository = ProgramRepository();
+  late Future<List<Map<String, dynamic>>> _allProgramsFuture;
+  List<Map<String, dynamic>> _allPrograms = [];
+  String _searchQuery = '';
+  String? _selectedProgram;
+  Map<String, TextEditingController> _oneRMControllers = {};
+  bool _isStarting = false;
 
-  void _startProgram(String programName, bool requires1RM, List<String>? lifts) {
-    print('Starting program: $programName, requires1RM: $requires1RM, lifts: $lifts');
-    startProgram(
-      context,
-      programName,
-      requires1RM,
-      null,
-      requires1RM,
-      lifts,
-          () => setState(() {}),
-      unitNotifier.value,
-    );
+  @override
+  void initState() {
+    super.initState();
+    _allProgramsFuture = _loadAllPrograms();
+    _loadProgramsData();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadAllPrograms() async {
+    try {
+      final programs = await _getAllPrograms();
+      return programs;
+    } catch (e) {
+      print('Error loading programs: $e');
+      AppSnackBar.showError(context, 'Failed to load programs: $e');
+      return [];
+    }
+  }
+
+  Future<void> _loadProgramsData() async {
+    final programs = await _allProgramsFuture;
+    setState(() {
+      _allPrograms = List.from(programs);
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> _getAllPrograms() async {
+    return [
+      {'name': '5/3/1 Program', 'duration': 'Ongoing', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift', 'Overhead']},
+      {'name': 'Texas Method', 'duration': 'Ongoing', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Madcow 5x5', 'duration': '12-16 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Sheiko Beginner', 'duration': '8-12 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Sheiko Intermediate', 'duration': '8-12 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Sheiko Advanced', 'duration': '8-12 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Smolov Base Cycle', 'duration': '13 weeks', 'requires1RM': true, 'lifts': ['Squat']},
+      {'name': 'Smolov Jr. (Bench)', 'duration': '3-4 weeks', 'requires1RM': true, 'lifts': ['Bench']},
+      {'name': 'Candito 6-Week Program', 'duration': '6 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Push/Pull/Legs (PPL)', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'Arnold Split', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'Bro Split', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'PHUL', 'duration': 'Ongoing', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'PHAT', 'duration': 'Ongoing', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'German Volume Training', 'duration': '4-6 weeks', 'requires1RM': true, 'lifts': ['Squat', 'Bench', 'Deadlift']},
+      {'name': 'Starting Strength', 'duration': '3-6 months', 'requires1RM': false},
+      {'name': 'StrongLifts 5x5', 'duration': '3-6 months', 'requires1RM': false},
+      {'name': 'Greyskull LP', 'duration': '3-6 months', 'requires1RM': false},
+      {'name': 'Full Body 3x/Week', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'Couch to 5K', 'duration': '9 weeks', 'requires1RM': false},
+      {'name': 'Bodyweight Fitness', 'duration': 'Ongoing', 'requires1RM': false},
+      {'name': 'Russian Squat Program', 'duration': '6 weeks', 'requires1RM': true, 'lifts': ['Squat']},
+      {'name': 'Super Squats', 'duration': '6 weeks', 'requires1RM': true, 'lifts': ['Squat']},
+      {'name': '30-Day Squat Challenge', 'duration': '30 days', 'requires1RM': false},
+      {'name': 'Bench Press Specialization', 'duration': '3 weeks', 'requires1RM': true, 'lifts': ['Bench']},
+      {'name': 'Deadlift Builder', 'duration': '6 weeks', 'requires1RM': true, 'lifts': ['Deadlift']},
+      {'name': 'Arm Blaster', 'duration': '4 weeks', 'requires1RM': false},
+      {'name': 'Shoulder Sculptor', 'duration': '6 weeks', 'requires1RM': false},
+      {'name': 'Pull-Up Progression', 'duration': '6 weeks', 'requires1RM': false},
+    ];
+  }
+
+  Future<void> _startProgram(String programName) async {
+    setState(() {
+      _isStarting = true;
+    });
+    try {
+      final programId = Uuid().v4();
+      final startDate = DateTime.now().toIso8601String().split('T')[0];
+      final selectedProgramData = _allPrograms.firstWhere((program) => program['name'] == programName);
+      final requires1RM = selectedProgramData['requires1RM'] as bool? ?? false;
+
+      Map<String, dynamic> oneRMs = {};
+      Map<String, dynamic> details = {
+        'unit': unitNotifier.value,
+      };
+
+      if (requires1RM) {
+        final lifts = selectedProgramData['lifts'] as List<dynamic>? ?? [];
+        for (var lift in lifts) {
+          final controller = _oneRMControllers[lift];
+          oneRMs[lift as String] = double.tryParse(controller?.text ?? '0') ?? 0.0;
+        }
+        details['original1RMs'] = Map<String, double>.from(oneRMs);
+        details['originalUnit'] = unitNotifier.value;
+      }
+
+      final newProgram = Program(
+        id: programId,
+        name: programName,
+        description: selectedProgramData['duration'] as String,
+        oneRMs: oneRMs,
+        details: details,
+        completed: false,
+        startDate: startDate,
+        currentWeek: 1,
+        currentSession: 1,
+        sessionsCompleted: 0,
+      );
+
+      await _programRepository.insertProgram(newProgram);
+      AppSnackBar.showSuccess(context, 'Program started successfully!');
+
+      // Navigate to the Program Details screen
+      Navigator.pushNamed(
+        context,
+        '/program_details',
+        arguments: programId,
+      );
+    } catch (e) {
+      AppSnackBar.showError(context, 'Failed to start program: $e');
+    } finally {
+      setState(() {
+        _isStarting = false;
+        _selectedProgram = null;
+        _oneRMControllers.clear();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _oneRMControllers.forEach((key, controller) => controller.dispose());
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredPrograms = programs.where((program) {
-      bool matchesGoal = selectedGoal == 'All' || program['category'] == selectedGoal;
-      bool matchesLevel = selectedLevel == 'All' || program['level'] == selectedLevel;
-      return matchesGoal && matchesLevel;
-    }).toList();
-
     return ValueListenableBuilder<String>(
       valueListenable: unitNotifier,
       builder: (context, unit, child) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Choose Your Program'),
-            backgroundColor: const Color(0xFF1C2526),
-            foregroundColor: const Color(0xFFB0B7BF),
+            title: const Text('Select a Program'),
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
+              icon: const Icon(Icons.arrow_back),
               onPressed: () {
                 Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
               },
@@ -307,7 +170,10 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+                colors: [
+                  const Color(0xFF87CEEB).withOpacity(0.2),
+                  const Color(0xFF1C2526),
+                ],
               ),
             ),
             child: Stack(
@@ -321,95 +187,177 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FadeIn(
-                        duration: const Duration(milliseconds: 800),
-                        child: const Text('Filter by Goal:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          labelText: 'Search Programs',
+                          labelStyle: Theme.of(context).textTheme.bodySmall,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                          prefixIcon: const Icon(Icons.search),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value.toLowerCase();
+                          });
+                        },
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8.0,
-                        children: [
-                          _buildFilterChip('All', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                          _buildFilterChip('Powerlifting', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                          _buildFilterChip('Bodybuilding', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                          _buildFilterChip('General Fitness', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                          _buildFilterChip('Specific Body Part', selectedGoal, (value) => setState(() => selectedGoal = value)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      FadeIn(
-                        duration: const Duration(milliseconds: 800),
-                        child: const Text('Filter by Level:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8.0,
-                        children: [
-                          _buildFilterChip('All', selectedLevel, (value) => setState(() => selectedLevel = value)),
-                          _buildFilterChip('Beginner', selectedLevel, (value) => setState(() => selectedLevel = value)),
-                          _buildFilterChip('Intermediate', selectedLevel, (value) => setState(() => selectedLevel = value)),
-                          _buildFilterChip('Advanced', selectedLevel, (value) => setState(() => selectedLevel = value)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: filteredPrograms.length,
-                          itemBuilder: (context, index) {
-                            final program = filteredPrograms[index];
-                            return FadeIn(
-                              duration: const Duration(milliseconds: 800),
-                              child: Card(
-                                elevation: 8,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                color: Theme.of(context).colorScheme.surface,
-                                child: ListTile(
-                                  leading: Icon(
-                                    program['category'] == 'Powerlifting'
-                                        ? Icons.fitness_center
-                                        : program['category'] == 'Bodybuilding'
-                                        ? Icons.directions_run
-                                        : program['category'] == 'General Fitness'
-                                        ? Icons.health_and_safety
-                                        : Icons.bolt,
-                                    color: Theme.of(context).colorScheme.secondary,
-                                  ),
-                                  title: Text(
-                                    program['name'],
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Goal: ${program['category']}', style: Theme.of(context).textTheme.bodyMedium),
-                                      Text('Level: ${program['level']}', style: Theme.of(context).textTheme.bodyMedium),
-                                      Text('Duration: ${program['duration']}', style: Theme.of(context).textTheme.bodyMedium),
-                                      const SizedBox(height: 4),
-                                      Text(program['description'], style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF808080))),
-                                    ],
-                                  ),
-                                  onTap: () => _startProgram(
-                                    program['name'],
-                                    program['requires1RM'] ?? false,
-                                    program['lifts']?.cast<String>(),
-                                  ),
-                                ),
+                    ),
+                    Expanded(
+                      child: FutureBuilder<List<Map<String, dynamic>>>(
+                        future: _allProgramsFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const LoadingIndicator();
+                          }
+                          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                            return Center(
+                              child: Text(
+                                'No programs available.',
+                                style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             );
-                          },
-                        ),
+                          }
+                          final filteredPrograms = snapshot.data!
+                              .where((program) =>
+                              program['name'].toString().toLowerCase().contains(_searchQuery))
+                              .toList();
+                          return ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            itemCount: filteredPrograms.length + 1, // +1 for Custom Program button
+                            itemBuilder: (context, index) {
+                              if (index == filteredPrograms.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16.0),
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(Icons.add, size: 24),
+                                    label: const Text('Create Custom Program'),
+                                    onPressed: () => Navigator.pushNamed(context, '/custom_program_form'),
+                                  ),
+                                );
+                              }
+                              final program = filteredPrograms[index];
+                              final programName = program['name'] as String;
+                              final duration = program['duration'] as String;
+                              final requires1RM = program['requires1RM'] as bool? ?? false;
+                              final lifts = program['lifts'] as List<dynamic>? ?? [];
+                              final isSelected = _selectedProgram == programName;
+
+                              return Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              programName,
+                                              style: Theme.of(context).textTheme.headlineMedium,
+                                            ),
+                                          ),
+                                          if (!isSelected)
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  _selectedProgram = programName;
+                                                  if (requires1RM) {
+                                                    for (var lift in lifts) {
+                                                      _oneRMControllers[lift as String] =
+                                                          TextEditingController();
+                                                    }
+                                                  }
+                                                });
+                                              },
+                                              child: const Text('Select'),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Duration: $duration',
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                      ),
+                                      if (isSelected) ...[
+                                        const SizedBox(height: 16),
+                                        if (requires1RM) ...[
+                                          Text(
+                                            'Enter your 1RMs (${unitNotifier.value}):',
+                                            style: Theme.of(context).textTheme.bodyMedium,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          ...lifts.map((lift) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(bottom: 8.0),
+                                              child: TextField(
+                                                controller: _oneRMControllers[lift as String],
+                                                keyboardType: TextInputType.number,
+                                                decoration: InputDecoration(
+                                                  labelText: '$lift 1RM',
+                                                  labelStyle: Theme.of(context).textTheme.bodySmall,
+                                                  border: OutlineInputBorder(
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  filled: true,
+                                                  fillColor: Theme.of(context).colorScheme.surface,
+                                                ),
+                                                style: Theme.of(context).textTheme.bodyMedium,
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ],
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  _selectedProgram = null;
+                                                  _oneRMControllers.clear();
+                                                });
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.grey,
+                                              ),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: _isStarting
+                                                  ? null
+                                                  : () => _startProgram(programName),
+                                              child: _isStarting
+                                                  ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(
+                                                  color: Colors.white,
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
+                                                  : const Text('Start'),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -418,49 +366,4 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
       },
     );
   }
-
-  Widget _buildFilterChip(String label, String selectedValue, Function(String) onSelected) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selectedValue == label,
-      onSelected: (selected) {
-        if (selected) {
-          onSelected(label);
-        }
-      },
-      selectedColor: Theme.of(context).colorScheme.secondary,
-      labelStyle: TextStyle(
-        color: selectedValue == label ? Colors.white : Theme.of(context).colorScheme.onSurface,
-      ),
-    );
-  }
-}
-
-class CrossPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF87CEEB)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    const double crossSize = 100.0;
-    for (double x = 0; x < size.width; x += crossSize * 1.5) {
-      for (double y = 0; y < size.height; y += crossSize * 1.5) {
-        canvas.drawLine(
-          Offset(x + crossSize / 2, y),
-          Offset(x + crossSize / 2, y + crossSize),
-          paint,
-        );
-        canvas.drawLine(
-          Offset(x + crossSize / 4, y + crossSize / 2),
-          Offset(x + 3 * crossSize / 4, y + crossSize / 2),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

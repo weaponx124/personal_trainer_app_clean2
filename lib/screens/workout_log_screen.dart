@@ -4,6 +4,9 @@ import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
 import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
+import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
+import 'package:personal_trainer_app_clean/core/theme/app_theme.dart';
 
 class WorkoutLogScreen extends StatefulWidget {
   final String unit;
@@ -37,6 +40,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen> {
       return allWorkouts;
     } catch (e) {
       print('Error loading workouts: $e');
+      AppSnackBar.showError(context, 'Failed to load workouts: $e');
       return [];
     }
   }
@@ -56,15 +60,15 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Workout Log'),
-            backgroundColor: const Color(0xFF1C2526),
-            foregroundColor: const Color(0xFFB0B7BF),
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
           ),
           body: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+                colors: [AppTheme.lightBlue.withOpacity(0.2), AppTheme.matteBlack],
               ),
             ),
             child: Stack(
@@ -82,16 +86,13 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen> {
                   future: _workoutsFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator(color: Color(0xFFB22222)));
+                      return const LoadingIndicator();
                     }
                     if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
                       return Center(
                         child: Text(
                           'No workouts logged.',
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF1C2526),
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       );
                     }
@@ -101,24 +102,14 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen> {
                       itemBuilder: (context, index) {
                         final workout = _workouts[index];
                         return Card(
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          color: const Color(0xFFB0B7BF),
                           child: ListTile(
                             title: Text(
                               workout.name,
-                              style: GoogleFonts.oswald(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFB22222),
-                              ),
+                              style: Theme.of(context).textTheme.headlineMedium,
                             ),
                             subtitle: Text(
                               'Date: ${DateTime.fromMillisecondsSinceEpoch(workout.timestamp).toString()}',
-                              style: GoogleFonts.roboto(
-                                fontSize: 14,
-                                color: const Color(0xFF808080),
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
                         );
@@ -137,8 +128,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen> {
                 _loadWorkouts();
               });
             },
-            backgroundColor: const Color(0xFFB22222),
-            child: const Icon(Icons.add, color: Colors.white),
+            child: const Icon(Icons.add),
           ),
         );
       },

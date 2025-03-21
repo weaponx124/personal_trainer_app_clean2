@@ -25,11 +25,11 @@ class Workout {
 
   factory Workout.fromMap(Map<String, dynamic> map) {
     return Workout(
-      id: map['id'] as String? ?? 'unknown_id',
-      programId: map['programId'] as String? ?? 'unknown_program_id',
-      name: map['name'] as String? ?? 'Unknown Workout',
-      exercises: (map['exercises'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
-      timestamp: map['timestamp'] as int? ?? 0,
+      id: map['id'] as String,
+      programId: map['programId'] as String,
+      name: map['name'] as String,
+      exercises: List<Map<String, dynamic>>.from(map['exercises'] ?? []),
+      timestamp: map['timestamp'] as int,
     );
   }
 }

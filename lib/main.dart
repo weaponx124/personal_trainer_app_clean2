@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:personal_trainer_app_clean/core/theme/app_theme.dart';
 import 'package:personal_trainer_app_clean/core/utils/locator.dart';
 import 'package:personal_trainer_app_clean/screens/body_weight_progress_screen.dart';
 import 'package:personal_trainer_app_clean/screens/custom_program_form.dart';
@@ -47,96 +47,8 @@ class MyApp extends StatelessWidget {
           builder: (context, unit, child) {
             return MaterialApp(
               title: 'Seek & Lift',
-              theme: ThemeData(
-                primaryColor: const Color(0xFF1C2526), // Matte Black
-                scaffoldBackgroundColor: const Color(0xFF1C2526), // Matte Black
-                colorScheme: ColorScheme.light(
-                  primary: const Color(0xFF1C2526), // Matte Black
-                  secondary: const Color(0xFFB22222), // Red
-                  surface: const Color(0xFFB0B7BF), // Silver
-                  onSurface: const Color(0xFF1C2526),
-                ),
-                textTheme: GoogleFonts.robotoTextTheme(
-                  ThemeData.light().textTheme.copyWith(
-                    headlineLarge: GoogleFonts.oswald(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFFB22222), // Red
-                    ),
-                    bodyMedium: GoogleFonts.roboto(
-                      fontSize: 16,
-                      color: const Color(0xFF808080), // Darker gray
-                    ),
-                  ),
-                ),
-                elevatedButtonTheme: ElevatedButtonThemeData(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                    textStyle: GoogleFonts.oswald(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    backgroundColor: const Color(0xFFB22222), // Red
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                cardTheme: CardTheme(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  color: const Color(0xFFB0B7BF), // Silver
-                ),
-                progressIndicatorTheme: ProgressIndicatorThemeData(
-                  color: const Color(0xFFB22222), // Red
-                  linearMinHeight: 8,
-                ),
-                useMaterial3: true,
-              ),
-              darkTheme: ThemeData(
-                primaryColor: const Color(0xFF1C2526), // Matte Black
-                scaffoldBackgroundColor: const Color(0xFF1C2526), // Matte Black
-                colorScheme: ColorScheme.dark(
-                  primary: const Color(0xFF1C2526), // Matte Black
-                  secondary: const Color(0xFFB22222), // Red
-                  surface: const Color(0xFFB0B7BF), // Silver
-                  onSurface: const Color(0xFF1C2526),
-                ),
-                textTheme: GoogleFonts.robotoTextTheme(
-                  ThemeData.dark().textTheme.copyWith(
-                    headlineLarge: GoogleFonts.oswald(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFFB22222), // Red
-                    ),
-                    bodyMedium: GoogleFonts.roboto(
-                      fontSize: 16,
-                      color: const Color(0xFF808080), // Darker gray
-                    ),
-                  ),
-                ),
-                elevatedButtonTheme: ElevatedButtonThemeData(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                    textStyle: GoogleFonts.oswald(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    backgroundColor: const Color(0xFFB22222), // Red
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                cardTheme: CardTheme(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  color: const Color(0xFFB0B7BF), // Silver
-                ),
-                progressIndicatorTheme: ProgressIndicatorThemeData(
-                  color: const Color(0xFFB22222), // Red
-                  linearMinHeight: 8,
-                ),
-                useMaterial3: true,
-              ),
+              theme: AppTheme.lightTheme(),
+              darkTheme: AppTheme.darkTheme(),
               themeMode: themeMode,
               initialRoute: '/splash',
               routes: {
@@ -206,10 +118,6 @@ class _MainScreenState extends State<MainScreen> {
               BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Workout Log'),
             ],
             currentIndex: _selectedIndex,
-            selectedItemColor: Theme.of(context).colorScheme.secondary, // Red
-            unselectedItemColor: const Color(0xFF808080), // Medium gray
-            backgroundColor: const Color(0xFF1C2526), // Matte Black
-            elevation: 12,
             onTap: (index) {
               setState(() {
                 _selectedIndex = index;

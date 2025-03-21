@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
+import 'package:personal_trainer_app_clean/main.dart'; // For unitNotifier
 
 void showWorkoutDetailsDialog(
     BuildContext context,
@@ -229,4 +231,139 @@ void showAddExerciseDialog(
       ],
     ),
   );
+}
+
+// Added missing methods
+Future<void> showUpdate1RMsDialog(
+    BuildContext context, Program program, Function(Program) onUpdate) async {
+  final unit = unitNotifier.value; // Use unitNotifier directly
+  final controllers = <String, TextEditingController>{};
+  program.oneRMs.forEach((key, value) {
+    controllers[key] = TextEditingController(text: value.toString());
+  });
+
+  await showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(
+        'Update 1RMs ($unit)',
+        style: GoogleFonts.oswald(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: const Color(0xFFB22222),
+        ),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: program.oneRMs.keys.map((lift) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: TextField(
+                controller: controllers[lift],
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: '$lift 1RM',
+                  labelStyle: GoogleFonts.roboto(
+                    fontSize: 14,
+                    color: const Color(0xFF808080),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFB0B7BF),
+                ),
+                style: GoogleFonts.roboto(
+                  fontSize: 16,
+                  color: const Color(0xFF1C2526),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            final updated1RMs = <String, double>{};
+            controllers.forEach((lift, controller) {
+              updated1RMs[lift] = double.tryParse(controller.text) ?? program.oneRMs[lift];
+            });
+            final updatedProgram = Program(
+              id: program.id,
+              name: program.name,
+              description: program.description,
+              oneRMs: updated1RMs,
+              details: program.details,
+              completed: program.completed,
+              startDate: program.startDate,
+              currentWeek: program.currentWeek,
+              currentSession: program.currentSession,
+              sessionsCompleted: program.sessionsCompleted,
+            );
+            onUpdate(updatedProgram);
+            Navigator.pop(context);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+
+  controllers.forEach((key, controller) => controller.dispose());
+}
+
+Future<void> showEndProgramDialog(
+    BuildContext context, Program program, Function(Program) onUpdate) async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(
+        'End Program',
+        style: GoogleFonts.oswald(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: const Color(0xFFB22222),
+        ),
+      ),
+      content: Text(
+        'Are you sure you want to end this program? This action cannot be undone.',
+        style: GoogleFonts.roboto(
+          fontSize: 14,
+          color: const Color(0xFF808080),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('End'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm == true) {
+    final updatedProgram = Program(
+      id: program.id,
+      name: program.name,
+      description: program.description,
+      oneRMs: program.oneRMs,
+      details: program.details,
+      completed: true,
+      startDate: program.startDate,
+      currentWeek: program.currentWeek,
+      currentSession: program.currentSession,
+      sessionsCompleted: program.sessionsCompleted,
+    );
+    onUpdate(updatedProgram);
+  }
 }

@@ -9,6 +9,9 @@ import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/verse_of_the_day_repository.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
+import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
+import 'package:personal_trainer_app_clean/core/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   final String unit;
@@ -25,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late Future<Map<String, dynamic>?> _lastWorkoutFuture;
   late Future<Map<String, dynamic>> _dailyScriptureFuture;
+  late Future<int> _weeklyWorkoutsFuture;
   Map<String, dynamic>? _currentScripture;
   bool _showCelebration = false;
   String _celebrationMessage = '';
@@ -36,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _lastWorkoutFuture = _getLastWorkout();
     _dailyScriptureFuture = _loadDailyScripture();
+    _weeklyWorkoutsFuture = _getWeeklyWorkoutsCount();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
     print('HomeScreen initialized');
     _checkForMilestones();
@@ -66,25 +71,23 @@ class _HomeScreenState extends State<HomeScreen> {
       };
     } catch (e) {
       print('Error fetching last workout: $e');
+      AppSnackBar.showError(context, 'Failed to load last workout: $e');
       return null;
     }
   }
 
-  Future<List<Workout>> _getWorkoutsForWeek(DateTime startOfWeek, DateTime endOfWeek) async {
+  Future<int> _getWeeklyWorkoutsCount() async {
     try {
-      final programs = ['default_program'];
-      List<Workout> allWorkouts = [];
-      for (var programId in programs) {
-        final workouts = await _workoutRepository.getWorkouts(programId);
-        allWorkouts.addAll(workouts);
-      }
-      return allWorkouts.where((workout) {
-        final timestamp = workout.timestamp;
-        return timestamp >= startOfWeek.millisecondsSinceEpoch && timestamp <= endOfWeek.millisecondsSinceEpoch;
-      }).toList();
+      final now = DateTime.now();
+      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+      final endOfWeek = startOfWeek.add(const Duration(days: 6));
+      final startOfWeekDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+      final endOfWeekDate = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59);
+      final weeklyWorkouts = await _workoutRepository.getWorkoutsForWeek(startOfWeekDate, endOfWeekDate);
+      return weeklyWorkouts.length;
     } catch (e) {
-      print('Error fetching workouts for week: $e');
-      return [];
+      print('Error fetching weekly workouts: $e');
+      return 0;
     }
   }
 
@@ -148,6 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return scripture;
     } catch (e) {
       print('Error loading scriptures: $e');
+      AppSnackBar.showError(context, 'Failed to load scripture: $e');
       return {
         'book': 'Error',
         'chapter': 0,
@@ -165,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final startOfWeekDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
     final endOfWeekDate = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59);
 
-    final weeklyWorkouts = await _getWorkoutsForWeek(startOfWeekDate, endOfWeekDate);
+    final weeklyWorkouts = await _workoutRepository.getWorkoutsForWeek(startOfWeekDate, endOfWeekDate);
     final workoutCount = weeklyWorkouts.length;
     print('Weekly workouts count: $workoutCount');
 
@@ -199,285 +203,259 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     print('HomeScreen rebuilt');
-    return ValueListenableBuilder<String>(
-      valueListenable: unitNotifier,
-      builder: (context, unit, child) {
-        return Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppTheme.lightBlue.withOpacity(0.2), AppTheme.matteBlack],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.1,
+                  child: CustomPaint(
+                    painter: CrossPainter(),
+                    child: Container(),
+                  ),
                 ),
               ),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Opacity(
-                      opacity: 0.1,
-                      child: CustomPaint(
-                        painter: CrossPainter(),
-                        child: Container(),
-                      ),
-                    ),
-                  ),
-                  SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 40.0, bottom: 40.0),
-                            child: Column(
-                              children: [
-                                FadeIn(
-                                  duration: const Duration(milliseconds: 800),
-                                  child: Image.asset(
-                                    'assets/logo_512_transparent.png',
-                                    height: 180,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Seek First, Lift Strong',
-                                  style: GoogleFonts.oswald(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFFB22222),
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+              SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 40.0, bottom: 40.0),
+                        child: Column(
+                          children: [
+                            FadeIn(
+                              duration: const Duration(milliseconds: 800),
+                              child: Image.asset(
+                                'assets/logo_512_transparent.png',
+                                height: 180,
+                                fit: BoxFit.contain,
+                              ),
                             ),
-                          ),
-                          Card(
-                            elevation: 8,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            color: const Color(0xFFB0B7BF),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: FutureBuilder<Map<String, dynamic>?>(
-                                future: _lastWorkoutFuture,
+                            const SizedBox(height: 12),
+                            Text(
+                              'Seek First, Lift Strong',
+                              style: Theme.of(context).textTheme.headlineLarge,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Weekly Stats',
+                                style: Theme.of(context).textTheme.headlineMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              FutureBuilder<int>(
+                                future: _weeklyWorkoutsFuture,
                                 builder: (context, snapshot) {
                                   if (snapshot.connectionState == ConnectionState.waiting) {
-                                    return const CircularProgressIndicator(color: Color(0xFFB22222));
+                                    return const LoadingIndicator();
                                   }
-                                  if (snapshot.hasError || !snapshot.hasData) {
-                                    return Text('Failed to load workout: ${snapshot.error}');
+                                  if (snapshot.hasError) {
+                                    return Text(
+                                      'Error loading weekly stats: ${snapshot.error}',
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    );
                                   }
-                                  final lastWorkout = snapshot.data;
-                                  return Column(
-                                    children: [
-                                      Text(
-                                        lastWorkout != null
-                                            ? 'Last Lift: ${lastWorkout['exercise']} ${lastWorkout['weight']} $unit'
-                                            : 'No Lifts Yet',
-                                        style: GoogleFonts.roboto(
-                                          fontSize: 18,
-                                          color: const Color(0xFF1C2526),
-                                        ),
-                                      ),
-                                    ],
+                                  final weeklyWorkouts = snapshot.data ?? 0;
+                                  return Text(
+                                    'Workouts This Week: $weeklyWorkouts',
+                                    style: Theme.of(context).textTheme.bodyMedium,
                                   );
                                 },
                               ),
-                            ),
+                            ],
                           ),
-                          const SizedBox(height: 20),
-                          Card(
-                            elevation: 8,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            color: const Color(0xFFB0B7BF),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: Text(
-                                'Streak: 3 Days', // Placeholder for now
-                                style: GoogleFonts.roboto(
-                                  fontSize: 18,
-                                  color: const Color(0xFF1C2526),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.fitness_center, size: 24),
-                            label: const Text('Start Today’s Lift', style: TextStyle(fontSize: 18)),
-                            onPressed: () async {
-                              await Navigator.pushNamed(context, '/workout');
-                              setState(() {
-                                _lastWorkoutFuture = _getLastWorkout();
-                              });
-                              await _checkForMilestones();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFB22222),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.list_alt, size: 24),
-                            label: const Text('Choose a Program', style: TextStyle(fontSize: 18)),
-                            onPressed: () => Navigator.pushNamed(context, '/program_selection'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFB22222),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.settings, size: 24),
-                            label: const Text('Settings', style: TextStyle(fontSize: 18)),
-                            onPressed: () async {
-                              await Navigator.pushNamed(context, '/settings');
-                              if (mounted) setState(() {});
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFB22222),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          FutureBuilder<Map<String, dynamic>>(
-                            future: _dailyScriptureFuture,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: FutureBuilder<Map<String, dynamic>?>(
+                            future: _lastWorkoutFuture,
                             builder: (context, snapshot) {
                               if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const CircularProgressIndicator(color: Color(0xFFB22222));
+                                return const LoadingIndicator();
                               }
                               if (snapshot.hasError || !snapshot.hasData) {
-                                return Text('Failed to load scripture: ${snapshot.error}');
+                                return Text(
+                                  'No Lifts Yet',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                );
                               }
-                              final scripture = snapshot.data!;
-                              return Card(
-                                elevation: 8,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                color: const Color(0xFFB0B7BF),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      print('Navigating to Scriptures with: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']}');
-                                      Navigator.pushNamed(
-                                        context,
-                                        '/scriptures',
-                                        arguments: {
-                                          'book': scripture['book'],
-                                          'chapter': scripture['chapter'],
-                                          'verse': scripture['verse'],
-                                        },
-                                      );
-                                    },
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          'Verse of the Day',
-                                          style: GoogleFonts.oswald(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color(0xFFB22222),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          '${scripture['book']} ${scripture['chapter']}:${scripture['verse']}',
-                                          style: GoogleFonts.oswald(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color(0xFFB22222),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          scripture['text'],
-                                          style: GoogleFonts.roboto(
-                                            fontSize: 14,
-                                            color: const Color(0xFF1C2526),
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                              final lastWorkout = snapshot.data;
+                              return Text(
+                                lastWorkout != null
+                                    ? 'Last Lift: ${lastWorkout['exercise']} ${lastWorkout['weight']} ${widget.unit}'
+                                    : 'No Lifts Yet',
+                                style: Theme.of(context).textTheme.bodyMedium,
                               );
                             },
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_showCelebration)
-              FadeIn(
-                duration: const Duration(milliseconds: 500),
-                child: Container(
-                  color: Colors.black54,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ConfettiWidget(
-                          confettiController: _confettiController,
-                          blastDirectionality: BlastDirectionality.explosive,
-                          shouldLoop: false,
-                          colors: const [
-                            Colors.red,
-                            Colors.blue,
-                            Colors.green,
-                            Colors.yellow,
-                          ],
-                        ),
-                        Text(
-                          '🎉 Celebration! 🎉',
-                          style: GoogleFonts.oswald(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                      const SizedBox(height: 20),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Text(
+                            'Streak: 3 Days', // Placeholder for now
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _celebrationMessage,
-                          style: GoogleFonts.roboto(
-                            fontSize: 24,
-                            color: Colors.white,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _showCelebration = false;
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFB22222),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Continue'),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.fitness_center, size: 24),
+                        label: const Text('Start Today’s Lift'),
+                        onPressed: () async {
+                          await Navigator.pushNamed(context, '/workout');
+                          setState(() {
+                            _lastWorkoutFuture = _getLastWorkout();
+                            _weeklyWorkoutsFuture = _getWeeklyWorkoutsCount();
+                          });
+                          await _checkForMilestones();
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.list_alt, size: 24),
+                        label: const Text('Choose a Program'),
+                        onPressed: () => Navigator.pushNamed(context, '/program_selection'),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.settings, size: 24),
+                        label: const Text('Settings'),
+                        onPressed: () async {
+                          await Navigator.pushNamed(context, '/settings');
+                          if (mounted) setState(() {});
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      FutureBuilder<Map<String, dynamic>>(
+                        future: _dailyScriptureFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const LoadingIndicator();
+                          }
+                          if (snapshot.hasError || !snapshot.hasData) {
+                            return Text(
+                              'Failed to load scripture: ${snapshot.error}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            );
+                          }
+                          final scripture = snapshot.data!;
+                          return Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: GestureDetector(
+                                onTap: () {
+                                  print('Navigating to Scriptures with: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']}');
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/scriptures',
+                                    arguments: {
+                                      'book': scripture['book'],
+                                      'chapter': scripture['chapter'],
+                                      'verse': scripture['verse'],
+                                    },
+                                  );
+                                },
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'Verse of the Day',
+                                      style: Theme.of(context).textTheme.headlineMedium,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      '${scripture['book']} ${scripture['chapter']}:${scripture['verse']}',
+                                      style: Theme.of(context).textTheme.headlineMedium,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      scripture['text'],
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),
-          ],
-        );
-      },
+            ],
+          ),
+        ),
+        if (_showCelebration)
+          FadeIn(
+            duration: const Duration(milliseconds: 500),
+            child: Container(
+              color: Colors.black54,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ConfettiWidget(
+                      confettiController: _confettiController,
+                      blastDirectionality: BlastDirectionality.explosive,
+                      shouldLoop: false,
+                      colors: const [
+                        Colors.red,
+                        Colors.blue,
+                        Colors.green,
+                        Colors.yellow,
+                      ],
+                    ),
+                    Text(
+                      '🎉 Celebration! 🎉',
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _celebrationMessage,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _showCelebration = false;
+                        });
+                      },
+                      child: const Text('Continue'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
