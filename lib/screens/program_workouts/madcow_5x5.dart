@@ -1,14 +1,13 @@
-// lib/screens/program_workouts/madcow_5x5.dart
 import '../program_logic.dart';
 
 class Madcow5x5Workout {
   static Map<String, dynamic> generate(Map<String, dynamic> programDetails, int currentWeek, int currentSession) {
     final unit = programDetails['details']?['unit'] as String? ?? 'lbs';
     final details = programDetails['details'] as Map<String, dynamic>? ?? {};
-    final oneRMsRaw = details['1RMs'] as Map<String, dynamic>?;
+    final oneRMsRaw = programDetails['oneRMs'] as Map<String, dynamic>?;
 
     // Debug: Log the raw 1RMs before conversion
-    print('Madcow 5x5 - Raw 1RMs from programDetails[\'details\']: $oneRMsRaw');
+    print('Madcow 5x5 - Raw 1RMs from programDetails[\'oneRMs\']: $oneRMsRaw');
 
     // Convert 1RMs to ensure all values are doubles
     final oneRMs = oneRMsRaw != null
@@ -47,7 +46,7 @@ class Madcow5x5Workout {
     // Estimate training maxes for Barbell Row and Incline Bench Press based on Bench 1RM
     final bench1RM = adjusted1RMs['Bench']!;
     final barbellRow1RM = bench1RM * 0.75; // Adjusted to 75% of Bench 1RM
-    final inclineBench1RM = bench1RM * 0.6;  // Adjusted to 60% of Bench 1RM
+    final inclineBench1RM = bench1RM * 0.6; // Adjusted to 60% of Bench 1RM
     final barbellRowTrainingMax = barbellRow1RM * 0.9;
     final inclineBenchTrainingMax = inclineBench1RM * 0.9;
 

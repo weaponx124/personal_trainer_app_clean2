@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
+import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
-import 'package:personal_trainer_app_clean/core/theme/app_theme.dart'; // Added import
+import 'package:personal_trainer_app_clean/core/theme/app_theme.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -61,7 +62,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         );
         await _workoutRepository.insertWorkout('default_program', workout);
         AppSnackBar.showSuccess(context, 'Workout saved successfully');
-        Navigator.pop(context);
+        // Navigate back to main screen by clearing childScreenNotifier
+        childScreenNotifier.value = null;
       } catch (e) {
         AppSnackBar.showError(context, 'Failed to save workout: $e');
       } finally {
@@ -93,7 +95,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+            // Navigate back to main screen by clearing childScreenNotifier
+            childScreenNotifier.value = null;
           },
         ),
       ),

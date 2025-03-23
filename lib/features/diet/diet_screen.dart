@@ -12,6 +12,8 @@ import 'package:personal_trainer_app_clean/core/data/models/shopping_list_item.d
 import 'package:personal_trainer_app_clean/core/data/models/water_intake.dart';
 import 'package:personal_trainer_app_clean/core/services/diet_service.dart';
 import 'package:personal_trainer_app_clean/core/utils/cross_painter.dart';
+import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 import 'widgets/daily_summary.dart';
 import 'widgets/saved_recipes.dart';
 import 'widgets/shopping_list.dart';
@@ -26,7 +28,8 @@ class DietScreen extends StatefulWidget {
   _DietScreenState createState() => _DietScreenState();
 }
 
-class _DietScreenState extends State<DietScreen> {
+class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final MealRepository _mealRepository = MealRepository();
   final RecipeRepository _recipeRepository = RecipeRepository();
   final ShoppingListRepository _shoppingListRepository = ShoppingListRepository();
@@ -44,18 +47,21 @@ class _DietScreenState extends State<DietScreen> {
   double _dailyCarbs = 0.0;
   double _dailyFat = 0.0;
   double _dailyWater = 0.0;
+  double _proteinGoal = 0.0;
+  double _carbsGoal = 0.0;
+  double _fatGoal = 0.0;
   String _selectedMealType = 'Breakfast'; // Options: Breakfast, Lunch, Dinner, Snack
   List<Map<String, dynamic>> _recommendedFoods = [];
   List<ShoppingListItem> _shoppingList = [];
-  bool _isLoading = true; // Added to show loading state
-  String? _errorMessage; // Added to display error message
+  bool _isLoading = true;
+  String? _errorMessage;
 
   static const String _customFoodsKey = 'customFoods';
 
   @override
   void initState() {
     super.initState();
-    // Delay loading data until after the first frame to ensure context is valid
+    _tabController = TabController(length: 5, vsync: this); // Added Preferences tab
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
@@ -92,6 +98,7 @@ class _DietScreenState extends State<DietScreen> {
         'dietaryPreference': 'none',
         'calorieGoal': 2000,
         'macroGoals': {'protein': 25, 'carbs': 50, 'fat': 25},
+        'waterGoal': 64,
         'allergies': [],
       };
 
@@ -152,6 +159,18 @@ class _DietScreenState extends State<DietScreen> {
         water += entry.amount;
       }
 
+      // Calculate macro goals based on calorie goal and percentages
+      final calorieGoal = (dietPreferences['calorieGoal'] as int? ?? 2000).toDouble();
+      final macroGoals = dietPreferences['macroGoals'] as Map<String, dynamic>? ?? {'protein': 25, 'carbs': 50, 'fat': 25};
+      final proteinPercentage = (macroGoals['protein'] as int? ?? 25).toDouble();
+      final carbsPercentage = (macroGoals['carbs'] as int? ?? 50).toDouble();
+      final fatPercentage = (macroGoals['fat'] as int? ?? 25).toDouble();
+
+      // 1g protein = 4 kcal, 1g carbs = 4 kcal, 1g fat = 9 kcal
+      final proteinGoal = (calorieGoal * (proteinPercentage / 100)) / 4;
+      final carbsGoal = (calorieGoal * (carbsPercentage / 100)) / 4;
+      final fatGoal = (calorieGoal * (fatPercentage / 100)) / 9;
+
       // Generate food recommendations
       print('Step 10: Generating recommendations');
       final recommendedFoods = _dietService.generateRecommendations(deduplicatedFoodDatabase, dietPreferences);
@@ -170,6 +189,9 @@ class _DietScreenState extends State<DietScreen> {
         _dailyCarbs = carbs;
         _dailyFat = fat;
         _dailyWater = water;
+        _proteinGoal = proteinGoal;
+        _carbsGoal = carbsGoal;
+        _fatGoal = fatGoal;
         _recommendedFoods = recommendedFoods;
         _isLoading = false;
         print('Data loaded: ${meals.length} meals, ${recommendedFoods.length} recommendations, ${shoppingList.length} shopping list items, ${recipes.length} recipes');
@@ -388,20 +410,35 @@ class _DietScreenState extends State<DietScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButton<String>(
-                value: selectedFoodId,
-                hint: const Text('Select Food or Recipe'),
-                isExpanded: true,
-                items: allFoods.map((food) {
-                  return DropdownMenuItem<String>(
-                    value: food['uniqueId'] as String,
-                    child: Text(food['isRecipe'] == true ? '${food['name']} (Recipe)' : food['name'] as String),
-                  );
-                }).toList(),
-                onChanged: (value) {
+              Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<String>.empty();
+                  }
+                  return allFoods.where((food) {
+                    final name = food['name'] as String;
+                    return name.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                  }).map((food) => food['uniqueId'] as String);
+                },
+                displayStringForOption: (String uniqueId) {
+                  final food = allFoods.firstWhere((f) => f['uniqueId'] == uniqueId);
+                  return food['isRecipe'] == true ? '${food['name']} (Recipe)' : food['name'] as String;
+                },
+                onSelected: (String uniqueId) {
                   setDialogState(() {
-                    selectedFoodId = value;
+                    selectedFoodId = uniqueId;
                   });
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'Select Food or Recipe',
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (value) => onFieldSubmitted(),
+                  );
                 },
               ),
               const SizedBox(height: 16),
@@ -457,6 +494,178 @@ class _DietScreenState extends State<DietScreen> {
         ingredients: food['ingredients'] as List<Map<String, dynamic>>?,
       );
       await _mealRepository.insertMeal(meal);
+      await _loadData();
+    }
+  }
+
+  Future<void> _editMeal(Meal meal) async {
+    // Combine _foodDatabase, _customFoods, and _recipes
+    final combinedFoods = [
+      ..._foodDatabase.map((food) => ({...food, 'isRecipe': false})),
+      ..._customFoods.map((food) => ({...food, 'isRecipe': false})),
+      ..._recipes.map((recipe) => ({
+        'name': recipe.name,
+        'calories': recipe.calories,
+        'protein': recipe.protein,
+        'carbs': recipe.carbs,
+        'fat': recipe.fat,
+        'sodium': recipe.sodium,
+        'fiber': recipe.fiber,
+        'suitable_for': ['recipe'],
+        'isRecipe': true,
+        'ingredients': recipe.ingredients,
+      })),
+    ];
+
+    // Deduplicate combinedFoods, preserving both foods and recipes even if they have the same name
+    final Map<String, List<Map<String, dynamic>>> groupedFoods = {};
+    for (var food in combinedFoods) {
+      final name = food['name'] as String;
+      final key = '$name:${food['isRecipe'] ? 'recipe' : 'food'}';
+      if (!groupedFoods.containsKey(key)) {
+        groupedFoods[key] = [];
+      }
+      groupedFoods[key]!.add(food);
+    }
+    final deduplicatedFoods = groupedFoods.values.expand((list) => list).toList();
+
+    // Create a list of foods with unique identifiers
+    final allFoods = deduplicatedFoods.asMap().entries.map((entry) {
+      final index = entry.key;
+      final food = entry.value;
+      final type = food['isRecipe'] == true ? 'recipe' : (food.containsKey('uniqueId') && (food['uniqueId'] as String).startsWith('custom') ? 'custom' : 'food');
+      return {
+        ...food,
+        'uniqueId': '$type:$index:${food['name']}', // Unique identifier
+      };
+    }).toList();
+
+    // Find the current food's uniqueId
+    String? selectedFoodId;
+    for (var food in allFoods) {
+      if (food['name'] == meal.food && food['isRecipe'] == meal.isRecipe) {
+        selectedFoodId = food['uniqueId'] as String;
+        break;
+      }
+    }
+    if (selectedFoodId == null && allFoods.isNotEmpty) {
+      selectedFoodId = allFoods[0]['uniqueId'] as String;
+    }
+    final TextEditingController amountController = TextEditingController(text: meal.servings.toString());
+    String selectedMealType = meal.mealType;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Meal'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButton<String>(
+                value: selectedMealType,
+                isExpanded: true,
+                items: <String>['Breakfast', 'Lunch', 'Dinner', 'Snack'].map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setDialogState(() {
+                      selectedMealType = newValue;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<String>.empty();
+                  }
+                  return allFoods.where((food) {
+                    final name = food['name'] as String;
+                    return name.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                  }).map((food) => food['uniqueId'] as String);
+                },
+                displayStringForOption: (String uniqueId) {
+                  final food = allFoods.firstWhere((f) => f['uniqueId'] == uniqueId);
+                  return food['isRecipe'] == true ? '${food['name']} (Recipe)' : food['name'] as String;
+                },
+                onSelected: (String uniqueId) {
+                  setDialogState(() {
+                    selectedFoodId = uniqueId;
+                  });
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  controller.text = allFoods.firstWhere((f) => f['uniqueId'] == selectedFoodId)['name'] as String;
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'Select Food or Recipe',
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (value) => onFieldSubmitted(),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Amount (servings)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (selectedFoodId != null && amountController.text.isNotEmpty) {
+                  Navigator.pop(context, true);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please select a food or recipe and enter servings')),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      await _mealRepository.deleteMeal(meal.id); // Remove the old meal
+      final servings = double.tryParse(amountController.text) ?? 1.0;
+      // Find the food by its uniqueId
+      final food = allFoods.firstWhere((f) => f['uniqueId'] == selectedFoodId);
+      final updatedMeal = Meal(
+        id: '', // Will be set in the repository
+        food: food['name'],
+        mealType: selectedMealType,
+        calories: ((food['calories'] as num?)?.toDouble() ?? 0.0) * servings,
+        protein: ((food['protein'] as num?)?.toDouble() ?? 0.0) * servings,
+        carbs: ((food['carbs'] as num?)?.toDouble() ?? 0.0) * servings,
+        fat: ((food['fat'] as num?)?.toDouble() ?? 0.0) * servings,
+        sodium: ((food['sodium'] as num?)?.toDouble() ?? 0.0) * servings,
+        fiber: ((food['fiber'] as num?)?.toDouble() ?? 0.0) * servings,
+        timestamp: meal.timestamp,
+        servings: servings,
+        isRecipe: food['isRecipe'] as bool? ?? false,
+        ingredients: food['ingredients'] as List<Map<String, dynamic>>?,
+      );
+      await _mealRepository.insertMeal(updatedMeal);
       await _loadData();
     }
   }
@@ -524,6 +733,9 @@ class _DietScreenState extends State<DietScreen> {
     );
     final TextEditingController fatController = TextEditingController(
       text: (_dietPreferences['macroGoals']?['fat'] as int? ?? 25).toString(),
+    );
+    final TextEditingController waterController = TextEditingController(
+      text: (_dietPreferences['waterGoal'] as int? ?? 64).toString(),
     );
     List<String> allergies = List<String>.from(_dietPreferences['allergies'] as List<dynamic>? ?? []);
     final TextEditingController allergyController = TextEditingController();
@@ -606,6 +818,15 @@ class _DietScreenState extends State<DietScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextField(
+                  controller: waterController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Daily Water Goal (oz)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
                   controller: allergyController,
                   decoration: const InputDecoration(
                     labelText: 'Add Allergy (e.g., peanuts)',
@@ -670,6 +891,7 @@ class _DietScreenState extends State<DietScreen> {
           'carbs': int.tryParse(carbsController.text) ?? 50,
           'fat': int.tryParse(fatController.text) ?? 25,
         },
+        'waterGoal': int.tryParse(waterController.text) ?? 64,
         'allergies': allergies,
       };
       print('Saving diet preferences: $updatedPreferences');
@@ -680,235 +902,194 @@ class _DietScreenState extends State<DietScreen> {
   }
 
   @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Diet'),
-        backgroundColor: const Color(0xFF1C2526),
-        foregroundColor: const Color(0xFFB0B7BF),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.red, fontSize: 16),
-              textAlign: TextAlign.center,
+    return ValueListenableBuilder<Color>(
+      valueListenable: accentColorNotifier,
+      builder: (context, accentColor, child) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadData,
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      )
-          : Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
           ),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.1,
-                child: CustomPaint(
-                  painter: CrossPainter(),
-                  child: Container(),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.1,
+                  child: CustomPaint(
+                    painter: CrossPainter(),
+                    child: Container(),
+                  ),
                 ),
               ),
-            ),
-            SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                  ? Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Daily Summary
-                    DailySummary(
-                      dailyCalories: _dailyCalories,
-                      calorieGoal: _dietPreferences['calorieGoal']?.toDouble() ?? 2000,
-                      dailyProtein: _dailyProtein,
-                      dailyCarbs: _dailyCarbs,
-                      dailyFat: _dailyFat,
-                      dailyWater: _dailyWater,
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 16),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-                    // Diet Preferences
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.settings, size: 24),
-                      label: const Text('Edit Diet Preferences', style: TextStyle(fontSize: 18)),
-                      onPressed: _editDietPreferences,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFB22222),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Add Custom Food
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.add_circle, size: 24),
-                      label: const Text('Add Custom Food', style: TextStyle(fontSize: 18)),
-                      onPressed: _addCustomFood,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFB22222),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Add Recipe
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.kitchen, size: 24),
-                      label: const Text('Create Recipe', style: TextStyle(fontSize: 18)),
-                      onPressed: _addRecipe,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFB22222),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Saved Recipes
-                    SavedRecipes(
-                      recipes: _recipes,
-                      onDelete: _deleteRecipe,
-                    ),
-                    const SizedBox(height: 16),
-                    // Food Recommendations
-                    Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      color: const Color(0xFFB0B7BF),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Recommended Foods',
-                              style: GoogleFonts.oswald(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFB22222),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _recommendedFoods.isEmpty
-                                ? const Text('No recommendations available.')
-                                : Column(
-                              children: _recommendedFoods.map((food) => ListTile(
-                                title: Text(
-                                  food['name'] as String,
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 16,
-                                    color: const Color(0xFF1C2526),
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  '${food['calories']} kcal, ${food['protein']}g protein',
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 14,
-                                    color: const Color(0xFF808080),
-                                  ),
-                                ),
-                              )).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Meal Logging
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButton<String>(
-                            value: _selectedMealType,
-                            isExpanded: true,
-                            items: <String>['Breakfast', 'Lunch', 'Dinner', 'Snack'].map((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(
-                                  value,
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 16,
-                                    color: const Color(0xFF1C2526),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              if (newValue != null) {
-                                setState(() {
-                                  _selectedMealType = newValue;
-                                });
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton(
-                          onPressed: _addMeal,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFB22222),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Log Meal'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Water Logging
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.local_drink, size: 24),
-                      label: const Text('Log Water', style: TextStyle(fontSize: 18)),
-                      onPressed: _addWater,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFB22222),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Meal Log
-                    MealLog(
-                      meals: _meals,
-                      onDelete: _deleteMeal,
-                    ),
-                    const SizedBox(height: 16),
-                    // Shopping List
-                    ShoppingList(
-                      shoppingList: _shoppingList,
-                      onToggle: _toggleShoppingItem,
-                      onGenerate: _generateShoppingList,
-                      onClear: _clearShoppingList,
+                    ElevatedButton(
+                      onPressed: _loadData,
+                      child: const Text('Retry'),
                     ),
                   ],
                 ),
+              )
+                  : Column(
+                children: [
+                  TabBar(
+                    controller: _tabController,
+                    labelColor: accentColor,
+                    unselectedLabelColor: const Color(0xFF808080),
+                    indicatorColor: accentColor,
+                    tabs: const [
+                      Tab(text: 'Daily Summary'),
+                      Tab(text: 'Meal Log'),
+                      Tab(text: 'Recipes'),
+                      Tab(text: 'Shopping List'),
+                      Tab(text: 'Preferences'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        // Daily Summary Tab
+                        DailySummary(
+                          dailyCalories: _dailyCalories,
+                          calorieGoal: _dietPreferences['calorieGoal']?.toDouble() ?? 2000,
+                          dailyProtein: _dailyProtein,
+                          dailyCarbs: _dailyCarbs,
+                          dailyFat: _dailyFat,
+                          dailyWater: _dailyWater,
+                          proteinGoal: _proteinGoal,
+                          carbsGoal: _carbsGoal,
+                          fatGoal: _fatGoal,
+                          waterGoal: _dietPreferences['waterGoal']?.toDouble() ?? 64,
+                          onAddWater: _addWater,
+                        ),
+                        // Meal Log Tab
+                        MealLog(
+                          meals: _meals,
+                          onDelete: _deleteMeal,
+                          onEdit: _editMeal,
+                          onAddCustomFood: _addCustomFood,
+                          onAddRecipe: _addRecipe,
+                          onAddMeal: _addMeal,
+                          selectedMealType: _selectedMealType,
+                          onMealTypeChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                _selectedMealType = newValue;
+                              });
+                            }
+                          },
+                        ),
+                        // Saved Recipes Tab
+                        SavedRecipes(
+                          recipes: _recipes,
+                          onDelete: _deleteRecipe,
+                          onAddRecipe: _addRecipe,
+                        ),
+                        // Shopping List Tab
+                        ShoppingList(
+                          shoppingList: _shoppingList,
+                          onToggle: _toggleShoppingItem,
+                          onGenerate: _generateShoppingList,
+                          onClear: _clearShoppingList,
+                        ),
+                        // Preferences Tab
+                        SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Diet Preferences
+                                ElevatedButton.icon(
+                                  icon: const Icon(Icons.settings, size: 24),
+                                  label: const Text('Edit Diet Preferences', style: TextStyle(fontSize: 18)),
+                                  onPressed: _editDietPreferences,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: accentColor,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                // Food Recommendations
+                                Card(
+                                  elevation: 4,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  color: const Color(0xFFB0B7BF),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Recommended Foods',
+                                          style: GoogleFonts.oswald(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: accentColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        _recommendedFoods.isEmpty
+                                            ? const Text('No recommendations available.')
+                                            : Column(
+                                          children: _recommendedFoods.map((food) => ListTile(
+                                            title: Text(
+                                              food['name'] as String,
+                                              style: GoogleFonts.roboto(
+                                                fontSize: 16,
+                                                color: const Color(0xFF1C2526),
+                                              ),
+                                            ),
+                                            subtitle: Text(
+                                              '${food['calories']} kcal, ${food['protein']}g protein',
+                                              style: GoogleFonts.roboto(
+                                                fontSize: 14,
+                                                color: const Color(0xFF808080),
+                                              ),
+                                            ),
+                                          )).toList(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addMeal,
-        backgroundColor: const Color(0xFFB22222),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

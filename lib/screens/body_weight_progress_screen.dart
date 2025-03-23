@@ -9,9 +9,9 @@ import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 
 class BodyWeightProgressScreen extends StatefulWidget {
-  final String unit;
+  final String? unit;
 
-  const BodyWeightProgressScreen({super.key, required this.unit});
+  const BodyWeightProgressScreen({super.key, this.unit});
 
   @override
   _BodyWeightProgressScreenState createState() => _BodyWeightProgressScreenState();
@@ -52,14 +52,14 @@ class _BodyWeightProgressScreenState extends State<BodyWeightProgressScreen> {
   double get _maxWeight {
     if (_progressData.isEmpty) return 0.0;
     return _progressData
-        .map((progress) => progress.weight) // weight is required in Progress
+        .map((progress) => progress.weight)
         .reduce((a, b) => a > b ? a : b);
   }
 
   double get _minWeight {
     if (_progressData.isEmpty) return 0.0;
     return _progressData
-        .map((progress) => progress.weight) // weight is required in Progress
+        .map((progress) => progress.weight)
         .reduce((a, b) => a < b ? a : b);
   }
 
@@ -133,6 +133,13 @@ class _BodyWeightProgressScreenState extends State<BodyWeightProgressScreen> {
             title: const Text('Body Weight Progress'),
             backgroundColor: const Color(0xFF1C2526),
             foregroundColor: const Color(0xFFB0B7BF),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
+              onPressed: () {
+                // Navigate back to ProgressScreen by updating childScreenNotifier
+                childScreenNotifier.value = null;
+              },
+            ),
           ),
           body: Container(
             decoration: BoxDecoration(
@@ -210,7 +217,7 @@ class _BodyWeightProgressScreenState extends State<BodyWeightProgressScreen> {
                                                   reservedSize: 40,
                                                   getTitlesWidget: (value, meta) {
                                                     return Text(
-                                                      '${value.toInt()} ${widget.unit}',
+                                                      '${value.toInt()} ${unit}',
                                                       style: GoogleFonts.roboto(
                                                         fontSize: 12,
                                                         color: const Color(0xFF808080),
@@ -270,7 +277,7 @@ class _BodyWeightProgressScreenState extends State<BodyWeightProgressScreen> {
                                                   return touchedSpots.map((spot) {
                                                     final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
                                                     return LineTooltipItem(
-                                                      '${date.month}/${date.day}: ${spot.y} ${widget.unit}',
+                                                      '${date.month}/${date.day}: ${spot.y} ${unit}',
                                                       GoogleFonts.roboto(
                                                         fontSize: 12,
                                                         color: const Color(0xFF1C2526),
@@ -294,7 +301,7 @@ class _BodyWeightProgressScreenState extends State<BodyWeightProgressScreen> {
                             controller: _weightController,
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              labelText: 'Weight (${widget.unit})',
+                              labelText: 'Weight (${unit})',
                               labelStyle: GoogleFonts.roboto(
                                 fontSize: 14,
                                 color: const Color(0xFF808080),
@@ -338,7 +345,7 @@ class _BodyWeightProgressScreenState extends State<BodyWeightProgressScreen> {
                                     color: const Color(0xFFB0B7BF),
                                     child: ListTile(
                                       title: Text(
-                                        '${progress.weight} ${widget.unit}',
+                                        '${progress.weight} ${unit}',
                                         style: GoogleFonts.oswald(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,

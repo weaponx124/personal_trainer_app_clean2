@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/progress.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/progress_repository.dart';
+import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/screens/body_weight_progress_screen.dart';
+import 'package:personal_trainer_app_clean/screens/settings_screen.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 
@@ -152,7 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     color: const Color(0xFFB0B7BF),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0), // Removed 'the'
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -197,8 +200,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => Navigator.pushNamed(context, '/body_weight_progress'),
+                    onPressed: () {
+                      childScreenNotifier.value = const BodyWeightProgressScreen();
+                    },
                     child: const Text('Track Body Weight'),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      childScreenNotifier.value = const SettingsScreen();
+                    },
+                    child: const Text('Settings'),
                   ),
                 ],
               ),

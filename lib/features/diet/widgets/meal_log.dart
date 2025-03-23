@@ -1,80 +1,147 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/meal.dart';
+import 'package:personal_trainer_app_clean/main.dart';
 
 class MealLog extends StatelessWidget {
   final List<Meal> meals;
+  final VoidCallback onAddCustomFood;
+  final VoidCallback onAddRecipe;
+  final VoidCallback onAddMeal;
+  final Function(Meal) onEdit;
   final Function(String) onDelete;
+  final String selectedMealType;
+  final ValueChanged<String?> onMealTypeChanged;
 
   const MealLog({
-    Key? key,
+    super.key,
     required this.meals,
+    required this.onAddCustomFood,
+    required this.onAddRecipe,
+    required this.onAddMeal,
+    required this.onEdit,
     required this.onDelete,
-  }) : super(key: key);
+    required this.selectedMealType,
+    required this.onMealTypeChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).millisecondsSinceEpoch;
+    return ValueListenableBuilder<Color>(
+      valueListenable: accentColorNotifier,
+      builder: (context, accentColor, child) {
+        final now = DateTime.now();
+        final startOfDay = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+        final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).millisecondsSinceEpoch;
 
-    final todayMeals = meals.where((meal) {
-      final timestamp = meal.timestamp;
-      return timestamp >= startOfDay && timestamp <= endOfDay;
-    }).toList();
+        final todayMeals = meals.where((meal) {
+          final timestamp = meal.timestamp;
+          return timestamp >= startOfDay && timestamp <= endOfDay;
+        }).toList();
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: const Color(0xFFB0B7BF),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Today\'s Meals',
-              style: GoogleFonts.oswald(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFFB22222),
-              ),
-            ),
-            const SizedBox(height: 8),
-            todayMeals.isEmpty
-                ? const Text('No meals logged yet.')
-                : ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: todayMeals.length,
-              itemBuilder: (context, index) {
-                final meal = todayMeals[index];
-                final date = DateTime.fromMillisecondsSinceEpoch(meal.timestamp);
-                return ListTile(
-                  title: Text(
-                    '${meal.mealType}: ${meal.food}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 16,
-                      color: const Color(0xFF1C2526),
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButton<String>(
+                        value: selectedMealType,
+                        isExpanded: true,
+                        items: <String>['Breakfast', 'Lunch', 'Dinner', 'Snack'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value,
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                color: const Color(0xFF1C2526),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: onMealTypeChanged,
+                      ),
                     ),
-                  ),
-                  subtitle: Text(
-                    '${meal.calories} kcal, ${date.hour}:${date.minute.toString().padLeft(2, '0')}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 14,
-                      color: const Color(0xFF808080),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: onAddMeal,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentColor,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Log Meal'),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: onAddCustomFood,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.white,
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Color(0xFFB22222)),
-                    onPressed: () => onDelete(meal.id),
+                  child: const Text('Add Custom Food'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: onAddRecipe,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.white,
                   ),
-                );
-              },
+                  child: const Text('Create Recipe'),
+                ),
+                const SizedBox(height: 16),
+                todayMeals.isEmpty
+                    ? const Center(child: Text('No meals logged for today.'))
+                    : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: todayMeals.length,
+                  itemBuilder: (context, index) {
+                    final meal = todayMeals[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(
+                          '${meal.mealType}: ${meal.food}',
+                          style: GoogleFonts.roboto(
+                            fontSize: 16,
+                            color: const Color(0xFF1C2526),
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${meal.calories.toStringAsFixed(1)} kcal, ${meal.protein.toStringAsFixed(1)}g protein',
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            color: const Color(0xFF808080),
+                          ),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, color: accentColor),
+                              onPressed: () => onEdit(meal),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete, color: accentColor),
+                              onPressed: () => onDelete(meal.id),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
-import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
+import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/screens/program_details_widgets.dart';
+import 'package:personal_trainer_app_clean/screens/program_selection_screen.dart' as programs;
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
-import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 import 'package:uuid/uuid.dart';
 
 class CustomProgramForm extends StatefulWidget {
@@ -18,34 +19,51 @@ class _CustomProgramFormState extends State<CustomProgramForm> {
   final ProgramRepository _programRepository = ProgramRepository();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  bool _isSaving = false;
+  final List<Map<String, TextEditingController>> _exercises = [];
+  bool _isLoading = false;
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _addExercise();
+  }
+
+  void _addExercise() {
+    setState(() {
+      _exercises.add({
+        'name': TextEditingController(),
+        'sets': TextEditingController(),
+        'reps': TextEditingController(),
+        'weight': TextEditingController(),
+      });
+    });
   }
 
   Future<void> _saveProgram() async {
-    if (_nameController.text.isEmpty) {
-      AppSnackBar.showError(context, 'Please enter a program name');
-      return;
-    }
-
     setState(() {
-      _isSaving = true;
+      _isLoading = true;
     });
-
     try {
       final programId = Uuid().v4();
       final startDate = DateTime.now().toIso8601String().split('T')[0];
+      final exercises = _exercises.map((exercise) {
+        return {
+          'name': exercise['name']!.text,
+          'sets': int.tryParse(exercise['sets']!.text) ?? 0,
+          'reps': int.tryParse(exercise['reps']!.text) ?? 0,
+          'weight': double.tryParse(exercise['weight']!.text) ?? 0.0,
+        };
+      }).toList();
+
       final newProgram = Program(
         id: programId,
         name: _nameController.text,
         description: _descriptionController.text,
-        oneRMs: {}, // Custom programs typically don't require 1RMs
-        details: {}, // Add any custom details if needed
+        oneRMs: {},
+        details: {
+          'unit': unitNotifier.value, // Use the current unit
+          'exercises': exercises,
+        },
         completed: false,
         startDate: startDate,
         currentWeek: 1,
@@ -55,14 +73,28 @@ class _CustomProgramFormState extends State<CustomProgramForm> {
 
       await _programRepository.insertProgram(newProgram);
       AppSnackBar.showSuccess(context, 'Custom program created successfully!');
-      Navigator.pop(context);
+      // Navigate back to ProgramSelectionScreen by updating childScreenNotifier
+      childScreenNotifier.value = const programs.ProgramSelectionScreen();
     } catch (e) {
       AppSnackBar.showError(context, 'Failed to create program: $e');
     } finally {
       setState(() {
-        _isSaving = false;
+        _isLoading = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    for (var exercise in _exercises) {
+      exercise['name']!.dispose();
+      exercise['sets']!.dispose();
+      exercise['reps']!.dispose();
+      exercise['weight']!.dispose();
+    }
+    super.dispose();
   }
 
   @override
@@ -72,6 +104,13 @@ class _CustomProgramFormState extends State<CustomProgramForm> {
         title: const Text('Create Custom Program'),
         backgroundColor: const Color(0xFF1C2526),
         foregroundColor: const Color(0xFFB0B7BF),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
+          onPressed: () {
+            // Navigate back to ProgramSelectionScreen by updating childScreenNotifier
+            childScreenNotifier.value = const programs.ProgramSelectionScreen();
+          },
+        ),
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -81,76 +120,80 @@ class _CustomProgramFormState extends State<CustomProgramForm> {
             colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
           ),
         ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.1,
-                child: CustomPaint(
-                  painter: CrossPainter(),
-                  child: Container(),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExerciseInputWidget(
+                  controller: _nameController,
+                  label: 'Program Name',
                 ),
-              ),
-            ),
-            if (_isSaving)
-              const Center(child: LoadingIndicator())
-            else
-              SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Program Name',
-                          labelStyle: GoogleFonts.roboto(
-                            fontSize: 14,
-                            color: const Color(0xFF808080),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFB0B7BF),
-                        ),
-                        style: GoogleFonts.oswald(
-                          fontSize: 18,
-                          color: const Color(0xFFB22222),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _descriptionController,
-                        decoration: InputDecoration(
-                          labelText: 'Description',
-                          labelStyle: GoogleFonts.roboto(
-                            fontSize: 14,
-                            color: const Color(0xFF808080),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFFB0B7BF),
-                        ),
-                        style: GoogleFonts.roboto(
-                          fontSize: 16,
-                          color: const Color(0xFF1C2526),
-                        ),
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _saveProgram,
-                        child: const Text('Save Program'),
-                      ),
-                    ],
+                ExerciseInputWidget(
+                  controller: _descriptionController,
+                  label: 'Description',
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Exercises',
+                  style: GoogleFonts.oswald(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFB22222),
                   ),
                 ),
-              ),
-          ],
+                const SizedBox(height: 8),
+                ..._exercises.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final exercise = entry.value;
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          ExerciseInputWidget(
+                            controller: exercise['name']!,
+                            label: 'Exercise ${index + 1} Name',
+                          ),
+                          ExerciseInputWidget(
+                            controller: exercise['sets']!,
+                            label: 'Sets',
+                            isNumeric: true,
+                          ),
+                          ExerciseInputWidget(
+                            controller: exercise['reps']!,
+                            label: 'Reps',
+                            isNumeric: true,
+                          ),
+                          ExerciseInputWidget(
+                            controller: exercise['weight']!,
+                            label: 'Weight',
+                            isNumeric: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Exercise'),
+                  onPressed: _addExercise,
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Color(0xFFB22222))
+                      : ElevatedButton(
+                    onPressed: _saveProgram,
+                    child: const Text('Save Program'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

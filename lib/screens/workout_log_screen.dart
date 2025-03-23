@@ -3,15 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
 import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/screens/workout_screen.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 import 'package:personal_trainer_app_clean/core/theme/app_theme.dart';
 
 class WorkoutLogScreen extends StatefulWidget {
-  final String unit;
+  final String? unit;
 
-  const WorkoutLogScreen({super.key, required this.unit});
+  const WorkoutLogScreen({super.key, this.unit});
 
   @override
   _WorkoutLogScreenState createState() => _WorkoutLogScreenState();
@@ -122,7 +123,7 @@ class _WorkoutLogScreenState extends State<WorkoutLogScreen> {
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () async {
-              await Navigator.pushNamed(context, '/workout');
+              childScreenNotifier.value = const WorkoutScreen();
               setState(() {
                 _workoutsFuture = _loadAllWorkouts();
                 _loadWorkouts();

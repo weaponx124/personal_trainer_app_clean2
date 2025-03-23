@@ -1,6 +1,15 @@
+import 'package:personal_trainer_app_clean/screens/program_workouts/madcow_5x5.dart'; // Added import
+
 class ProgramLogic {
   static double calculateWorkingWeight(double oneRM, double percentage, {String unit = 'lbs'}) {
-    return (oneRM * percentage).roundToDouble();
+    double weight = oneRM * (percentage / 100);
+    // Round to nearest 2.5 for lbs, 1 for kg
+    if (unit == 'lbs') {
+      weight = (weight / 2.5).round() * 2.5;
+    } else {
+      weight = weight.roundToDouble();
+    }
+    return weight;
   }
 
   static Map<String, dynamic> calculate531(
@@ -15,7 +24,7 @@ class ProgramLogic {
         ? [0.75, 0.85, 0.95]
         : [0.40, 0.50, 0.60];
     final reps = week == 4 ? [5, 5, 5] : [3, 3, 3];
-    final weights = percentages.map((p) => (trainingMax * p).roundToDouble()).toList();
+    final weights = percentages.map((p) => calculateWorkingWeight(trainingMax, p * 100)).toList();
     return {
       'sets': List.generate(3, (i) => {
         'weight': weights[i],
@@ -31,51 +40,30 @@ class ProgramLogic {
     if (day == 'Volume') {
       return {
         'sets': List.generate(5, (_) => {
-          'weight': (trainingMax * 0.7).roundToDouble(),
+          'weight': calculateWorkingWeight(trainingMax, 70),
           'reps': 5,
         }),
       };
     } else if (day == 'Recovery') {
       return {
         'sets': List.generate(3, (_) => {
-          'weight': (trainingMax * 0.5).roundToDouble(),
+          'weight': calculateWorkingWeight(trainingMax, 50),
           'reps': 5,
         }),
       };
     } else {
       return {
         'sets': [
-          {'weight': (trainingMax * 0.9).roundToDouble(), 'reps': 3},
+          {'weight': calculateWorkingWeight(trainingMax, 90), 'reps': 3},
         ],
       };
     }
   }
 
   static Map<String, dynamic> calculateMadcow(
-      Map<String, dynamic> oneRMs, int week, String lift, String day) {
-    final oneRM = oneRMs[lift] ?? 0.0;
-    final trainingMax = oneRM * 0.9;
-    if (day == 'Monday') {
-      return {
-        'sets': List.generate(5, (i) => {
-          'weight': (trainingMax * (0.6 + i * 0.05)).roundToDouble(),
-          'reps': 5,
-        }),
-      };
-    } else if (day == 'Wednesday') {
-      return {
-        'sets': List.generate(4, (i) => {
-          'weight': (trainingMax * (0.5 + i * 0.05)).roundToDouble(),
-          'reps': 5,
-        }),
-      };
-    } else {
-      return {
-        'sets': [
-          {'weight': (trainingMax * 0.9).roundToDouble(), 'reps': 3},
-        ],
-      };
-    }
+      Map<String, dynamic> programDetails, int week, int session) {
+    // Delegate to Madcow5x5Workout
+    return Madcow5x5Workout.generate(programDetails, week, session);
   }
 
   static Map<String, dynamic> calculateSmolov(
@@ -95,7 +83,7 @@ class ProgramLogic {
         'sets': List.generate(
           (daySchedule['sets'] as num?)?.toInt() ?? 0,
               (_) => {
-            'weight': (trainingMax * (daySchedule['percentage'] as double)).roundToDouble(),
+            'weight': calculateWorkingWeight(trainingMax, (daySchedule['percentage'] as double) * 100),
             'reps': (daySchedule['reps'] as num?)?.toInt() ?? 0,
           },
         ),
@@ -103,7 +91,7 @@ class ProgramLogic {
     } else {
       return {
         'sets': [
-          {'weight': (trainingMax * 0.5).roundToDouble(), 'reps': 5},
+          {'weight': calculateWorkingWeight(trainingMax, 50), 'reps': 5},
         ],
       };
     }
@@ -124,7 +112,7 @@ class ProgramLogic {
       'sets': List.generate(
         (daySchedule['sets'] as num?)?.toInt() ?? 0,
             (_) => {
-          'weight': (trainingMax * (daySchedule['percentage'] as double)).roundToDouble(),
+          'weight': calculateWorkingWeight(trainingMax, (daySchedule['percentage'] as double) * 100),
           'reps': (daySchedule['reps'] as num?)?.toInt() ?? 0,
         },
       ),
@@ -138,21 +126,21 @@ class ProgramLogic {
     if (week == 1 || week == 2) {
       return {
         'sets': List.generate(4, (_) => {
-          'weight': (trainingMax * 0.675).roundToDouble(),
+          'weight': calculateWorkingWeight(trainingMax, 67.5),
           'reps': 10,
         }),
       };
     } else if (week == 3 || week == 4) {
       return {
         'sets': List.generate(3, (_) => {
-          'weight': (trainingMax * 0.775).roundToDouble(),
+          'weight': calculateWorkingWeight(trainingMax, 77.5),
           'reps': 6,
         }),
       };
     } else {
       return {
         'sets': [
-          {'weight': (trainingMax * 0.9).roundToDouble(), 'reps': 3},
+          {'weight': calculateWorkingWeight(trainingMax, 90), 'reps': 3},
         ],
       };
     }
@@ -164,7 +152,7 @@ class ProgramLogic {
     final trainingMax = oneRM * 0.9;
     return {
       'sets': List.generate(3, (_) => {
-        'weight': (trainingMax * 0.7).roundToDouble(),
+        'weight': calculateWorkingWeight(trainingMax, 70),
         'reps': 5,
       }),
     };

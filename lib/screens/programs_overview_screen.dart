@@ -4,6 +4,7 @@ import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
 import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/screens/program_details_screen.dart';
+import 'package:personal_trainer_app_clean/screens/program_selection_screen.dart' as programs;
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
@@ -11,12 +12,12 @@ import 'package:personal_trainer_app_clean/core/theme/app_theme.dart';
 import 'package:uuid/uuid.dart';
 
 class ProgramsOverviewScreen extends StatefulWidget {
-  final String unit;
+  final String? unit;
   final String programName;
 
   const ProgramsOverviewScreen({
     super.key,
-    required this.unit,
+    this.unit,
     required this.programName,
   });
 
@@ -127,7 +128,7 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
 
       Map<String, dynamic> oneRMs = {};
       Map<String, dynamic> details = {
-        'unit': widget.unit,
+        'unit': unitNotifier.value,
         'requires1RM': requires1RM,
       };
 
@@ -166,12 +167,8 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
         _loadProgramsData();
       });
 
-      // Navigate to the Program Details screen
-      Navigator.pushNamed(
-        context,
-        '/program_details',
-        arguments: programId,
-      );
+      // Update child screen to ProgramDetailsScreen
+      childScreenNotifier.value = ProgramDetailsScreen(programId: programId);
     } catch (e) {
       AppSnackBar.showError(context, 'Failed to start program: $e');
     }
@@ -293,7 +290,9 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
                               ElevatedButton.icon(
                                 icon: const Icon(Icons.add, size: 24),
                                 label: const Text('Start a Program'),
-                                onPressed: () => Navigator.pushNamed(context, '/program_selection'),
+                                onPressed: () {
+                                  childScreenNotifier.value = const programs.ProgramSelectionScreen();
+                                },
                               ),
                               const SizedBox(height: 24),
                               Text(
@@ -333,11 +332,7 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
                               onPressed: () => _deleteProgram(program.id),
                             ),
                             onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/program_details',
-                                arguments: program.id,
-                              );
+                              childScreenNotifier.value = ProgramDetailsScreen(programId: program.id);
                             },
                           ),
                         );
@@ -349,7 +344,9 @@ class _ProgramsOverviewScreenState extends State<ProgramsOverviewScreen> {
             ),
           ),
           floatingActionButton: FloatingActionButton(
-            onPressed: () => Navigator.pushNamed(context, '/program_selection'),
+            onPressed: () {
+              childScreenNotifier.value = const programs.ProgramSelectionScreen();
+            },
             child: const Icon(Icons.add),
           ),
         );

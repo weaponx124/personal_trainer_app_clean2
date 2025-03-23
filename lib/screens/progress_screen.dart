@@ -4,14 +4,15 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:personal_trainer_app_clean/core/data/models/progress.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/progress_repository.dart';
 import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/screens/body_weight_progress_screen.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 
 class ProgressScreen extends StatefulWidget {
-  final String unit;
+  final String? unit;
 
-  const ProgressScreen({super.key, required this.unit});
+  const ProgressScreen({super.key, this.unit});
 
   @override
   _ProgressScreenState createState() => _ProgressScreenState();
@@ -85,9 +86,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
             backgroundColor: const Color(0xFF1C2526),
             foregroundColor: const Color(0xFFB0B7BF),
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
+              icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
               onPressed: () {
-                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+                // Navigate back to main screen by clearing childScreenNotifier
+                childScreenNotifier.value = null;
               },
             ),
           ),
@@ -167,7 +169,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                                                   reservedSize: 40,
                                                   getTitlesWidget: (value, meta) {
                                                     return Text(
-                                                      '${value.toInt()} ${widget.unit}',
+                                                      '${value.toInt()} ${unit}',
                                                       style: GoogleFonts.roboto(
                                                         fontSize: 12,
                                                         color: const Color(0xFF808080),
@@ -224,7 +226,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                                                   return touchedSpots.map((spot) {
                                                     final date = DateTime.fromMillisecondsSinceEpoch(spot.x.toInt());
                                                     return LineTooltipItem(
-                                                      '${date.month}/${date.day}: ${spot.y} ${widget.unit}',
+                                                      '${date.month}/${date.day}: ${spot.y} ${unit}',
                                                       GoogleFonts.roboto(
                                                         fontSize: 12,
                                                         color: const Color(0xFF1C2526),
@@ -256,7 +258,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
           ),
           floatingActionButton: FloatingActionButton(
-            onPressed: () => Navigator.pushNamed(context, '/body_weight_progress'),
+            onPressed: () {
+              childScreenNotifier.value = const BodyWeightProgressScreen();
+            },
             child: const Icon(Icons.add),
           ),
         );

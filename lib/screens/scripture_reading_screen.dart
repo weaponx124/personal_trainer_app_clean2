@@ -144,7 +144,8 @@ class _ScriptureReadingScreenState extends State<ScriptureReadingScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
           onPressed: () {
-            Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+            // Navigate back to main screen by clearing childScreenNotifier
+            childScreenNotifier.value = null;
           },
         ),
       ),
