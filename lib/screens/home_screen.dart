@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<Map<String, dynamic>?> _getLastWorkout() async {
     try {
-      final programs = ['default_program'];
+      final programs = await _workoutRepository.getAllProgramIds();
       List<Workout> allWorkouts = [];
       for (var programId in programs) {
         final workouts = await _workoutRepository.getWorkouts(programId);

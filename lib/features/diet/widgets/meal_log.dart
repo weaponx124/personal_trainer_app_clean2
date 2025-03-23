@@ -12,6 +12,7 @@ class MealLog extends StatelessWidget {
   final Function(String) onDelete;
   final String selectedMealType;
   final ValueChanged<String?> onMealTypeChanged;
+  final DateTime selectedDate;
 
   const MealLog({
     super.key,
@@ -23,6 +24,7 @@ class MealLog extends StatelessWidget {
     required this.onDelete,
     required this.selectedMealType,
     required this.onMealTypeChanged,
+    required this.selectedDate,
   });
 
   @override
@@ -30,11 +32,10 @@ class MealLog extends StatelessWidget {
     return ValueListenableBuilder<Color>(
       valueListenable: accentColorNotifier,
       builder: (context, accentColor, child) {
-        final now = DateTime.now();
-        final startOfDay = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
-        final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).millisecondsSinceEpoch;
+        final startOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day).millisecondsSinceEpoch;
+        final endOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 23, 59, 59).millisecondsSinceEpoch;
 
-        final todayMeals = meals.where((meal) {
+        final dateMeals = meals.where((meal) {
           final timestamp = meal.timestamp;
           return timestamp >= startOfDay && timestamp <= endOfDay;
         }).toList();
@@ -96,14 +97,14 @@ class MealLog extends StatelessWidget {
                   child: const Text('Create Recipe'),
                 ),
                 const SizedBox(height: 16),
-                todayMeals.isEmpty
-                    ? const Center(child: Text('No meals logged for today.'))
+                dateMeals.isEmpty
+                    ? Center(child: Text('No meals logged for ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}.'))
                     : ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: todayMeals.length,
+                  itemCount: dateMeals.length,
                   itemBuilder: (context, index) {
-                    final meal = todayMeals[index];
+                    final meal = dateMeals[index];
                     return Card(
                       child: ListTile(
                         title: Text(

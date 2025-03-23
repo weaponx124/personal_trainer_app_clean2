@@ -1,101 +1,132 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
-import 'package:personal_trainer_app_clean/main.dart'; // For unitNotifier
 
-void showWorkoutDetailsDialog(
-    BuildContext context,
-    Map<String, dynamic> workout,
-    String unit,
-    Function refreshCallback,
-    ) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(
-        workout['name'] ?? 'Workout Details',
-        style: GoogleFonts.oswald(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: const Color(0xFFB22222),
-        ),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (workout['exercises'] != null && workout['exercises'].isNotEmpty)
-              ...workout['exercises'].map<Widget>((exercise) {
+Future<Map<String, dynamic>?> showLogWorkoutDialog(BuildContext context, List<Map<String, dynamic>> workouts, String unit) async {
+  final List<Map<String, dynamic>> loggedExercises = [];
+  bool completed = false;
+
+  for (var workout in workouts) {
+    final name = workout['name'] as String;
+    final sets = workout['sets'] as int;
+    final reps = workout['reps'] as int;
+    final weight = workout['weight'] as double;
+    final List<TextEditingController> repsControllers = List.generate(sets, (index) => TextEditingController(text: reps.toString()));
+    final List<TextEditingController> weightControllers = List.generate(sets, (index) => TextEditingController(text: weight.toString()));
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Log $name'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...List.generate(sets, (index) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Text(
-                    '${exercise['name']}: ${exercise['sets']} sets x ${exercise['reps']} reps @ ${exercise['weight']} $unit',
-                    style: GoogleFonts.roboto(
-                      fontSize: 16,
-                      color: const Color(0xFF1C2526),
-                    ),
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: repsControllers[index],
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Reps',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: weightControllers[index],
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Weight ($unit)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 );
-              }).toList()
-            else
-              Text(
-                'No exercises logged for this workout.',
-                style: GoogleFonts.roboto(
-                  fontSize: 16,
-                  color: const Color(0xFF808080),
-                ),
-              ),
-          ],
+              }),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
-        ),
-      ],
-    ),
-  );
+    );
+
+    if (result != true) {
+      return null;
+    }
+
+    final List<Map<String, dynamic>> setsData = [];
+    for (int i = 0; i < sets; i++) {
+      final loggedReps = int.tryParse(repsControllers[i].text) ?? reps;
+      final loggedWeight = double.tryParse(weightControllers[i].text) ?? weight;
+      setsData.add({
+        'reps': loggedReps,
+        'weight': loggedWeight,
+      });
+    }
+
+    loggedExercises.add({
+      'name': name,
+      'sets': sets,
+      'reps': setsData.map((set) => set['reps']).toList(),
+      'weight': setsData.map((set) => set['weight']).toList(),
+    });
+
+    // Dispose controllers
+    for (var controller in repsControllers) {
+      controller.dispose();
+    }
+    for (var controller in weightControllers) {
+      controller.dispose();
+    }
+  }
+
+  completed = true;
+
+  final workoutData = {
+    'exercises': loggedExercises,
+    'completed': completed,
+  };
+
+  return workoutData;
 }
 
-void showAddExerciseDialog(
-    BuildContext context,
-    String programId,
-    String workoutId,
-    String unit,
-    Function refreshCallback,
-    ) {
-  final TextEditingController nameController = TextEditingController();
+Future<Map<String, dynamic>?> showAddWorkoutDialog(BuildContext context, String unit) async {
+  final TextEditingController exerciseController = TextEditingController();
   final TextEditingController setsController = TextEditingController();
   final TextEditingController repsController = TextEditingController();
   final TextEditingController weightController = TextEditingController();
 
-  showDialog(
+  final result = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(
-        'Add Exercise',
-        style: GoogleFonts.oswald(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: const Color(0xFFB22222),
-        ),
-      ),
+      title: const Text('Add Workout'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: nameController,
+              controller: exerciseController,
               decoration: InputDecoration(
                 labelText: 'Exercise Name',
-                labelStyle: GoogleFonts.roboto(
-                  fontSize: 16,
-                  color: const Color(0xFF808080),
-                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -113,10 +144,6 @@ void showAddExerciseDialog(
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Sets',
-                labelStyle: GoogleFonts.roboto(
-                  fontSize: 16,
-                  color: const Color(0xFF808080),
-                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -134,10 +161,6 @@ void showAddExerciseDialog(
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Reps',
-                labelStyle: GoogleFonts.roboto(
-                  fontSize: 16,
-                  color: const Color(0xFF808080),
-                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -155,10 +178,6 @@ void showAddExerciseDialog(
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Weight ($unit)',
-                labelStyle: GoogleFonts.roboto(
-                  fontSize: 16,
-                  color: const Color(0xFF808080),
-                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -175,139 +194,21 @@ void showAddExerciseDialog(
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () async {
-            if (nameController.text.isNotEmpty &&
-                setsController.text.isNotEmpty &&
-                repsController.text.isNotEmpty &&
-                weightController.text.isNotEmpty) {
-              final exercise = {
-                'name': nameController.text,
-                'sets': int.tryParse(setsController.text) ?? 0,
-                'reps': int.tryParse(repsController.text) ?? 0,
-                'weight': double.tryParse(weightController.text) ?? 0.0,
-              };
-
-              final workoutRepository = WorkoutRepository();
-              final workouts = await workoutRepository.getWorkouts(programId);
-              final workoutIndex = workouts.indexWhere((w) => w.id == workoutId);
-              if (workoutIndex != -1) {
-                final workout = workouts[workoutIndex];
-                final updatedExercises = List<Map<String, dynamic>>.from(workout.exercises ?? [])..add(exercise);
-                final updatedWorkout = Workout(
-                  id: workout.id,
-                  programId: workout.programId,
-                  name: workout.name,
-                  exercises: updatedExercises,
-                  timestamp: workout.timestamp,
-                );
-                await workoutRepository.updateWorkout(programId, updatedWorkout);
-                refreshCallback();
-                Navigator.pop(context);
-              } else {
-                // If the workout doesn't exist, create a new one
-                final newWorkout = Workout(
-                  id: workoutId,
-                  programId: programId,
-                  name: 'Custom Workout',
-                  exercises: [exercise],
-                  timestamp: DateTime.now().millisecondsSinceEpoch,
-                );
-                await workoutRepository.insertWorkout(programId, newWorkout);
-                refreshCallback();
-                Navigator.pop(context);
-              }
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please fill in all fields')),
-              );
-            }
-          },
-          child: const Text('Add'),
-        ),
-      ],
-    ),
-  );
-}
-
-// Added missing methods
-Future<void> showUpdate1RMsDialog(
-    BuildContext context, Program program, Function(Program) onUpdate) async {
-  final unit = unitNotifier.value; // Use unitNotifier directly
-  final controllers = <String, TextEditingController>{};
-  program.oneRMs.forEach((key, value) {
-    controllers[key] = TextEditingController(text: value.toString());
-  });
-
-  await showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(
-        'Update 1RMs ($unit)',
-        style: GoogleFonts.oswald(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: const Color(0xFFB22222),
-        ),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: program.oneRMs.keys.map((lift) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: TextField(
-                controller: controllers[lift],
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: '$lift 1RM',
-                  labelStyle: GoogleFonts.roboto(
-                    fontSize: 14,
-                    color: const Color(0xFF808080),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFFB0B7BF),
-                ),
-                style: GoogleFonts.roboto(
-                  fontSize: 16,
-                  color: const Color(0xFF1C2526),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, false),
           child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: () {
-            final updated1RMs = <String, double>{};
-            controllers.forEach((lift, controller) {
-              updated1RMs[lift] = double.tryParse(controller.text) ?? program.oneRMs[lift];
-            });
-            final updatedProgram = Program(
-              id: program.id,
-              name: program.name,
-              description: program.description,
-              oneRMs: updated1RMs,
-              details: program.details,
-              completed: program.completed,
-              startDate: program.startDate,
-              currentWeek: program.currentWeek,
-              currentSession: program.currentSession,
-              sessionsCompleted: program.sessionsCompleted,
-            );
-            onUpdate(updatedProgram);
-            Navigator.pop(context);
+            if (exerciseController.text.isEmpty ||
+                setsController.text.isEmpty ||
+                repsController.text.isEmpty ||
+                weightController.text.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please fill in all fields')),
+              );
+              return;
+            }
+            Navigator.pop(context, true);
           },
           child: const Text('Save'),
         ),
@@ -315,55 +216,142 @@ Future<void> showUpdate1RMsDialog(
     ),
   );
 
-  controllers.forEach((key, controller) => controller.dispose());
+  if (result != true) {
+    return null;
+  }
+
+  final workoutData = {
+    'name': exerciseController.text,
+    'sets': int.parse(setsController.text),
+    'reps': int.parse(repsController.text),
+    'weight': double.parse(weightController.text),
+  };
+
+  // Dispose controllers
+  exerciseController.dispose();
+  setsController.dispose();
+  repsController.dispose();
+  weightController.dispose();
+
+  return workoutData;
 }
 
-Future<void> showEndProgramDialog(
-    BuildContext context, Program program, Function(Program) onUpdate) async {
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(
-        'End Program',
-        style: GoogleFonts.oswald(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: const Color(0xFFB22222),
+Future<Map<String, dynamic>?> showEditWorkoutDialog(BuildContext context, String programId, Workout workout, String unit) async {
+  final workoutRepository = WorkoutRepository();
+  final TextEditingController exerciseController = TextEditingController(text: workout.name);
+  final List<Map<String, dynamic>> loggedExercises = [];
+  bool completed = false;
+
+  for (var exercise in workout.exercises) {
+    final name = exercise['name'] as String;
+    final sets = exercise['sets'] as int;
+    final List<dynamic> repsList = exercise['reps'] as List<dynamic>;
+    final List<dynamic> weightList = exercise['weight'] as List<dynamic>;
+    final List<TextEditingController> repsControllers = List.generate(sets, (index) => TextEditingController(text: repsList[index].toString()));
+    final List<TextEditingController> weightControllers = List.generate(sets, (index) => TextEditingController(text: weightList[index].toString()));
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit $name'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...List.generate(sets, (index) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: repsControllers[index],
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Reps',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: weightControllers[index],
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Weight ($unit)',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save'),
+          ),
+        ],
       ),
-      content: Text(
-        'Are you sure you want to end this program? This action cannot be undone.',
-        style: GoogleFonts.roboto(
-          fontSize: 14,
-          color: const Color(0xFF808080),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('End'),
-        ),
-      ],
-    ),
+    );
+
+    if (result != true) {
+      return null;
+    }
+
+    final List<Map<String, dynamic>> setsData = [];
+    for (int i = 0; i < sets; i++) {
+      final loggedReps = int.tryParse(repsControllers[i].text) ?? repsList[i] as int;
+      final loggedWeight = double.tryParse(weightControllers[i].text) ?? weightList[i] as double;
+      setsData.add({
+        'reps': loggedReps,
+        'weight': loggedWeight,
+      });
+    }
+
+    loggedExercises.add({
+      'name': name,
+      'sets': sets,
+      'reps': setsData.map((set) => set['reps']).toList(),
+      'weight': setsData.map((set) => set['weight']).toList(),
+    });
+
+    // Dispose controllers
+    for (var controller in repsControllers) {
+      controller.dispose();
+    }
+    for (var controller in weightControllers) {
+      controller.dispose();
+    }
+  }
+
+  completed = true;
+
+  final workoutData = {
+    'exercises': loggedExercises,
+    'completed': completed,
+  };
+
+  final updatedWorkout = Workout(
+    id: workout.id,
+    programId: programId,
+    name: exerciseController.text,
+    exercises: loggedExercises,
+    timestamp: workout.timestamp,
   );
 
-  if (confirm == true) {
-    final updatedProgram = Program(
-      id: program.id,
-      name: program.name,
-      description: program.description,
-      oneRMs: program.oneRMs,
-      details: program.details,
-      completed: true,
-      startDate: program.startDate,
-      currentWeek: program.currentWeek,
-      currentSession: program.currentSession,
-      sessionsCompleted: program.sessionsCompleted,
-    );
-    onUpdate(updatedProgram);
-  }
+  await workoutRepository.updateWorkout(programId, updatedWorkout);
+
+  exerciseController.dispose();
+
+  return workoutData;
 }

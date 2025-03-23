@@ -1,85 +1,93 @@
-import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
-import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
 
-class ProgramDetailsLogic {
-  final ProgramRepository _programRepository = ProgramRepository();
-  final WorkoutRepository _workoutRepository = WorkoutRepository();
+class ProgramLogic {
+  final Map<String, dynamic> program;
 
-  Future<Map<String, dynamic>> getCurrentWorkout(String programId, int week, int day) async {
-    final workouts = await _workoutRepository.getWorkouts(programId);
-    final program = await _programRepository.getPrograms();
-    final currentProgram = program.firstWhere(
-          (p) => p.id == programId,
-      orElse: () => throw Exception('Program not found'),
-    );
+  ProgramLogic(this.program);
 
-    final startDate = DateTime.parse(currentProgram.toMap()['startDate']);
-    final currentDate = DateTime.now();
-    final daysSinceStart = currentDate.difference(startDate).inDays;
-    final currentWeek = (daysSinceStart / 7).floor() + 1;
-    final currentDay = (daysSinceStart % 7) + 1;
+  List<Map<String, dynamic>> getWorkoutsForCurrentDay() {
+    final currentWeek = program['currentWeek'] as int;
+    final currentDay = program['currentDay'] as int;
+    final workouts = program['workouts'] as List<Map<String, dynamic>>? ?? [];
 
-    final workout = workouts.firstWhere(
-          (w) => w.toMap()['week'] == week && w.toMap()['day'] == day,
-      orElse: () => Workout(
-        id: '',
-        programId: programId,
-        name: 'Workout not found',
-        exercises: [],
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-      ),
-    );
-
-    return {
-      'workout': workout.toMap(),
-      'currentWeek': currentWeek,
-      'currentDay': currentDay,
-    };
+    return workouts.where((workout) {
+      final week = workout['week'] as int;
+      final day = workout['day'] as int;
+      return week == currentWeek && day == currentDay;
+    }).toList();
   }
 
-  Future<void> logWorkout(String programId, Map<String, dynamic> workout) async {
-    final workouts = await _workoutRepository.getWorkouts(programId);
-    final existingIndex = workouts.indexWhere((w) => w.id == workout['id']);
-    final updatedWorkout = Workout(
-      id: workout['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+  Future<void> logWorkout(String programId, Map<String, dynamic> workoutData) async {
+    final workoutRepository = WorkoutRepository();
+    final exercises = workoutData['exercises'] as List<Map<String, dynamic>>;
+    final completed = workoutData['completed'] as bool;
+
+    final workout = Workout(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
       programId: programId,
-      name: workout['name'] ?? 'Unnamed Workout',
-      exercises: List<Map<String, dynamic>>.from(workout['exercises'] ?? []),
-      timestamp: workout['timestamp'] != null
-          ? int.parse(workout['timestamp'].toString())
-          : DateTime.now().millisecondsSinceEpoch,
+      name: 'Workout on ${DateTime.now().toIso8601String()}',
+      exercises: exercises,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
     );
 
-    if (existingIndex != -1) {
-      await _workoutRepository.updateWorkout(programId, updatedWorkout);
-    } else {
-      await _workoutRepository.insertWorkout(programId, updatedWorkout);
+    if (completed) {
+      await workoutRepository.insertWorkout(programId, workout);
     }
   }
 
-  // Added missing method
-  Workout getTodayWorkout(Program program) {
-    return Workout(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      programId: program.id,
-      name: 'Today\'s Workout',
-      exercises: [
-        {
-          'name': 'Squat',
-          'sets': 3,
-          'reps': 5,
-          'weight': program.oneRMs['Squat'] ?? 0.0,
-        },
-        {
-          'name': 'Bench',
-          'sets': 3,
-          'reps': 5,
-          'weight': program.oneRMs['Bench'] ?? 0.0,
-        },
-      ],
-      timestamp: DateTime.now().millisecondsSinceEpoch,
-    );
+  static Map<String, dynamic> calculateMadcow(Map<String, dynamic> program, int week, int session) {
+    final details = program['details'] as Map<String, dynamic>;
+    final oneRMs = program['oneRMs'] as Map<String, dynamic>;
+    final exercises = <Map<String, dynamic>>[];
+
+    // Simplified Madcow calculation for demonstration
+    final squatWeight = (oneRMs['Squat'] ?? 0.0) * 0.9 * (week / 4);
+    final benchWeight = (oneRMs['Bench'] ?? 0.0) * 0.9 * (week / 4);
+
+    if (session == 1) {
+      exercises.add({
+        'name': 'Squat',
+        'sets': 5,
+        'reps': 5,
+        'weight': squatWeight,
+      });
+      exercises.add({
+        'name': 'Bench',
+        'sets': 5,
+        'reps': 5,
+        'weight': benchWeight,
+      });
+    }
+
+    return {
+      'week': week,
+      'session': session,
+      'workoutName': 'Madcow Day $session',
+      'exercises': exercises,
+    };
+  }
+
+  static Map<String, dynamic> calculate531(Map<String, dynamic> oneRMs, int week, String lift) {
+    final trainingMax = (oneRMs[lift] ?? 0.0) * 0.9;
+    final sets = <Map<String, dynamic>>[];
+
+    if (week == 1) {
+      sets.add({'reps': 3, 'weight': trainingMax * 0.65});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.75});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.85});
+    } else if (week == 2) {
+      sets.add({'reps': 3, 'weight': trainingMax * 0.70});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.80});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.90});
+    } else if (week == 3) {
+      sets.add({'reps': 3, 'weight': trainingMax * 0.75});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.85});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.95});
+    }
+
+    return {
+      'sets': sets,
+    };
   }
 }

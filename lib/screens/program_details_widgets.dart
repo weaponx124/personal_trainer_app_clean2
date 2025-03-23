@@ -9,6 +9,7 @@ import 'package:personal_trainer_app_clean/screens/program_details_dialogs.dart'
 import 'package:personal_trainer_app_clean/screens/program_logic.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class ProgramDetailsWidget extends StatelessWidget {
   final Map<String, dynamic> program;
@@ -617,10 +618,17 @@ class ExerciseInputWidget extends StatelessWidget {
   }
 }
 
-class ProgramProgressWidget extends StatelessWidget {
+class ProgramProgressWidget extends StatefulWidget {
   final String programId;
 
   const ProgramProgressWidget({super.key, required this.programId});
+
+  @override
+  _ProgramProgressWidgetState createState() => _ProgramProgressWidgetState();
+}
+
+class _ProgramProgressWidgetState extends State<ProgramProgressWidget> {
+  String? _selectedExercise;
 
   @override
   Widget build(BuildContext context) {
@@ -628,7 +636,7 @@ class ProgramProgressWidget extends StatelessWidget {
       valueListenable: accentColorNotifier,
       builder: (context, accentColor, child) {
         return FutureBuilder<List<Workout>>(
-          future: WorkoutRepository().getWorkouts(programId),
+          future: WorkoutRepository().getWorkouts(widget.programId),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(child: CircularProgressIndicator(color: accentColor));
@@ -644,26 +652,180 @@ class ProgramProgressWidget extends StatelessWidget {
             }
 
             final workouts = snapshot.data!;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Program Progress',
-                  style: GoogleFonts.oswald(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: accentColor,
-                  ),
+            final totalWorkouts = workouts.length;
+
+            // Extract unique exercises
+            final exercises = <String>{};
+            for (var workout in workouts) {
+              for (var exercise in workout.exercises) {
+                exercises.add(exercise['name'] as String);
+              }
+            }
+            final exerciseList = exercises.toList();
+            _selectedExercise ??= exerciseList.isNotEmpty ? exerciseList[0] : null;
+
+            // Prepare data for the chart
+            final Map<String, List<FlSpot>> exerciseData = {};
+            for (var exerciseName in exerciseList) {
+              exerciseData[exerciseName] = [];
+              final List<Map<String, dynamic>> weightsOverTime = [];
+              for (var workout in workouts) {
+                for (var exercise in workout.exercises) {
+                  if (exercise['name'] == exerciseName) {
+                    final weights = (exercise['weight'] as List<dynamic>).cast<double>();
+                    final avgWeight = weights.isNotEmpty ? weights.reduce((a, b) => a + b) / weights.length : 0.0;
+                    weightsOverTime.add({
+                      'timestamp': workout.timestamp,
+                      'weight': avgWeight,
+                    });
+                  }
+                }
+              }
+              // Sort by timestamp
+              weightsOverTime.sort((a, b) => a['timestamp'].compareTo(b['timestamp']));
+              // Normalize timestamps to start from 0 for the chart
+              if (weightsOverTime.isNotEmpty) {
+                final firstTimestamp = weightsOverTime.first['timestamp'] as int;
+                for (int i = 0; i < weightsOverTime.length; i++) {
+                  final daysSinceStart = ((weightsOverTime[i]['timestamp'] as int) - firstTimestamp) / (1000 * 60 * 60 * 24);
+                  exerciseData[exerciseName]!.add(FlSpot(daysSinceStart, weightsOverTime[i]['weight'] as double));
+                }
+              }
+            }
+
+            return Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              color: const Color(0xFFB0B7BF),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Program Progress',
+                      style: GoogleFonts.oswald(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: accentColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Total Workouts Logged: $totalWorkouts',
+                      style: GoogleFonts.roboto(
+                        fontSize: 16,
+                        color: const Color(0xFF1C2526),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (exerciseList.isNotEmpty) ...[
+                      DropdownButton<String>(
+                        value: _selectedExercise,
+                        isExpanded: true,
+                        items: exerciseList.map((String exercise) {
+                          return DropdownMenuItem<String>(
+                            value: exercise,
+                            child: Text(
+                              exercise,
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                color: const Color(0xFF1C2526),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedExercise = newValue;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 200,
+                        child: LineChart(
+                          LineChartData(
+                            gridData: FlGridData(show: true),
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 40,
+                                  getTitlesWidget: (value, meta) {
+                                    return Text(
+                                      value.toInt().toString(),
+                                      style: GoogleFonts.roboto(
+                                        fontSize: 12,
+                                        color: const Color(0xFF808080),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                axisNameWidget: Text(
+                                  'Weight (lbs)',
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 14,
+                                    color: const Color(0xFF1C2526),
+                                  ),
+                                ),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    return Text(
+                                      'Day ${value.toInt()}',
+                                      style: GoogleFonts.roboto(
+                                        fontSize: 12,
+                                        color: const Color(0xFF808080),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                axisNameWidget: Text(
+                                  'Days Since Start',
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 14,
+                                    color: const Color(0xFF1C2526),
+                                  ),
+                                ),
+                              ),
+                              topTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                            ),
+                            borderData: FlBorderData(show: true),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: _selectedExercise != null ? exerciseData[_selectedExercise]! : [],
+                                isCurved: true,
+                                color: accentColor,
+                                barWidth: 2,
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  color: accentColor.withOpacity(0.3),
+                                ),
+                                dotData: FlDotData(show: true),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ] else
+                      Text(
+                        'No exercises to display.',
+                        style: GoogleFonts.roboto(
+                          fontSize: 16,
+                          color: const Color(0xFF808080),
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Total Workouts Logged: ${workouts.length}',
-                  style: GoogleFonts.roboto(
-                    fontSize: 16,
-                    color: const Color(0xFF1C2526),
-                  ),
-                ),
-              ],
+              ),
             );
           },
         );

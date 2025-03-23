@@ -4,6 +4,7 @@ import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
 import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/screens/program_details_widgets.dart';
+import 'package:personal_trainer_app_clean/screens/program_logic.dart';
 import 'package:personal_trainer_app_clean/screens/programs_overview_screen.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
@@ -20,12 +21,15 @@ class ProgramDetailsScreen extends StatefulWidget {
 class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
   final ProgramRepository _programRepository = ProgramRepository();
   late Future<Program> _programFuture;
+  late ProgramLogic _programLogic;
 
   @override
   void initState() {
     super.initState();
     _programFuture = _programRepository.getPrograms().then((programs) {
       final program = programs.firstWhere((p) => p.id == widget.programId, orElse: () => throw Exception('Program not found'));
+      // Instantiate ProgramLogic with no arguments to match the local constructor
+      _programLogic = ProgramLogic();
       return program;
     });
   }

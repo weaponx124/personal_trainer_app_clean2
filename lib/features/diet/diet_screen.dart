@@ -50,18 +50,19 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
   double _proteinGoal = 0.0;
   double _carbsGoal = 0.0;
   double _fatGoal = 0.0;
-  String _selectedMealType = 'Breakfast'; // Options: Breakfast, Lunch, Dinner, Snack
+  String _selectedMealType = 'Breakfast';
   List<Map<String, dynamic>> _recommendedFoods = [];
   List<ShoppingListItem> _shoppingList = [];
   bool _isLoading = true;
   String? _errorMessage;
+  DateTime _selectedDate = DateTime.now();
 
   static const String _customFoodsKey = 'customFoods';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this); // Added Preferences tab
+    _tabController = TabController(length: 5, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
@@ -102,13 +103,11 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
         'allergies': [],
       };
 
-      // Ensure diet preferences are saved
       if (prefs.getString('dietPreferences') == null) {
         print('Step 8: Saving default diet preferences');
         await prefs.setString('dietPreferences', jsonEncode(dietPreferences));
       }
 
-      // Deduplicate _foodDatabase
       final Map<String, Map<String, dynamic>> uniqueFoodDatabase = {};
       for (var food in foodDatabaseFoods) {
         final name = food['name'] as String;
@@ -120,7 +119,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
       }
       final deduplicatedFoodDatabase = uniqueFoodDatabase.values.toList();
 
-      // Deduplicate _customFoods
       final Map<String, Map<String, dynamic>> uniqueCustomFoods = {};
       for (var food in customFoods) {
         final name = food['name'] as String;
@@ -132,7 +130,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
       }
       final deduplicatedCustomFoods = uniqueCustomFoods.values.toList();
 
-      // Calculate daily totals with null checks
       print('Step 9: Calculating daily totals');
       double calories = 0.0;
       double protein = 0.0;
@@ -140,9 +137,8 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
       double fat = 0.0;
       double water = 0.0;
 
-      final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
-      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).millisecondsSinceEpoch;
+      final startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day).millisecondsSinceEpoch;
+      final endOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59, 59).millisecondsSinceEpoch;
 
       for (var meal in meals) {
         final timestamp = meal.timestamp;
@@ -159,19 +155,16 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
         water += entry.amount;
       }
 
-      // Calculate macro goals based on calorie goal and percentages
       final calorieGoal = (dietPreferences['calorieGoal'] as int? ?? 2000).toDouble();
       final macroGoals = dietPreferences['macroGoals'] as Map<String, dynamic>? ?? {'protein': 25, 'carbs': 50, 'fat': 25};
       final proteinPercentage = (macroGoals['protein'] as int? ?? 25).toDouble();
       final carbsPercentage = (macroGoals['carbs'] as int? ?? 50).toDouble();
       final fatPercentage = (macroGoals['fat'] as int? ?? 25).toDouble();
 
-      // 1g protein = 4 kcal, 1g carbs = 4 kcal, 1g fat = 9 kcal
       final proteinGoal = (calorieGoal * (proteinPercentage / 100)) / 4;
       final carbsGoal = (calorieGoal * (carbsPercentage / 100)) / 4;
       final fatGoal = (calorieGoal * (fatPercentage / 100)) / 9;
 
-      // Generate food recommendations
       print('Step 10: Generating recommendations');
       final recommendedFoods = _dietService.generateRecommendations(deduplicatedFoodDatabase, dietPreferences);
 
@@ -199,7 +192,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
     } catch (e, stackTrace) {
       print('Error in _loadData: $e');
       print('Stack trace: $stackTrace');
-      // Clear meals and recipes data to prevent future errors
       await _mealRepository.clearMeals();
       await _recipeRepository.clearRecipes();
       setState(() {
@@ -246,7 +238,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
           onSave: (customFood) async {
             try {
               final foodName = customFood['name'] as String;
-              // Check for duplicates in _foodDatabase and _customFoods
               final existsInDatabase = _foodDatabase.any((food) => food['name'] == foodName);
               final existsInCustom = _customFoods.any((food) => food['name'] == foodName);
               if (existsInDatabase || existsInCustom) {
@@ -259,7 +250,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
               setState(() {
                 _customFoods.add(customFood);
               });
-              // Save _customFoods to SharedPreferences
               final prefs = await SharedPreferences.getInstance();
               await prefs.setString(_customFoodsKey, jsonEncode(_customFoods));
               print('Saved custom foods to SharedPreferences: $_customFoods');
@@ -291,7 +281,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _addRecipe() async {
-    // Combine _foodDatabase and _customFoods, and deduplicate
     final combinedFoods = [..._foodDatabase, ..._customFoods];
     final Map<String, Map<String, dynamic>> uniqueFoods = {};
     for (var food in combinedFoods) {
@@ -311,7 +300,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
         onSave: (recipe) async {
           try {
             final recipeName = recipe['name'] as String;
-            // Check for duplicates in _recipes
             final existsInRecipes = _recipes.any((r) => r.name == recipeName);
             if (existsInRecipes) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -320,7 +308,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
               return;
             }
             await _recipeRepository.addRecipe(recipe);
-            // Manually update _recipes to ensure the UI refreshes
             final updatedRecipes = await _recipeRepository.getRecipes();
             setState(() {
               _recipes = updatedRecipes;
@@ -337,7 +324,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
       ),
     );
 
-    // If the dialog was closed without saving, still refresh the data
     if (result != true) {
       await _loadData();
     }
@@ -357,7 +343,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _addMeal() async {
-    // Combine _foodDatabase, _customFoods, and _recipes
     final combinedFoods = [
       ..._foodDatabase.map((food) => ({...food, 'isRecipe': false})),
       ..._customFoods.map((food) => ({...food, 'isRecipe': false})),
@@ -375,7 +360,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
       })),
     ];
 
-    // Deduplicate combinedFoods, preserving both foods and recipes even if they have the same name
     final Map<String, List<Map<String, dynamic>>> groupedFoods = {};
     for (var food in combinedFoods) {
       final name = food['name'] as String;
@@ -387,18 +371,16 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
     }
     final deduplicatedFoods = groupedFoods.values.expand((list) => list).toList();
 
-    // Create a list of foods with unique identifiers
     final allFoods = deduplicatedFoods.asMap().entries.map((entry) {
       final index = entry.key;
       final food = entry.value;
       final type = food['isRecipe'] == true ? 'recipe' : (food.containsKey('uniqueId') && (food['uniqueId'] as String).startsWith('custom') ? 'custom' : 'food');
       return {
         ...food,
-        'uniqueId': '$type:$index:${food['name']}', // Unique identifier
+        'uniqueId': '$type:$index:${food['name']}',
       };
     }).toList();
 
-    // Select the first item by its uniqueId, or null if the list is empty
     String? selectedFoodId = allFoods.isNotEmpty ? allFoods[0]['uniqueId'] as String : null;
     final TextEditingController amountController = TextEditingController();
 
@@ -406,7 +388,7 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Log $_selectedMealType'),
+          title: Text('Log $_selectedMealType for ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -476,10 +458,9 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
 
     if (result == true) {
       final servings = double.tryParse(amountController.text) ?? 1.0;
-      // Find the food by its uniqueId
       final food = allFoods.firstWhere((f) => f['uniqueId'] == selectedFoodId);
       final meal = Meal(
-        id: '', // Will be set in the repository
+        id: '',
         food: food['name'],
         mealType: _selectedMealType,
         calories: ((food['calories'] as num?)?.toDouble() ?? 0.0) * servings,
@@ -488,7 +469,7 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
         fat: ((food['fat'] as num?)?.toDouble() ?? 0.0) * servings,
         sodium: ((food['sodium'] as num?)?.toDouble() ?? 0.0) * servings,
         fiber: ((food['fiber'] as num?)?.toDouble() ?? 0.0) * servings,
-        timestamp: DateTime.now().millisecondsSinceEpoch,
+        timestamp: DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 12).millisecondsSinceEpoch,
         servings: servings,
         isRecipe: food['isRecipe'] as bool? ?? false,
         ingredients: food['ingredients'] as List<Map<String, dynamic>>?,
@@ -499,7 +480,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _editMeal(Meal meal) async {
-    // Combine _foodDatabase, _customFoods, and _recipes
     final combinedFoods = [
       ..._foodDatabase.map((food) => ({...food, 'isRecipe': false})),
       ..._customFoods.map((food) => ({...food, 'isRecipe': false})),
@@ -517,7 +497,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
       })),
     ];
 
-    // Deduplicate combinedFoods, preserving both foods and recipes even if they have the same name
     final Map<String, List<Map<String, dynamic>>> groupedFoods = {};
     for (var food in combinedFoods) {
       final name = food['name'] as String;
@@ -529,18 +508,16 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
     }
     final deduplicatedFoods = groupedFoods.values.expand((list) => list).toList();
 
-    // Create a list of foods with unique identifiers
     final allFoods = deduplicatedFoods.asMap().entries.map((entry) {
       final index = entry.key;
       final food = entry.value;
       final type = food['isRecipe'] == true ? 'recipe' : (food.containsKey('uniqueId') && (food['uniqueId'] as String).startsWith('custom') ? 'custom' : 'food');
       return {
         ...food,
-        'uniqueId': '$type:$index:${food['name']}', // Unique identifier
+        'uniqueId': '$type:$index:${food['name']}',
       };
     }).toList();
 
-    // Find the current food's uniqueId
     String? selectedFoodId;
     for (var food in allFoods) {
       if (food['name'] == meal.food && food['isRecipe'] == meal.isRecipe) {
@@ -646,12 +623,11 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
     );
 
     if (result == true) {
-      await _mealRepository.deleteMeal(meal.id); // Remove the old meal
+      await _mealRepository.deleteMeal(meal.id);
       final servings = double.tryParse(amountController.text) ?? 1.0;
-      // Find the food by its uniqueId
       final food = allFoods.firstWhere((f) => f['uniqueId'] == selectedFoodId);
       final updatedMeal = Meal(
-        id: '', // Will be set in the repository
+        id: '',
         food: food['name'],
         mealType: selectedMealType,
         calories: ((food['calories'] as num?)?.toDouble() ?? 0.0) * servings,
@@ -681,7 +657,7 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Log Water Intake'),
+        title: Text('Log Water Intake for ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
         content: TextField(
           controller: amountController,
           keyboardType: TextInputType.number,
@@ -714,7 +690,10 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
 
     if (result == true) {
       final amount = double.tryParse(amountController.text) ?? 0.0;
-      await _waterIntakeRepository.addWaterIntake(amount);
+      await _waterIntakeRepository.addWaterIntakeWithTimestamp(
+        amount,
+        DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 12).millisecondsSinceEpoch,
+      );
       await _loadData();
     }
   }
@@ -901,6 +880,21 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
     }
   }
 
+  Future<void> _pickDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+      await _loadData();
+    }
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -953,6 +947,26 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
               )
                   : Column(
                 children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Selected Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                          style: GoogleFonts.roboto(
+                            fontSize: 16,
+                            color: const Color(0xFF1C2526),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: Icon(Icons.calendar_today, color: accentColor),
+                          onPressed: _pickDate,
+                        ),
+                      ],
+                    ),
+                  ),
                   TabBar(
                     controller: _tabController,
                     labelColor: accentColor,
@@ -1000,6 +1014,7 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
                               });
                             }
                           },
+                          selectedDate: _selectedDate,
                         ),
                         // Saved Recipes Tab
                         SavedRecipes(
