@@ -9,8 +9,21 @@ class WorkoutRepository {
     if (workoutsJson == null) {
       return [];
     }
-    final List<dynamic> workoutsList = jsonDecode(workoutsJson);
-    return workoutsList.map((json) => Workout.fromMap(json)).toList();
+    try {
+      final decodedData = jsonDecode(workoutsJson);
+      if (decodedData is List<dynamic>) {
+        return decodedData.map((json) => Workout.fromMap(json)).toList();
+      } else {
+        // If the data is not a list, clear it and return an empty list
+        await prefs.remove('workouts_$programId');
+        return [];
+      }
+    } catch (e) {
+      // If decoding fails, clear the data and return an empty list
+      print('Error decoding workouts for program $programId: $e');
+      await prefs.remove('workouts_$programId');
+      return [];
+    }
   }
 
   Future<void> insertWorkout(String programId, Workout workout) async {

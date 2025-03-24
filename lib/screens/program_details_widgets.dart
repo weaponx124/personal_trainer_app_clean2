@@ -643,11 +643,10 @@ class _ProgramProgressWidgetState extends State<ProgramProgressWidget> {
               for (var workout in workouts) {
                 for (var exercise in workout.exercises) {
                   if (exercise['name'] == exerciseName) {
-                    final weights = (exercise['weight'] as List<dynamic>).cast<double>();
-                    final avgWeight = weights.isNotEmpty ? weights.reduce((a, b) => a + b) / weights.length : 0.0;
+                    final weight = exercise['weight'] as double; // Weight is a double, not a list
                     weightsOverTime.add({
                       'timestamp': workout.timestamp,
-                      'weight': avgWeight,
+                      'weight': weight,
                     });
                   }
                 }

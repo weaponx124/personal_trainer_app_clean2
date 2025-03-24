@@ -46,7 +46,6 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
     }
   }
 
-  // Method to share program progress
   Future<void> _shareProgress(Program program) async {
     final totalWorkouts = (await WorkoutRepository().getWorkouts(program.id)).length;
     final oneRMsSummary = program.oneRMs.entries.map((entry) => '${entry.key}: ${entry.value} ${program.details['unit'] ?? 'lbs'}').join('\n');
@@ -65,85 +64,63 @@ $oneRMsSummary
     return ValueListenableBuilder<Color>(
       valueListenable: accentColorNotifier,
       builder: (context, accentColor, child) {
-        return FutureBuilder<Program>(
-          future: _programFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.1,
+                  child: CustomPaint(
+                    painter: CrossPainter(),
+                    child: Container(),
                   ),
-                ),
-                child: Center(child: CircularProgressIndicator(color: accentColor)),
-              );
-            }
-            if (snapshot.hasError || !snapshot.hasData) {
-              return Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    'Error loading program: ${snapshot.error}',
-                    style: GoogleFonts.roboto(
-                      fontSize: 16,
-                      color: const Color(0xFF808080),
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            final program = snapshot.data!;
-            final unit = program.details['unit'] as String? ?? 'lbs';
-
-            return Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
                 ),
               ),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Opacity(
-                      opacity: 0.1,
-                      child: CustomPaint(
-                        painter: CrossPainter(),
-                        child: Container(),
-                      ),
-                    ),
-                  ),
-                  Scaffold(
-                    backgroundColor: Colors.transparent,
-                    appBar: AppBar(
-                      title: Text(program.name),
-                      backgroundColor: Color(0xFF1C2526),
-                      foregroundColor: Color(0xFFB0B7BF),
-                      leading: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Color(0xFFB0B7BF)),
-                        onPressed: () {
-                          childScreenNotifier.value = const ProgramsOverviewScreen(programName: '');
-                        },
-                      ),
-                      actions: [
-                        IconButton(
-                          icon: const Icon(Icons.share, color: Color(0xFFB0B7BF)),
-                          onPressed: () => _shareProgress(program),
-                          tooltip: 'Share Progress',
+              Scaffold(
+                backgroundColor: Colors.transparent,
+                floatingActionButton: FutureBuilder<Program>(
+                  future: _programFuture,
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const SizedBox.shrink(); // Don't show FAB until program is loaded
+                    }
+                    return FloatingActionButton(
+                      onPressed: () => _shareProgress(snapshot.data!),
+                      backgroundColor: accentColor,
+                      child: const Icon(Icons.share),
+                      tooltip: 'Share Progress',
+                    );
+                  },
+                ),
+                body: FutureBuilder<Program>(
+                  future: _programFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError || !snapshot.hasData) {
+                      return Center(
+                        child: Text(
+                          'Error loading program: ${snapshot.error}',
+                          style: GoogleFonts.roboto(
+                            fontSize: 16,
+                            color: const Color(0xFF808080),
+                          ),
                         ),
-                      ],
-                    ),
-                    body: SingleChildScrollView(
+                      );
+                    }
+
+                    final program = snapshot.data!;
+                    final unit = program.details['unit'] as String? ?? 'lbs';
+
+                    return SingleChildScrollView(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -175,12 +152,12 @@ $oneRMsSummary
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
-            );
-          },
+            ],
+          ),
         );
       },
     );

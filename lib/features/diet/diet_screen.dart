@@ -123,8 +123,8 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
       final Map<String, Map<String, dynamic>> uniqueCustomFoods = {};
       for (var food in customFoods) {
         final name = food['name'] as String;
-        if (!uniqueCustomFoods.containsKey(name)) {
-          uniqueCustomFoods[name] = food;
+        if (!uniqueFoodDatabase.containsKey(name)) {
+          uniqueFoodDatabase[name] = food;
         } else {
           print('Warning: Duplicate food name "$name" found in customFoods. Keeping the first occurrence.');
         }
@@ -896,7 +896,6 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
     }
   }
 
-  // Method to share diet summary
   Future<void> _shareDietSummary() async {
     final totalCalories = _dailyCalories;
     final mealSummary = _meals
@@ -947,182 +946,191 @@ $mealSummary
                   ),
                 ),
               ),
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
-                  ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              Scaffold(
+                backgroundColor: Colors.transparent,
+                floatingActionButton: FloatingActionButton(
+                  onPressed: _shareDietSummary,
+                  backgroundColor: accentColor,
+                  child: const Icon(Icons.share),
+                  tooltip: 'Share Diet Summary',
+                ),
+                body: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _errorMessage != null
+                    ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadData,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+                    : Column(
                   children: [
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 16),
-                      textAlign: TextAlign.center,
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Selected Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                            style: GoogleFonts.roboto(
+                              fontSize: 16,
+                              color: const Color(0xFF1C2526),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(Icons.calendar_today, color: accentColor),
+                            onPressed: _pickDate,
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _loadData,
-                      child: const Text('Retry'),
+                    TabBar(
+                      controller: _tabController,
+                      labelColor: accentColor,
+                      unselectedLabelColor: const Color(0xFF808080),
+                      indicatorColor: accentColor,
+                      tabs: const [
+                        Tab(text: 'Daily Summary'),
+                        Tab(text: 'Meal Log'),
+                        Tab(text: 'Recipes'),
+                        Tab(text: 'Shopping List'),
+                        Tab(text: 'Preferences'),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          // Daily Summary Tab
+                          DailySummary(
+                            dailyCalories: _dailyCalories,
+                            calorieGoal: _dietPreferences['calorieGoal']?.toDouble() ?? 2000,
+                            dailyProtein: _dailyProtein,
+                            dailyCarbs: _dailyCarbs,
+                            dailyFat: _dailyFat,
+                            dailyWater: _dailyWater,
+                            proteinGoal: _proteinGoal,
+                            carbsGoal: _carbsGoal,
+                            fatGoal: _fatGoal,
+                            waterGoal: _dietPreferences['waterGoal']?.toDouble() ?? 64,
+                            selectedDate: _selectedDate,
+                            onAddWater: _addWater,
+                          ),
+                          // Meal Log Tab
+                          MealLog(
+                            meals: _meals,
+                            onDelete: _deleteMeal,
+                            onEdit: _editMeal,
+                            onAddCustomFood: _addCustomFood,
+                            onAddRecipe: _addRecipe,
+                            onAddMeal: _addMeal,
+                            selectedMealType: _selectedMealType,
+                            onMealTypeChanged: (String? newValue) {
+                              if (newValue != null) {
+                                setState(() {
+                                  _selectedMealType = newValue;
+                                });
+                              }
+                            },
+                            selectedDate: _selectedDate,
+                          ),
+                          // Saved Recipes Tab
+                          SavedRecipes(
+                            recipes: _recipes,
+                            onDelete: _deleteRecipe,
+                            onAddRecipe: _addRecipe,
+                          ),
+                          // Shopping List Tab
+                          ShoppingList(
+                            shoppingList: _shoppingList,
+                            onToggle: _toggleShoppingItem,
+                            onGenerate: _generateShoppingList,
+                            onClear: _clearShoppingList,
+                          ),
+                          // Preferences Tab
+                          SingleChildScrollView(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Diet Preferences
+                                  ElevatedButton.icon(
+                                    icon: const Icon(Icons.settings, size: 24),
+                                    label: const Text('Edit Diet Preferences', style: TextStyle(fontSize: 18)),
+                                    onPressed: _editDietPreferences,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: accentColor,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  // Food Recommendations
+                                  Card(
+                                    elevation: 4,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    color: const Color(0xFFB0B7BF),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Recommended Foods',
+                                            style: GoogleFonts.oswald(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: accentColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          _recommendedFoods.isEmpty
+                                              ? const Text('No recommendations available.')
+                                              : Column(
+                                            children: _recommendedFoods.map((food) => ListTile(
+                                              title: Text(
+                                                food['name'] as String,
+                                                style: GoogleFonts.roboto(
+                                                  fontSize: 16,
+                                                  color: const Color(0xFF1C2526),
+                                                ),
+                                              ),
+                                              subtitle: Text(
+                                                '${food['calories']} kcal, ${food['protein']}g protein',
+                                                style: GoogleFonts.roboto(
+                                                  fontSize: 14,
+                                                  color: const Color(0xFF808080),
+                                                ),
+                                              ),
+                                            )).toList(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              )
-                  : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Selected Date: ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF1C2526),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: Icon(Icons.calendar_today, color: accentColor),
-                          onPressed: _pickDate,
-                        ),
-                      ],
-                    ),
-                  ),
-                  TabBar(
-                    controller: _tabController,
-                    labelColor: accentColor,
-                    unselectedLabelColor: const Color(0xFF808080),
-                    indicatorColor: accentColor,
-                    tabs: const [
-                      Tab(text: 'Daily Summary'),
-                      Tab(text: 'Meal Log'),
-                      Tab(text: 'Recipes'),
-                      Tab(text: 'Shopping List'),
-                      Tab(text: 'Preferences'),
-                    ],
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        // Daily Summary Tab
-                        DailySummary(
-                          dailyCalories: _dailyCalories,
-                          calorieGoal: _dietPreferences['calorieGoal']?.toDouble() ?? 2000,
-                          dailyProtein: _dailyProtein,
-                          dailyCarbs: _dailyCarbs,
-                          dailyFat: _dailyFat,
-                          dailyWater: _dailyWater,
-                          proteinGoal: _proteinGoal,
-                          carbsGoal: _carbsGoal,
-                          fatGoal: _fatGoal,
-                          waterGoal: _dietPreferences['waterGoal']?.toDouble() ?? 64,
-                          selectedDate: _selectedDate,
-                          onAddWater: _addWater,
-                        ),
-                        // Meal Log Tab
-                        MealLog(
-                          meals: _meals,
-                          onDelete: _deleteMeal,
-                          onEdit: _editMeal,
-                          onAddCustomFood: _addCustomFood,
-                          onAddRecipe: _addRecipe,
-                          onAddMeal: _addMeal,
-                          selectedMealType: _selectedMealType,
-                          onMealTypeChanged: (String? newValue) {
-                            if (newValue != null) {
-                              setState(() {
-                                _selectedMealType = newValue;
-                              });
-                            }
-                          },
-                          selectedDate: _selectedDate, // Added missing parameter
-                        ),
-                        // Saved Recipes Tab
-                        SavedRecipes(
-                          recipes: _recipes,
-                          onDelete: _deleteRecipe,
-                          onAddRecipe: _addRecipe,
-                        ),
-                        // Shopping List Tab
-                        ShoppingList(
-                          shoppingList: _shoppingList,
-                          onToggle: _toggleShoppingItem,
-                          onGenerate: _generateShoppingList,
-                          onClear: _clearShoppingList,
-                        ),
-                        // Preferences Tab
-                        SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // Diet Preferences
-                                ElevatedButton.icon(
-                                  icon: const Icon(Icons.settings, size: 24),
-                                  label: const Text('Edit Diet Preferences', style: TextStyle(fontSize: 18)),
-                                  onPressed: _editDietPreferences,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: accentColor,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                // Food Recommendations
-                                Card(
-                                  elevation: 4,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  color: const Color(0xFFB0B7BF),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Recommended Foods',
-                                          style: GoogleFonts.oswald(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: accentColor,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        _recommendedFoods.isEmpty
-                                            ? const Text('No recommendations available.')
-                                            : Column(
-                                          children: _recommendedFoods.map((food) => ListTile(
-                                            title: Text(
-                                              food['name'] as String,
-                                              style: GoogleFonts.roboto(
-                                                fontSize: 16,
-                                                color: const Color(0xFF1C2526),
-                                              ),
-                                            ),
-                                            subtitle: Text(
-                                              '${food['calories']} kcal, ${food['protein']}g protein',
-                                              style: GoogleFonts.roboto(
-                                                fontSize: 14,
-                                                color: const Color(0xFF808080),
-                                              ),
-                                            ),
-                                          )).toList(),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
