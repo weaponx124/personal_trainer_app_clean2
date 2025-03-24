@@ -26,10 +26,10 @@ class DietScreen extends StatefulWidget {
   const DietScreen({super.key});
 
   @override
-  _DietScreenState createState() => _DietScreenState();
+  DietScreenState createState() => DietScreenState();
 }
 
-class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateMixin {
+class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final MealRepository _mealRepository = MealRepository();
   final RecipeRepository _recipeRepository = RecipeRepository();
@@ -896,7 +896,7 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
     }
   }
 
-  Future<void> _shareDietSummary() async {
+  Future<void> shareDietSummary() async {
     final totalCalories = _dailyCalories;
     final mealSummary = _meals
         .where((meal) {
@@ -948,12 +948,6 @@ $mealSummary
               ),
               Scaffold(
                 backgroundColor: Colors.transparent,
-                floatingActionButton: FloatingActionButton(
-                  onPressed: _shareDietSummary,
-                  backgroundColor: accentColor,
-                  child: const Icon(Icons.share),
-                  tooltip: 'Share Diet Summary',
-                ),
                 body: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _errorMessage != null

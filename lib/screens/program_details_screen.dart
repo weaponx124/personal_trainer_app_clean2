@@ -17,10 +17,10 @@ class ProgramDetailsScreen extends StatefulWidget {
   const ProgramDetailsScreen({super.key, required this.programId});
 
   @override
-  _ProgramDetailsScreenState createState() => _ProgramDetailsScreenState();
+  ProgramDetailsScreenState createState() => ProgramDetailsScreenState();
 }
 
-class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
+class ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
   final ProgramRepository _programRepository = ProgramRepository();
   late Future<Program> _programFuture;
   late ProgramLogic _programLogic;
@@ -46,7 +46,8 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
     }
   }
 
-  Future<void> _shareProgress(Program program) async {
+  Future<void> shareProgress() async {
+    final program = await _programFuture;
     final totalWorkouts = (await WorkoutRepository().getWorkouts(program.id)).length;
     final oneRMsSummary = program.oneRMs.entries.map((entry) => '${entry.key}: ${entry.value} ${program.details['unit'] ?? 'lbs'}').join('\n');
     final shareText = '''
@@ -85,20 +86,6 @@ $oneRMsSummary
               ),
               Scaffold(
                 backgroundColor: Colors.transparent,
-                floatingActionButton: FutureBuilder<Program>(
-                  future: _programFuture,
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const SizedBox.shrink(); // Don't show FAB until program is loaded
-                    }
-                    return FloatingActionButton(
-                      onPressed: () => _shareProgress(snapshot.data!),
-                      backgroundColor: accentColor,
-                      child: const Icon(Icons.share),
-                      tooltip: 'Share Progress',
-                    );
-                  },
-                ),
                 body: FutureBuilder<Program>(
                   future: _programFuture,
                   builder: (context, snapshot) {

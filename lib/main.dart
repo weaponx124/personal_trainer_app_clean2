@@ -129,6 +129,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   late int _selectedIndex;
+  final GlobalKey<DietScreenState> _dietScreenKey = GlobalKey<DietScreenState>();
+  final GlobalKey<ProgramDetailsScreenState> _programDetailsScreenKey = GlobalKey<ProgramDetailsScreenState>();
 
   @override
   void initState() {
@@ -138,36 +140,77 @@ class _MainScreenState extends State<MainScreen> {
     childScreenNotifier.value = widget.childScreen;
   }
 
+  Future<void> _shareCurrentScreen() async {
+    if (_selectedIndex == 3) {
+      // DietScreen is active
+      await _dietScreenKey.currentState?.shareDietSummary();
+    } else if (childScreenNotifier.value is ProgramDetailsScreen) {
+      // ProgramDetailsScreen is active
+      await _programDetailsScreenKey.currentState?.shareProgress();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<String>(
       valueListenable: unitNotifier,
       builder: (context, unit, child) {
-        return ValueListenableBuilder<Widget?>(
-          valueListenable: childScreenNotifier,
-          builder: (context, childScreen, _) {
-            return Scaffold(
-              body: SafeArea(
-                child: childScreen ?? _screens(unit)[_selectedIndex],
-              ),
-              bottomNavigationBar: BottomNavigationBar(
-                items: const <BottomNavigationBarItem>[
-                  BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-                  BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Active Programs'),
-                  BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Progress'),
-                  BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
-                  BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Scriptures'),
-                  BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Workout Log'),
-                ],
-                currentIndex: _selectedIndex,
-                onTap: (index) {
-                  setState(() {
-                    _selectedIndex = index;
-                    selectedTabIndexNotifier.value = index;
-                    childScreenNotifier.value = null; // Clear child screen when switching tabs
-                  });
-                },
-              ),
+        return ValueListenableBuilder<Color>(
+          valueListenable: accentColorNotifier,
+          builder: (context, accentColor, child) {
+            return ValueListenableBuilder<Widget?>(
+              valueListenable: childScreenNotifier,
+              builder: (context, childScreen, _) {
+                return Scaffold(
+                  appBar: AppBar(
+                    title: Text(
+                      _selectedIndex == 0
+                          ? 'Home'
+                          : _selectedIndex == 1
+                          ? 'Active Programs'
+                          : _selectedIndex == 2
+                          ? 'Progress'
+                          : _selectedIndex == 3
+                          ? 'Diet'
+                          : _selectedIndex == 4
+                          ? 'Scriptures'
+                          : 'Workout Log',
+                    ),
+                    backgroundColor: const Color(0xFF1C2526),
+                    foregroundColor: const Color(0xFFB0B7BF),
+                    actions: [
+                      if (_selectedIndex == 3 || childScreenNotifier.value is ProgramDetailsScreen) // Show share button only for DietScreen and ProgramDetailsScreen
+                        IconButton(
+                          icon: const Icon(Icons.share, color: Color(0xFFB0B7BF)),
+                          onPressed: _shareCurrentScreen,
+                          tooltip: 'Share',
+                        ),
+                    ],
+                  ),
+                  body: SafeArea(
+                    child: childScreen ?? _screens(unit)[_selectedIndex],
+                  ),
+                  bottomNavigationBar: BottomNavigationBar(
+                    items: const <BottomNavigationBarItem>[
+                      BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+                      BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Active Programs'),
+                      BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Progress'),
+                      BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Diet'),
+                      BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Scriptures'),
+                      BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Workout Log'),
+                    ],
+                    currentIndex: _selectedIndex,
+                    selectedItemColor: accentColor,
+                    onTap: (index) {
+                      setState(() {
+                        _selectedIndex = index;
+                        selectedTabIndexNotifier.value = index;
+                        childScreenNotifier.value = null; // Clear child screen when switching tabs
+                      });
+                    },
+                  ),
+                );
+              },
             );
           },
         );
@@ -179,7 +222,7 @@ class _MainScreenState extends State<MainScreen> {
     home.HomeScreen(unit: unit),
     const ProgramsOverviewScreen(programName: ''),
     progress.ProgressScreen(),
-    const DietScreen(),
+    DietScreen(key: _dietScreenKey),
     ValueListenableBuilder<Map<String, dynamic>?>(
       valueListenable: scriptureArgsNotifier,
       builder: (context, args, child) {
