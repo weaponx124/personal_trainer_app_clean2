@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class SettingsRepository {
   static const String _weightUnitKey = 'weightUnit';
@@ -7,6 +8,12 @@ class SettingsRepository {
   static const String _fitnessGoalKey = 'fitness_goal';
   static const String _experienceLevelKey = 'experience_level';
   static const String _preferredWorkoutTypeKey = 'preferred_workout_type';
+  static const String _mealReminderEnabledKey = 'mealReminderEnabled';
+  static const String _waterReminderEnabledKey = 'waterReminderEnabled';
+  static const String _workoutReminderEnabledKey = 'workoutReminderEnabled';
+  static const String _mealReminderTimesKey = 'mealReminderTimes';
+  static const String _waterReminderTimeKey = 'waterReminderTime';
+  static const String _workoutReminderTimeKey = 'workoutReminderTime';
 
   Future<String> getWeightUnit() async {
     try {
@@ -69,7 +76,6 @@ class SettingsRepository {
     }
   }
 
-  // New methods for user preferences
   Future<String> getFitnessGoal() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -130,6 +136,158 @@ class SettingsRepository {
     } catch (e) {
       print('Error saving preferred workout type: $e');
       throw Exception('Failed to save preferred workout type: $e');
+    }
+  }
+
+  Future<bool> getMealReminderEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_mealReminderEnabledKey) ?? false;
+    } catch (e) {
+      print('Error loading meal reminder enabled: $e');
+      return false;
+    }
+  }
+
+  Future<void> setMealReminderEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_mealReminderEnabledKey, enabled);
+      print('Saved meal reminder enabled: $enabled');
+    } catch (e) {
+      print('Error saving meal reminder enabled: $e');
+      throw Exception('Failed to save meal reminder enabled: $e');
+    }
+  }
+
+  Future<bool> getWaterReminderEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_waterReminderEnabledKey) ?? false;
+    } catch (e) {
+      print('Error loading water reminder enabled: $e');
+      return false;
+    }
+  }
+
+  Future<void> setWaterReminderEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_waterReminderEnabledKey, enabled);
+      print('Saved water reminder enabled: $enabled');
+    } catch (e) {
+      print('Error saving water reminder enabled: $e');
+      throw Exception('Failed to save water reminder enabled: $e');
+    }
+  }
+
+  Future<bool> getWorkoutReminderEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_workoutReminderEnabledKey) ?? false;
+    } catch (e) {
+      print('Error loading workout reminder enabled: $e');
+      return false;
+    }
+  }
+
+  Future<void> setWorkoutReminderEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_workoutReminderEnabledKey, enabled);
+      print('Saved workout reminder enabled: $enabled');
+    } catch (e) {
+      print('Error saving workout reminder enabled: $e');
+      throw Exception('Failed to save workout reminder enabled: $e');
+    }
+  }
+
+  Future<Map<String, TimeOfDay>> getMealReminderTimes() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final timesString = prefs.getString(_mealReminderTimesKey);
+      if (timesString == null) {
+        // Default meal times
+        return {
+          'Breakfast': const TimeOfDay(hour: 8, minute: 0),
+          'Lunch': const TimeOfDay(hour: 12, minute: 0),
+          'Dinner': const TimeOfDay(hour: 18, minute: 0),
+          'Snack': const TimeOfDay(hour: 15, minute: 0),
+        };
+      }
+      final timesMap = jsonDecode(timesString) as Map<String, dynamic>;
+      return timesMap.map((key, value) {
+        final parts = (value as String).split(':');
+        return MapEntry(key, TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1])));
+      });
+    } catch (e) {
+      print('Error loading meal reminder times: $e');
+      return {
+        'Breakfast': const TimeOfDay(hour: 8, minute: 0),
+        'Lunch': const TimeOfDay(hour: 12, minute: 0),
+        'Dinner': const TimeOfDay(hour: 18, minute: 0),
+        'Snack': const TimeOfDay(hour: 15, minute: 0),
+      };
+    }
+  }
+
+  Future<void> setMealReminderTimes(Map<String, TimeOfDay> times) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final timesMap = times.map((key, time) => MapEntry(key, '${time.hour}:${time.minute}'));
+      await prefs.setString(_mealReminderTimesKey, jsonEncode(timesMap));
+      print('Saved meal reminder times: $timesMap');
+    } catch (e) {
+      print('Error saving meal reminder times: $e');
+      throw Exception('Failed to save meal reminder times: $e');
+    }
+  }
+
+  Future<TimeOfDay> getWaterReminderTime() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final timeString = prefs.getString(_waterReminderTimeKey) ?? '10:00'; // Default to 10:00 AM
+      final parts = timeString.split(':');
+      return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    } catch (e) {
+      print('Error loading water reminder time: $e');
+      return const TimeOfDay(hour: 10, minute: 0);
+    }
+  }
+
+  Future<void> setWaterReminderTime(TimeOfDay time) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final timeString = '${time.hour}:${time.minute}';
+      await prefs.setString(_waterReminderTimeKey, timeString);
+      print('Saved water reminder time: $timeString');
+    } catch (e) {
+      print('Error saving water reminder time: $e');
+      throw Exception('Failed to save water reminder time: $e');
+    }
+  }
+
+  Future<TimeOfDay> getWorkoutReminderTime() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final timeString = prefs.getString(_workoutReminderTimeKey) ?? '18:00'; // Default to 6:00 PM
+      final parts = timeString.split(':');
+      return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    } catch (e) {
+      print('Error loading workout reminder time: $e');
+      return const TimeOfDay(hour: 18, minute: 0);
+    }
+  }
+
+  Future<void> setWorkoutReminderTime(TimeOfDay time) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final timeString = '${time.hour}:${time.minute}';
+      await prefs.setString(_workoutReminderTimeKey, timeString);
+      print('Saved workout reminder time: $timeString');
+    } catch (e) {
+      print('Error saving workout reminder time: $e');
+      throw Exception('Failed to save workout reminder time: $e');
     }
   }
 }

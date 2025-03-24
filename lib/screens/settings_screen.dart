@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/settings_repository.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/verse_of_the_day_repository.dart';
+import 'package:personal_trainer_app_clean/core/services/notification_service.dart';
 import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
-import 'package:timezone/timezone.dart' as tz;
+import 'dart:io' show Platform;
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -18,6 +18,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsRepository _settingsRepository = SettingsRepository();
   final VerseOfTheDayRepository _verseOfTheDayRepository = VerseOfTheDayRepository();
+  NotificationService? _notificationService;
   String _weightUnit = 'lbs';
   ThemeMode _themeMode = ThemeMode.system;
   int _weeklyWorkoutGoal = 3;
@@ -26,17 +27,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _preferredWorkoutType = 'strength';
   Color _accentColor = const Color(0xFFB22222);
   final TextEditingController _goalController = TextEditingController();
-  TimeOfDay _mealReminderTime = const TimeOfDay(hour: 12, minute: 0);
-  TimeOfDay _waterReminderTime = const TimeOfDay(hour: 10, minute: 0);
-  TimeOfDay _workoutReminderTime = const TimeOfDay(hour: 18, minute: 0);
   bool _mealReminderEnabled = false;
   bool _waterReminderEnabled = false;
   bool _workoutReminderEnabled = false;
+  Map<String, TimeOfDay> _mealReminderTimes = {
+    'Breakfast': const TimeOfDay(hour: 8, minute: 0),
+    'Lunch': const TimeOfDay(hour: 12, minute: 0),
+    'Dinner': const TimeOfDay(hour: 18, minute: 0),
+    'Snack': const TimeOfDay(hour: 15, minute: 0),
+  };
+  TimeOfDay _waterReminderTime = const TimeOfDay(hour: 10, minute: 0);
+  TimeOfDay _workoutReminderTime = const TimeOfDay(hour: 18, minute: 0);
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _initializeNotificationService();
+  }
+
+  Future<void> _initializeNotificationService() async {
+    try {
+      print('SettingsScreen: Initializing notification service...');
+      final notificationPlugin = await flutterLocalNotificationsPluginFuture;
+      if (notificationPlugin != null) {
+        _notificationService = NotificationService(notificationPlugin);
+        print('SettingsScreen: Notification service initialized.');
+      } else {
+        print('SettingsScreen: Notification service not initialized (unsupported platform, e.g., Windows).');
+      }
+      await _loadSettings();
+    } catch (e) {
+      print('SettingsScreen: Error initializing notification service: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -48,15 +74,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final experienceLevel = await _settingsRepository.getExperienceLevel();
     final preferredWorkoutType = await _settingsRepository.getPreferredWorkoutType();
     final savedAccentColor = prefs.getInt('accentColor');
-    final mealReminderEnabled = prefs.getBool('mealReminderEnabled') ?? false;
-    final waterReminderEnabled = prefs.getBool('waterReminderEnabled') ?? false;
-    final workoutReminderEnabled = prefs.getBool('workoutReminderEnabled') ?? false;
-    final mealReminderHour = prefs.getInt('mealReminderHour') ?? 12;
-    final mealReminderMinute = prefs.getInt('mealReminderMinute') ?? 0;
-    final waterReminderHour = prefs.getInt('waterReminderHour') ?? 10;
-    final waterReminderMinute = prefs.getInt('waterReminderMinute') ?? 0;
-    final workoutReminderHour = prefs.getInt('workoutReminderHour') ?? 18;
-    final workoutReminderMinute = prefs.getInt('workoutReminderMinute') ?? 0;
+    final mealReminderEnabled = await _settingsRepository.getMealReminderEnabled();
+    final waterReminderEnabled = await _settingsRepository.getWaterReminderEnabled();
+    final workoutReminderEnabled = await _settingsRepository.getWorkoutReminderEnabled();
+    final mealReminderTimes = await _settingsRepository.getMealReminderTimes();
+    final waterReminderTime = await _settingsRepository.getWaterReminderTime();
+    final workoutReminderTime = await _settingsRepository.getWorkoutReminderTime();
 
     setState(() {
       _weightUnit = weightUnit;
@@ -69,33 +92,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _mealReminderEnabled = mealReminderEnabled;
       _waterReminderEnabled = waterReminderEnabled;
       _workoutReminderEnabled = workoutReminderEnabled;
-      _mealReminderTime = TimeOfDay(hour: mealReminderHour, minute: mealReminderMinute);
-      _waterReminderTime = TimeOfDay(hour: waterReminderHour, minute: waterReminderMinute);
-      _workoutReminderTime = TimeOfDay(hour: workoutReminderHour, minute: workoutReminderMinute);
+      _mealReminderTimes = mealReminderTimes;
+      _waterReminderTime = waterReminderTime;
+      _workoutReminderTime = workoutReminderTime;
       _goalController.text = _weeklyWorkoutGoal.toString();
       unitNotifier.value = _weightUnit;
       themeModeNotifier.value = _themeMode;
       accentColorNotifier.value = _accentColor;
+      _isLoading = false;
     });
 
-    // Schedule notifications if enabled
-    if (_mealReminderEnabled) _scheduleMealReminder();
-    if (_waterReminderEnabled) _scheduleWaterReminder();
-    if (_workoutReminderEnabled) _scheduleWorkoutReminder();
+    // Schedule notifications if enabled and the service is available
+    if (_notificationService != null) {
+      if (_mealReminderEnabled) await _notificationService!.scheduleMealNotifications();
+      if (_waterReminderEnabled) await _notificationService!.scheduleWaterNotifications();
+      if (_workoutReminderEnabled) await _notificationService!.scheduleWorkoutNotifications();
+    }
   }
 
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('accentColor', _accentColor.value);
-    await prefs.setBool('mealReminderEnabled', _mealReminderEnabled);
-    await prefs.setBool('waterReminderEnabled', _waterReminderEnabled);
-    await prefs.setBool('workoutReminderEnabled', _workoutReminderEnabled);
-    await prefs.setInt('mealReminderHour', _mealReminderTime.hour);
-    await prefs.setInt('mealReminderMinute', _mealReminderTime.minute);
-    await prefs.setInt('waterReminderHour', _waterReminderTime.hour);
-    await prefs.setInt('waterReminderMinute', _waterReminderTime.minute);
-    await prefs.setInt('workoutReminderHour', _workoutReminderTime.hour);
-    await prefs.setInt('workoutReminderMinute', _workoutReminderTime.minute);
   }
 
   Future<void> _pickAccentColor() async {
@@ -156,17 +173,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _pickMealReminderTime() async {
+  Future<void> _pickMealReminderTime(String mealType) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _mealReminderTime,
+      initialTime: _mealReminderTimes[mealType]!,
     );
     if (picked != null) {
+      final updatedTimes = Map<String, TimeOfDay>.from(_mealReminderTimes);
+      updatedTimes[mealType] = picked;
+      await _settingsRepository.setMealReminderTimes(updatedTimes);
       setState(() {
-        _mealReminderTime = picked;
-        _saveSettings();
-        if (_mealReminderEnabled) _scheduleMealReminder();
+        _mealReminderTimes = updatedTimes;
       });
+      if (_mealReminderEnabled && _notificationService != null) {
+        await _notificationService!.scheduleMealNotifications();
+      }
     }
   }
 
@@ -176,11 +197,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       initialTime: _waterReminderTime,
     );
     if (picked != null) {
+      await _settingsRepository.setWaterReminderTime(picked);
       setState(() {
         _waterReminderTime = picked;
-        _saveSettings();
-        if (_waterReminderEnabled) _scheduleWaterReminder();
       });
+      if (_waterReminderEnabled && _notificationService != null) {
+        await _notificationService!.scheduleWaterNotifications();
+      }
     }
   }
 
@@ -190,123 +213,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       initialTime: _workoutReminderTime,
     );
     if (picked != null) {
+      await _settingsRepository.setWorkoutReminderTime(picked);
       setState(() {
         _workoutReminderTime = picked;
-        _saveSettings();
-        if (_workoutReminderEnabled) _scheduleWorkoutReminder();
       });
+      if (_workoutReminderEnabled && _notificationService != null) {
+        await _notificationService!.scheduleWorkoutNotifications();
+      }
     }
-  }
-
-  Future<void> _scheduleMealReminder() async {
-    await flutterLocalNotificationsPlugin.cancel(1); // Cancel existing meal reminder
-    if (!_mealReminderEnabled) return;
-
-    final now = DateTime.now();
-    var scheduledTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      _mealReminderTime.hour,
-      _mealReminderTime.minute,
-    );
-    if (scheduledTime.isBefore(now)) {
-      scheduledTime = scheduledTime.add(const Duration(days: 1));
-    }
-
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'meal_reminder_channel',
-      'Meal Reminders',
-      channelDescription: 'Notifications for meal logging reminders',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
-
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      1,
-      'Meal Reminder',
-      'Time to log your meal!',
-      tz.TZDateTime.from(scheduledTime, tz.local),
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // Repeat daily at the specified time
-    );
-  }
-
-  Future<void> _scheduleWaterReminder() async {
-    await flutterLocalNotificationsPlugin.cancel(2); // Cancel existing water reminder
-    if (!_waterReminderEnabled) return;
-
-    final now = DateTime.now();
-    var scheduledTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      _waterReminderTime.hour,
-      _waterReminderTime.minute,
-    );
-    if (scheduledTime.isBefore(now)) {
-      scheduledTime = scheduledTime.add(const Duration(days: 1));
-    }
-
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'water_reminder_channel',
-      'Water Reminders',
-      channelDescription: 'Notifications for water intake reminders',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
-
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      2,
-      'Water Reminder',
-      'Time to drink some water!',
-      tz.TZDateTime.from(scheduledTime, tz.local),
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // Repeat daily at the specified time
-    );
-  }
-
-  Future<void> _scheduleWorkoutReminder() async {
-    await flutterLocalNotificationsPlugin.cancel(3); // Cancel existing workout reminder
-    if (!_workoutReminderEnabled) return;
-
-    final now = DateTime.now();
-    var scheduledTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      _workoutReminderTime.hour,
-      _workoutReminderTime.minute,
-    );
-    if (scheduledTime.isBefore(now)) {
-      scheduledTime = scheduledTime.add(const Duration(days: 1));
-    }
-
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'workout_reminder_channel',
-      'Workout Reminders',
-      channelDescription: 'Notifications for workout reminders',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
-
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      3,
-      'Workout Reminder',
-      'Time for your workout!',
-      tz.TZDateTime.from(scheduledTime, tz.local),
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // Repeat daily at the specified time
-    );
   }
 
   @override
@@ -317,6 +231,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return ValueListenableBuilder<Color>(
       valueListenable: accentColorNotifier,
       builder: (context, accentColor, child) {
@@ -671,39 +589,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: const Color(0xFF1C2526),
                             ),
                           ),
-                          subtitle: Text(
-                            'Time: ${_mealReminderTime.format(context)}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 14,
-                              color: const Color(0xFF808080),
-                            ),
-                          ),
                           value: _mealReminderEnabled,
-                          onChanged: (value) {
+                          onChanged: (value) async {
+                            await _settingsRepository.setMealReminderEnabled(value);
                             setState(() {
                               _mealReminderEnabled = value;
-                              _saveSettings();
-                              if (_mealReminderEnabled) {
-                                _scheduleMealReminder();
-                              } else {
-                                flutterLocalNotificationsPlugin.cancel(1);
-                              }
                             });
+                            if (_notificationService != null) {
+                              if (_mealReminderEnabled) {
+                                await _notificationService!.scheduleMealNotifications();
+                              } else {
+                                await _notificationService!.cancelAllNotifications();
+                              }
+                            }
                           },
                           activeColor: accentColor,
                         ),
-                        if (_mealReminderEnabled)
-                          ListTile(
-                            title: Text(
-                              'Set Meal Reminder Time',
-                              style: GoogleFonts.roboto(
-                                fontSize: 16,
-                                color: const Color(0xFF1C2526),
+                        if (_mealReminderEnabled) ...[
+                          ..._mealReminderTimes.entries.map((entry) {
+                            final mealType = entry.key;
+                            final time = entry.value;
+                            return ListTile(
+                              title: Text(
+                                '$mealType Reminder Time',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 16,
+                                  color: const Color(0xFF1C2526),
+                                ),
                               ),
-                            ),
-                            trailing: const Icon(Icons.access_time),
-                            onTap: _pickMealReminderTime,
-                          ),
+                              subtitle: Text(
+                                'Time: ${time.format(context)}',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 14,
+                                  color: const Color(0xFF808080),
+                                ),
+                              ),
+                              trailing: const Icon(Icons.access_time),
+                              onTap: () => _pickMealReminderTime(mealType),
+                            );
+                          }).toList(),
+                        ],
                         SwitchListTile(
                           title: Text(
                             'Water Reminder',
@@ -720,16 +645,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                           value: _waterReminderEnabled,
-                          onChanged: (value) {
+                          onChanged: (value) async {
+                            await _settingsRepository.setWaterReminderEnabled(value);
                             setState(() {
                               _waterReminderEnabled = value;
-                              _saveSettings();
-                              if (_waterReminderEnabled) {
-                                _scheduleWaterReminder();
-                              } else {
-                                flutterLocalNotificationsPlugin.cancel(2);
-                              }
                             });
+                            if (_notificationService != null) {
+                              if (_waterReminderEnabled) {
+                                await _notificationService!.scheduleWaterNotifications();
+                              } else {
+                                await _notificationService!.cancelAllNotifications();
+                              }
+                            }
                           },
                           activeColor: accentColor,
                         ),
@@ -761,16 +688,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                           value: _workoutReminderEnabled,
-                          onChanged: (value) {
+                          onChanged: (value) async {
+                            await _settingsRepository.setWorkoutReminderEnabled(value);
                             setState(() {
                               _workoutReminderEnabled = value;
-                              _saveSettings();
-                              if (_workoutReminderEnabled) {
-                                _scheduleWorkoutReminder();
-                              } else {
-                                flutterLocalNotificationsPlugin.cancel(3);
-                              }
                             });
+                            if (_notificationService != null) {
+                              if (_workoutReminderEnabled) {
+                                await _notificationService!.scheduleWorkoutNotifications();
+                              } else {
+                                await _notificationService!.cancelAllNotifications();
+                              }
+                            }
                           },
                           activeColor: accentColor,
                         ),
@@ -802,6 +731,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 // Extension to capitalize strings
 extension StringExtension on String {
   String capitalize() {
-    return "${this[0].toUpperCase()}${substring(1)}";
+    return "${this[0].toUpperCase}${substring(1)}";
   }
 }

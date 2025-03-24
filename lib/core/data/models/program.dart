@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Program {
   final String id;
   final String name;
@@ -8,7 +10,7 @@ class Program {
   final int sessionsCompleted;
   final String startDate;
   final bool completed;
-  final List<Map<String, dynamic>> workouts; // Add workouts property
+  final List<Map<String, dynamic>> workouts;
 
   Program({
     required this.id,
@@ -20,36 +22,71 @@ class Program {
     required this.sessionsCompleted,
     required this.startDate,
     this.completed = false,
-    this.workouts = const [], // Default to empty list
+    this.workouts = const [],
   });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
-      'details': details,
-      'oneRMs': oneRMs,
+      'details': jsonEncode(details), // Serialize to JSON string
+      'oneRMs': jsonEncode(oneRMs), // Serialize to JSON string
       'currentWeek': currentWeek,
       'currentSession': currentSession,
       'sessionsCompleted': sessionsCompleted,
       'startDate': startDate,
-      'completed': completed,
-      'workouts': workouts, // Include workouts in the map
+      'completed': completed ? 1 : 0, // Convert bool to int
+      'workouts': jsonEncode(workouts), // Serialize to JSON string
     };
   }
 
   factory Program.fromMap(Map<String, dynamic> map) {
+    // Handle details as either Map<String, dynamic> (from SharedPreferences) or JSON string (from SQLite)
+    Map<String, dynamic> detailsValue;
+    if (map['details'] is String) {
+      detailsValue = Map<String, dynamic>.from(jsonDecode(map['details'] as String));
+    } else {
+      detailsValue = Map<String, dynamic>.from(map['details'] ?? {});
+    }
+
+    // Handle oneRMs as either Map<String, dynamic> (from SharedPreferences) or JSON string (from SQLite)
+    Map<String, dynamic> oneRMsValue;
+    if (map['oneRMs'] is String) {
+      oneRMsValue = Map<String, dynamic>.from(jsonDecode(map['oneRMs'] as String));
+    } else {
+      oneRMsValue = Map<String, dynamic>.from(map['oneRMs'] ?? {});
+    }
+
+    // Handle completed as either bool (from SharedPreferences) or int (from SQLite)
+    bool completedValue;
+    if (map['completed'] is bool) {
+      completedValue = map['completed'] as bool;
+    } else {
+      completedValue = (map['completed'] as int? ?? 0) == 1;
+    }
+
+    // Handle workouts as either List<dynamic> (from SharedPreferences) or JSON string (from SQLite)
+    List<Map<String, dynamic>> workoutsValue;
+    if (map['workouts'] is String) {
+      workoutsValue = (jsonDecode(map['workouts'] as String) as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+    } else {
+      workoutsValue = (map['workouts'] as List<dynamic>?)
+          ?.cast<Map<String, dynamic>>() ??
+          [];
+    }
+
     return Program(
       id: map['id'] as String,
       name: map['name'] as String,
-      details: Map<String, dynamic>.from(map['details']),
-      oneRMs: Map<String, dynamic>.from(map['oneRMs']),
+      details: detailsValue,
+      oneRMs: oneRMsValue,
       currentWeek: map['currentWeek'] as int,
       currentSession: map['currentSession'] as int,
       sessionsCompleted: map['sessionsCompleted'] as int,
       startDate: map['startDate'] as String,
-      completed: map['completed'] as bool,
-      workouts: (map['workouts'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [], // Handle workouts
+      completed: completedValue,
+      workouts: workoutsValue,
     );
   }
 
@@ -63,7 +100,7 @@ class Program {
     int? sessionsCompleted,
     String? startDate,
     bool? completed,
-    List<Map<String, dynamic>>? workouts, // Add workouts parameter
+    List<Map<String, dynamic>>? workouts,
   }) {
     return Program(
       id: id ?? this.id,
@@ -75,7 +112,7 @@ class Program {
       sessionsCompleted: sessionsCompleted ?? this.sessionsCompleted,
       startDate: startDate ?? this.startDate,
       completed: completed ?? this.completed,
-      workouts: workouts ?? this.workouts, // Include workouts in copyWith
+      workouts: workouts ?? this.workouts,
     );
   }
 }

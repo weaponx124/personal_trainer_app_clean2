@@ -19,6 +19,9 @@ import 'package:personal_trainer_app_clean/screens/workout_log_screen.dart';
 import 'package:personal_trainer_app_clean/features/diet/diet_screen.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'dart:io' show Platform;
+import 'package:personal_trainer_app_clean/core/services/database_service.dart';
+import 'package:personal_trainer_app_clean/core/services/network_service.dart';
 
 // Global unit state
 ValueNotifier<String> unitNotifier = ValueNotifier<String>('lbs');
@@ -33,7 +36,56 @@ ValueNotifier<Widget?> childScreenNotifier = ValueNotifier<Widget?>(null);
 // Global accent color state
 ValueNotifier<Color> accentColorNotifier = ValueNotifier<Color>(const Color(0xFFB22222));
 // Global notification plugin
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+late Future<FlutterLocalNotificationsPlugin?> flutterLocalNotificationsPluginFuture;
+
+Future<FlutterLocalNotificationsPlugin?> initializeNotifications() async {
+  // Skip notification initialization on Windows
+  if (Platform.isWindows) {
+    print('Main: Skipping notification initialization on Windows (unsupported platform).');
+    return null;
+  }
+
+  print('Main: Initializing notifications...');
+  final plugin = FlutterLocalNotificationsPlugin();
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+  try {
+    final initialized = await plugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
+        print('Main: Received notification response: ${response.payload}');
+        if (response.payload != null) {
+          if (response.payload!.startsWith('workout_')) {
+            // Navigate to workout screen or program details
+            final programId = response.payload!.split('_')[1];
+            childScreenNotifier.value = ProgramDetailsScreen(programId: programId);
+            selectedTabIndexNotifier.value = 1; // Active Programs tab
+          } else if (response.payload!.startsWith('meal_')) {
+            // Navigate to diet screen
+            selectedTabIndexNotifier.value = 3; // Diet tab
+          }
+        }
+      },
+    );
+    if (initialized == true) {
+      print('Main: Notifications initialized successfully.');
+    } else {
+      print('Main: Failed to initialize notifications.');
+      return null;
+    }
+
+    // Request notification permissions (Android 13+)
+    await plugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+    return plugin;
+  } catch (e) {
+    print('Main: Error initializing notifications: $e');
+    return null;
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,14 +97,19 @@ void main() async {
 
   // Initialize timezone
   tz.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation('UTC')); // Set to UTC for simplicity; adjust as needed
+  try {
+    final localLocation = tz.getLocation('America/New_York'); // Fallback to a known timezone
+    tz.setLocalLocation(localLocation);
+    print('Main: Timezone set to ${localLocation.name}');
+  } catch (e) {
+    print('Main: Error setting timezone: $e');
+    // Fallback to UTC if local timezone fails
+    tz.setLocalLocation(tz.getLocation('UTC'));
+    print('Main: Fallback to UTC timezone');
+  }
 
-  // Initialize notifications
-  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-  );
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  // Initialize notifications and store the future
+  flutterLocalNotificationsPluginFuture = initializeNotifications();
 
   runApp(const MyApp());
 }
@@ -135,6 +192,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    print('MainScreen: Initializing MainScreen with initialTab: ${widget.initialTab}');
     _selectedIndex = widget.initialTab;
     selectedTabIndexNotifier.value = _selectedIndex;
     childScreenNotifier.value = widget.childScreen;
@@ -152,6 +210,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('MainScreen: Building MainScreen...');
     return ValueListenableBuilder<String>(
       valueListenable: unitNotifier,
       builder: (context, unit, child) {
@@ -161,6 +220,7 @@ class _MainScreenState extends State<MainScreen> {
             return ValueListenableBuilder<Widget?>(
               valueListenable: childScreenNotifier,
               builder: (context, childScreen, _) {
+                print('MainScreen: Rendering with selectedIndex: $_selectedIndex');
                 return Scaffold(
                   appBar: AppBar(
                     title: Text(

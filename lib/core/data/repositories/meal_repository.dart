@@ -1,42 +1,20 @@
+import 'package:personal_trainer_app_clean/core/data/models/meal.dart';
+import 'package:personal_trainer_app_clean/core/services/database_service.dart';
+import 'package:personal_trainer_app_clean/core/utils/locator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';
-import 'package:personal_trainer_app_clean/core/data/models/meal.dart';
 
 class MealRepository {
-  static const String _mealsKey = 'meals';
+  final DatabaseService _databaseService = getIt<DatabaseService>();
 
   Future<List<Meal>> getMeals() async {
-    final prefs = await SharedPreferences.getInstance();
-    final mealsJson = prefs.getString(_mealsKey);
-    if (mealsJson == null) return [];
-    final mealsList = jsonDecode(mealsJson) as List<dynamic>;
-
-    // Filter out invalid meals (those with null required fields)
-    final validMeals = <Meal>[];
-    final invalidMeals = <Map<String, dynamic>>[];
-    for (var meal in mealsList) {
-      if (meal == null) {
-        invalidMeals.add(meal);
-        continue;
-      }
-      final mealMap = meal as Map<String, dynamic>;
-      // Check for null required fields
-      if (mealMap['food'] == null || mealMap['mealType'] == null) {
-        invalidMeals.add(mealMap);
-        continue;
-      }
-      final mealObject = Meal.fromMap(mealMap);
-      validMeals.add(mealObject);
+    try {
+      return await _databaseService.getMeals();
+    } catch (e) {
+      print('Error loading meals: $e');
+      return [];
     }
-
-    // If there were invalid meals, save the cleaned-up list back to SharedPreferences
-    if (invalidMeals.isNotEmpty) {
-      print('Found ${invalidMeals.length} invalid meals. Cleaning up SharedPreferences.');
-      await prefs.setString(_mealsKey, jsonEncode(validMeals.map((m) => m.toMap()).toList()));
-    }
-
-    return validMeals;
   }
 
   Future<void> insertMeal(Meal meal) async {
@@ -44,8 +22,6 @@ class MealRepository {
     if (meal.food.isEmpty) throw Exception('Meal food cannot be empty');
     if (meal.mealType.isEmpty) throw Exception('Meal mealType cannot be empty');
 
-    final prefs = await SharedPreferences.getInstance();
-    final meals = await getMeals();
     final mealWithId = Meal(
       id: Uuid().v4(),
       food: meal.food,
@@ -61,22 +37,50 @@ class MealRepository {
       isRecipe: meal.isRecipe,
       ingredients: meal.ingredients,
     );
-    meals.add(mealWithId);
-    await prefs.setString(_mealsKey, jsonEncode(meals.map((m) => m.toMap()).toList()));
-    print('Inserted meal: ${mealWithId.toMap()}');
+
+    try {
+      await _databaseService.insertMeal(mealWithId);
+    } catch (e) {
+      print('Error inserting meal: $e');
+      throw Exception('Failed to insert meal: $e');
+    }
   }
 
   Future<void> deleteMeal(String mealId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final meals = await getMeals();
-    final updatedMeals = meals.where((m) => m.id != mealId).toList();
-    await prefs.setString(_mealsKey, jsonEncode(updatedMeals.map((m) => m.toMap()).toList()));
-    print('Deleted meal with ID: $mealId');
+    try {
+      await _databaseService.deleteMeal(mealId);
+    } catch (e) {
+      print('Error deleting meal: $e');
+      throw Exception('Failed to delete meal: $e');
+    }
   }
 
   Future<void> clearMeals() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_mealsKey);
-    print('Cleared all meals from SharedPreferences');
+    try {
+      await _databaseService.clearMeals();
+    } catch (e) {
+      print('Error clearing meals: $e');
+      throw Exception('Failed to clear meals: $e');
+    }
+  }
+
+  // Migrate existing data from SharedPreferences to SQLite (one-time operation)
+  Future<void> migrateFromSharedPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mealsJson = prefs.getString('meals') ?? '[]';
+      final List<dynamic> mealsList = jsonDecode(mealsJson);
+      final meals = mealsList.map((data) => Meal.fromMap(data)).toList();
+
+      for (var meal in meals) {
+        await _databaseService.insertMeal(meal);
+      }
+      print('MealRepository: Migrated ${meals.length} meals from SharedPreferences to SQLite.');
+
+      // Clear SharedPreferences after migration
+      await prefs.remove('meals');
+    } catch (e) {
+      print('Error migrating meals from SharedPreferences: $e');
+    }
   }
 }
