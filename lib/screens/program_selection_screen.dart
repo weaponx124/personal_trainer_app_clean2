@@ -5,7 +5,7 @@ import 'package:personal_trainer_app_clean/core/data/repositories/program_reposi
 import 'package:personal_trainer_app_clean/core/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/screens/custom_program_form.dart';
-import 'package:personal_trainer_app_clean/screens/program_details_widgets.dart';
+import 'package:personal_trainer_app_clean/screens/program_details_widgets.dart'; // Changed import to program_details_widgets.dart
 import 'package:personal_trainer_app_clean/screens/programs_overview_screen.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 
@@ -43,7 +43,7 @@ class _ProgramSelectionScreenState extends State<ProgramSelectionScreen> {
       currentSession: 1,
       sessionsCompleted: 0,
       startDate: DateTime.now().toIso8601String(),
-      // workouts defaults to empty list
+      workouts: [], // Added to match Program model
     );
 
     await _programRepository.insertProgram(program);

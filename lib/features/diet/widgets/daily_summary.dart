@@ -13,6 +13,7 @@ class DailySummary extends StatelessWidget {
   final double carbsGoal;
   final double fatGoal;
   final double waterGoal;
+  final DateTime selectedDate;
   final VoidCallback onAddWater;
 
   const DailySummary({
@@ -27,6 +28,7 @@ class DailySummary extends StatelessWidget {
     required this.carbsGoal,
     required this.fatGoal,
     required this.waterGoal,
+    required this.selectedDate,
     required this.onAddWater,
   });
 
@@ -41,6 +43,7 @@ class DailySummary extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Calories
                 Card(
                   elevation: 4,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -51,7 +54,7 @@ class DailySummary extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Daily Summary',
+                          'Calories',
                           style: GoogleFonts.oswald(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -59,53 +62,182 @@ class DailySummary extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        _buildProgressRow(
-                          'Calories',
-                          dailyCalories,
-                          calorieGoal,
-                          'kcal',
-                          Colors.red,
+                        LinearProgressIndicator(
+                          value: dailyCalories / calorieGoal,
+                          backgroundColor: const Color(0xFF808080),
+                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                         ),
                         const SizedBox(height: 8),
-                        _buildProgressRow(
-                          'Protein',
-                          dailyProtein,
-                          proteinGoal,
-                          'g',
-                          Colors.blue,
+                        Text(
+                          '${dailyCalories.toStringAsFixed(1)} / ${calorieGoal.toStringAsFixed(1)} kcal',
+                          style: GoogleFonts.roboto(
+                            fontSize: 16,
+                            color: const Color(0xFF1C2526),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Macros
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  color: const Color(0xFFB0B7BF),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Macros',
+                          style: GoogleFonts.oswald(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: accentColor,
+                          ),
                         ),
                         const SizedBox(height: 8),
-                        _buildProgressRow(
-                          'Carbs',
-                          dailyCarbs,
-                          carbsGoal,
-                          'g',
-                          Colors.green,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Protein',
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 16,
+                                      color: const Color(0xFF1C2526),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  LinearProgressIndicator(
+                                    value: dailyProtein / proteinGoal,
+                                    backgroundColor: const Color(0xFF808080),
+                                    valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${dailyProtein.toStringAsFixed(1)} / ${proteinGoal.toStringAsFixed(1)} g',
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 14,
+                                      color: const Color(0xFF1C2526),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Carbs',
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 16,
+                                      color: const Color(0xFF1C2526),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  LinearProgressIndicator(
+                                    value: dailyCarbs / carbsGoal,
+                                    backgroundColor: const Color(0xFF808080),
+                                    valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${dailyCarbs.toStringAsFixed(1)} / ${carbsGoal.toStringAsFixed(1)} g',
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 14,
+                                      color: const Color(0xFF1C2526),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Fat',
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 16,
+                                      color: const Color(0xFF1C2526),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  LinearProgressIndicator(
+                                    value: dailyFat / fatGoal,
+                                    backgroundColor: const Color(0xFF808080),
+                                    valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${dailyFat.toStringAsFixed(1)} / ${fatGoal.toStringAsFixed(1)} g',
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 14,
+                                      color: const Color(0xFF1C2526),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Water Intake
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  color: const Color(0xFFB0B7BF),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Water Intake',
+                          style: GoogleFonts.oswald(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: accentColor,
+                          ),
                         ),
                         const SizedBox(height: 8),
-                        _buildProgressRow(
-                          'Fat',
-                          dailyFat,
-                          fatGoal,
-                          'g',
-                          Colors.orange,
+                        LinearProgressIndicator(
+                          value: dailyWater / waterGoal,
+                          backgroundColor: const Color(0xFF808080),
+                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                         ),
                         const SizedBox(height: 8),
-                        _buildProgressRow(
-                          'Water',
-                          dailyWater,
-                          waterGoal,
-                          'oz',
-                          Colors.cyan,
+                        Text(
+                          '${dailyWater.toStringAsFixed(1)} / ${waterGoal.toStringAsFixed(1)} oz',
+                          style: GoogleFonts.roboto(
+                            fontSize: 16,
+                            color: const Color(0xFF1C2526),
+                          ),
                         ),
                         const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: onAddWater,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: accentColor,
-                            foregroundColor: Colors.white,
+                        Center(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.local_drink),
+                            label: const Text('Add Water'),
+                            onPressed: onAddWater,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: accentColor,
+                              foregroundColor: Colors.white,
+                            ),
                           ),
-                          child: const Text('Log Water'),
                         ),
                       ],
                     ),
@@ -116,28 +248,6 @@ class DailySummary extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildProgressRow(String label, double current, double goal, String unit, Color color) {
-    final progress = (current / goal).clamp(0.0, 1.0);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label: ${current.toStringAsFixed(1)} / ${goal.toStringAsFixed(1)} $unit',
-          style: GoogleFonts.roboto(
-            fontSize: 16,
-            color: const Color(0xFF1C2526),
-          ),
-        ),
-        const SizedBox(height: 4),
-        LinearProgressIndicator(
-          value: progress,
-          backgroundColor: Colors.grey[300],
-          valueColor: AlwaysStoppedAnimation<Color>(color),
-        ),
-      ],
     );
   }
 }

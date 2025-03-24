@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/program.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
-import 'package:personal_trainer_app_clean/core/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/main.dart';
-import 'package:personal_trainer_app_clean/screens/program_details_widgets.dart';
+import 'package:personal_trainer_app_clean/screens/program_details_widgets.dart'; // Changed import to program_details_widgets.dart
 import 'package:personal_trainer_app_clean/screens/programs_overview_screen.dart';
+import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 
 class CustomProgramForm extends StatefulWidget {
@@ -233,22 +233,27 @@ class _CustomProgramFormState extends State<CustomProgramForm> {
                                     ExerciseInputWidget(
                                       controller: exercise['name'],
                                       label: 'Exercise Name',
+                                      isNumeric: false,
                                     ),
                                     ExerciseInputWidget(
                                       controller: exercise['sets'],
                                       label: 'Sets',
+                                      isNumeric: true,
                                     ),
                                     ExerciseInputWidget(
                                       controller: exercise['reps'],
                                       label: 'Reps',
+                                      isNumeric: true,
                                     ),
                                     ExerciseInputWidget(
                                       controller: exercise['week'],
                                       label: 'Week',
+                                      isNumeric: true,
                                     ),
                                     ExerciseInputWidget(
                                       controller: exercise['day'],
                                       label: 'Day',
+                                      isNumeric: true,
                                     ),
                                   ],
                                 ),

@@ -101,7 +101,7 @@ class _WorkoutCardState extends State<WorkoutCard> with TickerProviderStateMixin
   Map<String, dynamic> getTodayWorkout(Program program) {
     switch (program.name) {
       case 'Madcow 5x5':
-        return ProgramLogic.calculateMadcow( // Call static method on the class
+        return ProgramLogic.calculateMadcow(
           {
             'details': program.details,
             'oneRMs': program.oneRMs,
@@ -117,7 +117,7 @@ class _WorkoutCardState extends State<WorkoutCard> with TickerProviderStateMixin
             : program.currentSession == 3
             ? 'Deadlift'
             : 'Overhead';
-        final workoutDetails = ProgramLogic.calculate531( // Call static method on the class
+        final workoutDetails = ProgramLogic.calculate531(
           program.oneRMs,
           program.currentWeek,
           lift,
@@ -840,22 +840,27 @@ class _OneRMDialogState extends State<OneRMDialog> {
             ExerciseInputWidget(
               controller: _squatController,
               label: 'Squat (lbs)',
+              isNumeric: true,
             ),
             ExerciseInputWidget(
               controller: _benchController,
               label: 'Bench Press (lbs)',
+              isNumeric: true,
             ),
             ExerciseInputWidget(
               controller: _deadliftController,
               label: 'Deadlift (lbs)',
+              isNumeric: true,
             ),
             ExerciseInputWidget(
               controller: _overheadController,
               label: 'Overhead Press (lbs)',
+              isNumeric: true,
             ),
             ExerciseInputWidget(
               controller: _rowController,
               label: 'Barbell Row (lbs)',
+              isNumeric: true,
             ),
           ],
         ),
@@ -886,11 +891,13 @@ class _OneRMDialogState extends State<OneRMDialog> {
 class ExerciseInputWidget extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final bool isNumeric;
 
   const ExerciseInputWidget({
     super.key,
     required this.controller,
     required this.label,
+    this.isNumeric = false,
   });
 
   @override
@@ -899,7 +906,7 @@ class ExerciseInputWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextField(
         controller: controller,
-        keyboardType: TextInputType.number, // Always numeric for 1RMs and exercise inputs
+        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: GoogleFonts.roboto(

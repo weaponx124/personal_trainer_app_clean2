@@ -14,6 +14,7 @@ import 'package:personal_trainer_app_clean/core/services/diet_service.dart';
 import 'package:personal_trainer_app_clean/core/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
+import 'package:share_plus/share_plus.dart'; // Import share_plus
 import 'widgets/daily_summary.dart';
 import 'widgets/saved_recipes.dart';
 import 'widgets/shopping_list.dart';
@@ -895,6 +896,27 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
     }
   }
 
+  // Method to share diet summary
+  Future<void> _shareDietSummary() async {
+    final totalCalories = _dailyCalories;
+    final mealSummary = _meals
+        .where((meal) {
+      final timestamp = meal.timestamp;
+      final startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day).millisecondsSinceEpoch;
+      final endOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 23, 59, 59).millisecondsSinceEpoch;
+      return timestamp >= startOfDay && timestamp <= endOfDay;
+    })
+        .map((meal) => '- ${meal.food} (${meal.mealType}): ${meal.calories} kcal')
+        .join('\n');
+    final shareText = '''
+Diet Summary for ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}
+Total Calories: $totalCalories kcal
+Meals:
+$mealSummary
+''';
+    await Share.share(shareText, subject: 'My Diet Summary');
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -996,6 +1018,7 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
                           carbsGoal: _carbsGoal,
                           fatGoal: _fatGoal,
                           waterGoal: _dietPreferences['waterGoal']?.toDouble() ?? 64,
+                          selectedDate: _selectedDate,
                           onAddWater: _addWater,
                         ),
                         // Meal Log Tab
@@ -1014,7 +1037,7 @@ class _DietScreenState extends State<DietScreen> with SingleTickerProviderStateM
                               });
                             }
                           },
-                          selectedDate: _selectedDate,
+                          selectedDate: _selectedDate, // Added missing parameter
                         ),
                         // Saved Recipes Tab
                         SavedRecipes(
