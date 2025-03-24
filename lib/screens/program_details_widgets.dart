@@ -5,7 +5,6 @@ import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
 import 'package:personal_trainer_app_clean/main.dart';
-import 'package:personal_trainer_app_clean/screens/program_details_dialogs.dart';
 import 'package:personal_trainer_app_clean/screens/program_logic.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -91,6 +90,7 @@ class WorkoutCard extends StatefulWidget {
 class _WorkoutCardState extends State<WorkoutCard> with TickerProviderStateMixin {
   final ProgramRepository _programRepository = ProgramRepository();
   Map<String, dynamic>? workoutDetails;
+  late ProgramLogic _programLogic;
   bool isWarmupExpanded = true;
   bool isWorkingExpanded = true;
   int _restTime = 60; // Default rest time in seconds
@@ -101,7 +101,7 @@ class _WorkoutCardState extends State<WorkoutCard> with TickerProviderStateMixin
   Map<String, dynamic> getTodayWorkout(Program program) {
     switch (program.name) {
       case 'Madcow 5x5':
-        return ProgramLogic.calculateMadcow(
+        return ProgramLogic.calculateMadcow( // Call static method on the class
           {
             'details': program.details,
             'oneRMs': program.oneRMs,
@@ -117,7 +117,7 @@ class _WorkoutCardState extends State<WorkoutCard> with TickerProviderStateMixin
             : program.currentSession == 3
             ? 'Deadlift'
             : 'Overhead';
-        final workoutDetails = ProgramLogic.calculate531(
+        final workoutDetails = ProgramLogic.calculate531( // Call static method on the class
           program.oneRMs,
           program.currentWeek,
           lift,
@@ -208,6 +208,10 @@ class _WorkoutCardState extends State<WorkoutCard> with TickerProviderStateMixin
     );
 
     await WorkoutRepository().insertWorkout(widget.program.id, workout);
+    await _programLogic.logWorkout(widget.program.id, {
+      'exercises': exercises,
+      'completed': true,
+    });
 
     // Update program session and week
     var updatedProgram = widget.program.copyWith(
@@ -241,6 +245,13 @@ class _WorkoutCardState extends State<WorkoutCard> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    // Instantiate ProgramLogic with the program map
+    _programLogic = ProgramLogic({
+      'details': widget.program.details,
+      'oneRMs': widget.program.oneRMs,
+      'currentWeek': widget.program.currentWeek,
+      'currentSession': widget.program.currentSession,
+    });
     workoutDetails = getTodayWorkout(widget.program);
     // Initialize controllers for actual reps
     for (var exercise in workoutDetails!['exercises'] as List<Map<String, dynamic>>) {
@@ -578,46 +589,6 @@ class _WorkoutCardState extends State<WorkoutCard> with TickerProviderStateMixin
   }
 }
 
-class ExerciseInputWidget extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final bool isNumeric;
-
-  const ExerciseInputWidget({
-    super.key,
-    required this.controller,
-    required this.label,
-    this.isNumeric = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextField(
-        controller: controller,
-        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: GoogleFonts.roboto(
-            fontSize: 16,
-            color: const Color(0xFF808080),
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          filled: true,
-          fillColor: const Color(0xFFB0B7BF),
-        ),
-        style: GoogleFonts.roboto(
-          fontSize: 16,
-          color: const Color(0xFF1C2526),
-        ),
-      ),
-    );
-  }
-}
-
 class ProgramProgressWidget extends StatefulWidget {
   final String programId;
 
@@ -830,6 +801,122 @@ class _ProgramProgressWidgetState extends State<ProgramProgressWidget> {
           },
         );
       },
+    );
+  }
+}
+
+class OneRMDialog extends StatefulWidget {
+  const OneRMDialog({super.key});
+
+  @override
+  _OneRMDialogState createState() => _OneRMDialogState();
+}
+
+class _OneRMDialogState extends State<OneRMDialog> {
+  final _squatController = TextEditingController();
+  final _benchController = TextEditingController();
+  final _deadliftController = TextEditingController();
+  final _overheadController = TextEditingController();
+  final _rowController = TextEditingController();
+
+  @override
+  void dispose() {
+    _squatController.dispose();
+    _benchController.dispose();
+    _deadliftController.dispose();
+    _overheadController.dispose();
+    _rowController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Set 1RMs'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ExerciseInputWidget(
+              controller: _squatController,
+              label: 'Squat (lbs)',
+            ),
+            ExerciseInputWidget(
+              controller: _benchController,
+              label: 'Bench Press (lbs)',
+            ),
+            ExerciseInputWidget(
+              controller: _deadliftController,
+              label: 'Deadlift (lbs)',
+            ),
+            ExerciseInputWidget(
+              controller: _overheadController,
+              label: 'Overhead Press (lbs)',
+            ),
+            ExerciseInputWidget(
+              controller: _rowController,
+              label: 'Barbell Row (lbs)',
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            final oneRMs = {
+              'Squat': double.tryParse(_squatController.text) ?? 0.0,
+              'Bench': double.tryParse(_benchController.text) ?? 0.0,
+              'Deadlift': double.tryParse(_deadliftController.text) ?? 0.0,
+              'Overhead': double.tryParse(_overheadController.text) ?? 0.0,
+              'Row': double.tryParse(_rowController.text) ?? 0.0,
+            };
+            Navigator.pop(context, oneRMs);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class ExerciseInputWidget extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+
+  const ExerciseInputWidget({
+    super.key,
+    required this.controller,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number, // Always numeric for 1RMs and exercise inputs
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.roboto(
+            fontSize: 16,
+            color: const Color(0xFF808080),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          filled: true,
+          fillColor: const Color(0xFFB0B7BF),
+        ),
+        style: GoogleFonts.roboto(
+          fontSize: 16,
+          color: const Color(0xFF1C2526),
+        ),
+      ),
     );
   }
 }

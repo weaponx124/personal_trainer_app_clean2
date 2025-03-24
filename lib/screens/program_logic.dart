@@ -1,160 +1,120 @@
-import 'package:personal_trainer_app_clean/screens/program_workouts/madcow_5x5.dart'; // Added import
+import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
 
 class ProgramLogic {
-  static double calculateWorkingWeight(double oneRM, double percentage, {String unit = 'lbs'}) {
-    double weight = oneRM * (percentage / 100);
-    // Round to nearest 2.5 for lbs, 1 for kg
-    if (unit == 'lbs') {
-      weight = (weight / 2.5).round() * 2.5;
-    } else {
-      weight = weight.roundToDouble();
-    }
-    return weight;
+  final Map<String, dynamic> program;
+
+  ProgramLogic(this.program);
+
+  List<Map<String, dynamic>> getWorkoutsForCurrentDay() {
+    final currentWeek = program['currentWeek'] as int;
+    final currentDay = program['currentDay'] as int;
+    final workouts = program['workouts'] as List<Map<String, dynamic>>? ?? [];
+
+    return workouts.where((workout) {
+      final week = workout['week'] as int;
+      final day = workout['day'] as int;
+      return week == currentWeek && day == currentDay;
+    }).toList();
   }
 
-  static Map<String, dynamic> calculate531(
-      Map<String, dynamic> oneRMs, int week, String lift) {
-    final oneRM = oneRMs[lift] ?? 0.0;
-    final trainingMax = oneRM * 0.9;
-    final percentages = week == 1
-        ? [0.65, 0.75, 0.85]
-        : week == 2
-        ? [0.70, 0.80, 0.90]
-        : week == 3
-        ? [0.75, 0.85, 0.95]
-        : [0.40, 0.50, 0.60];
-    final reps = week == 4 ? [5, 5, 5] : [3, 3, 3];
-    final weights = percentages.map((p) => calculateWorkingWeight(trainingMax, p * 100)).toList();
-    return {
-      'sets': List.generate(3, (i) => {
-        'weight': weights[i],
-        'reps': reps[i],
-      }),
-    };
-  }
+  Future<void> logWorkout(String programId, Map<String, dynamic> workoutData) async {
+    final workoutRepository = WorkoutRepository();
+    final exercises = workoutData['exercises'] as List<Map<String, dynamic>>;
+    final completed = workoutData['completed'] as bool;
 
-  static Map<String, dynamic> calculateTexasMethod(
-      Map<String, dynamic> oneRMs, int week, String lift, String day) {
-    final oneRM = oneRMs[lift] ?? 0.0;
-    final trainingMax = oneRM * 0.9;
-    if (day == 'Volume') {
-      return {
-        'sets': List.generate(5, (_) => {
-          'weight': calculateWorkingWeight(trainingMax, 70),
-          'reps': 5,
-        }),
-      };
-    } else if (day == 'Recovery') {
-      return {
-        'sets': List.generate(3, (_) => {
-          'weight': calculateWorkingWeight(trainingMax, 50),
-          'reps': 5,
-        }),
-      };
-    } else {
-      return {
-        'sets': [
-          {'weight': calculateWorkingWeight(trainingMax, 90), 'reps': 3},
-        ],
-      };
+    final workout = Workout(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      programId: programId,
+      name: 'Workout on ${DateTime.now().toIso8601String()}',
+      exercises: exercises,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    if (completed) {
+      await workoutRepository.insertWorkout(programId, workout);
     }
   }
 
-  static Map<String, dynamic> calculateMadcow(
-      Map<String, dynamic> programDetails, int week, int session) {
-    // Delegate to Madcow5x5Workout
-    return Madcow5x5Workout.generate(programDetails, week, session);
-  }
+  static Map<String, dynamic> calculateMadcow(Map<String, dynamic> program, int week, int session) {
+    final details = program['details'] as Map<String, dynamic>;
+    final oneRMs = program['oneRMs'] as Map<String, dynamic>;
+    final exercises = <Map<String, dynamic>>[];
 
-  static Map<String, dynamic> calculateSmolov(
-      Map<String, dynamic> oneRMs, int week, String lift, String day) {
-    final oneRM = oneRMs[lift] ?? 0.0;
-    final trainingMax = oneRM * 0.9;
-    if (week <= 4) {
-      final schedule = [
-        {'sets': 4, 'reps': 6, 'percentage': 0.70},
-        {'sets': 5, 'reps': 7, 'percentage': 0.75},
-        {'sets': 7, 'reps': 5, 'percentage': 0.80},
-        {'sets': 10, 'reps': 3, 'percentage': 0.85},
-      ];
-      final dayIndex = (int.parse(day.split(' ')[1]) - 1) % 4;
-      final daySchedule = schedule[dayIndex];
-      return {
-        'sets': List.generate(
-          (daySchedule['sets'] as num?)?.toInt() ?? 0,
-              (_) => {
-            'weight': calculateWorkingWeight(trainingMax, (daySchedule['percentage'] as double) * 100),
-            'reps': (daySchedule['reps'] as num?)?.toInt() ?? 0,
-          },
-        ),
-      };
-    } else {
-      return {
-        'sets': [
-          {'weight': calculateWorkingWeight(trainingMax, 50), 'reps': 5},
-        ],
-      };
-    }
-  }
+    // Simplified Madcow calculation for demonstration
+    final squatWeight = (oneRMs['Squat'] ?? 0.0) * 0.9 * (week / 4);
+    final benchWeight = (oneRMs['Bench'] ?? 0.0) * 0.9 * (week / 4);
 
-  static Map<String, dynamic> calculateRussianSquat(
-      Map<String, dynamic> oneRMs, int week, String lift, String day) {
-    final oneRM = oneRMs[lift] ?? 0.0;
-    final trainingMax = oneRM * 0.8;
-    final schedule = [
-      {'sets': 6, 'reps': 2, 'percentage': 0.80},
-      {'sets': 7, 'reps': 3, 'percentage': 0.80},
-      {'sets': 8, 'reps': 2, 'percentage': 0.80},
-    ];
-    final dayIndex = (int.parse(day.split(' ')[1]) - 1) % 3;
-    final daySchedule = schedule[dayIndex];
-    return {
-      'sets': List.generate(
-        (daySchedule['sets'] as num?)?.toInt() ?? 0,
-            (_) => {
-          'weight': calculateWorkingWeight(trainingMax, (daySchedule['percentage'] as double) * 100),
-          'reps': (daySchedule['reps'] as num?)?.toInt() ?? 0,
-        },
-      ),
-    };
-  }
-
-  static Map<String, dynamic> calculateCandito(
-      Map<String, dynamic> oneRMs, int week, String lift, String day) {
-    final oneRM = oneRMs[lift] ?? 0.0;
-    final trainingMax = oneRM * 0.9;
-    if (week == 1 || week == 2) {
-      return {
-        'sets': List.generate(4, (_) => {
-          'weight': calculateWorkingWeight(trainingMax, 67.5),
-          'reps': 10,
-        }),
-      };
-    } else if (week == 3 || week == 4) {
-      return {
-        'sets': List.generate(3, (_) => {
-          'weight': calculateWorkingWeight(trainingMax, 77.5),
-          'reps': 6,
-        }),
-      };
-    } else {
-      return {
-        'sets': [
-          {'weight': calculateWorkingWeight(trainingMax, 90), 'reps': 3},
-        ],
-      };
-    }
-  }
-
-  static Map<String, dynamic> calculateStartingStrength(
-      Map<String, dynamic> oneRMs, int week, String lift, String day) {
-    final oneRM = oneRMs[lift] ?? 0.0;
-    final trainingMax = oneRM * 0.9;
-    return {
-      'sets': List.generate(3, (_) => {
-        'weight': calculateWorkingWeight(trainingMax, 70),
+    if (session == 1) {
+      exercises.add({
+        'name': 'Squat',
+        'sets': 5,
         'reps': 5,
-      }),
+        'weight': squatWeight,
+      });
+      exercises.add({
+        'name': 'Bench',
+        'sets': 5,
+        'reps': 5,
+        'weight': benchWeight,
+      });
+    }
+
+    return {
+      'week': week,
+      'session': session,
+      'workoutName': 'Madcow Day $session',
+      'exercises': exercises,
     };
+  }
+
+  static Map<String, dynamic> calculate531(Map<String, dynamic> oneRMs, int week, String lift) {
+    final trainingMax = (oneRMs[lift] ?? 0.0) * 0.9;
+    final sets = <Map<String, dynamic>>[];
+
+    if (week == 1) {
+      sets.add({'reps': 3, 'weight': trainingMax * 0.65});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.75});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.85});
+    } else if (week == 2) {
+      sets.add({'reps': 3, 'weight': trainingMax * 0.70});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.80});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.90});
+    } else if (week == 3) {
+      sets.add({'reps': 3, 'weight': trainingMax * 0.75});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.85});
+      sets.add({'reps': 3, 'weight': trainingMax * 0.95});
+    }
+
+    return {
+      'sets': sets,
+    };
+  }
+
+  // Add the missing calculateWorkingWeight method
+  double calculateWorkingWeight(double oneRM, double percentage, int week, int reps, int session) {
+    // Base working weight: Apply the percentage to the 1RM
+    double workingWeight = oneRM * percentage;
+
+    // Adjust based on week (e.g., increase by 2.5% per week for progression)
+    workingWeight += workingWeight * (week - 1) * 0.025;
+
+    // Adjust based on reps and session (simplified adjustment)
+    // Example: Reduce weight slightly for higher reps, increase for higher intensity sessions
+    if (reps > 5) {
+      workingWeight *= 0.95; // Reduce by 5% for higher reps
+    } else if (reps < 3) {
+      workingWeight *= 1.05; // Increase by 5% for lower reps
+    }
+
+    // Adjust based on session (e.g., session 1 might be lighter, session 3 heavier)
+    if (session == 1) {
+      workingWeight *= 0.9; // Lighter session
+    } else if (session == 3) {
+      workingWeight *= 1.1; // Heavier session
+    }
+
+    // Round to the nearest 2.5 (common weight plate increment)
+    return (workingWeight / 2.5).round() * 2.5;
   }
 }

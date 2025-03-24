@@ -1,92 +1,317 @@
-import '../program_logic.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:personal_trainer_app_clean/core/data/models/program.dart';
+import 'package:personal_trainer_app_clean/core/data/models/workout.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/program_repository.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/workout_repository.dart';
+import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/screens/program_details_dialogs.dart';
+import 'package:personal_trainer_app_clean/screens/program_logic.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class FiveThreeOneWorkout {
-  static Map<String, dynamic> generate(Map<String, dynamic> programDetails, int currentWeek, int currentSession) {
-    final unit = programDetails['details']?['unit'] as String? ?? 'lbs';
-    final details = programDetails['details'] as Map<String, dynamic>? ?? {};
-    final oneRMsRaw = details['1RMs'] as Map<String, dynamic>?;
+class FiveThreeOne extends StatefulWidget {
+  final Program program;
+  final String unit;
 
-    // Debug: Log the raw 1RMs before conversion
-    print('5/3/1 Program - Raw 1RMs from programDetails[\'details\']: $oneRMsRaw');
+  const FiveThreeOne({super.key, required this.program, required this.unit});
 
-    final oneRMs = oneRMsRaw != null
-        ? <String, double>{
-      'Squat': (oneRMsRaw['Squat'] as num?)?.toDouble() ?? 100.0,
-      'Bench': (oneRMsRaw['Bench'] as num?)?.toDouble() ?? 100.0,
-      'Deadlift': (oneRMsRaw['Deadlift'] as num?)?.toDouble() ?? 100.0,
-      'Overhead': (oneRMsRaw['Overhead'] as num?)?.toDouble() ?? 100.0,
-    }
-        : <String, double>{
-      'Squat': 100.0,
-      'Bench': 100.0,
-      'Deadlift': 100.0,
-      'Overhead': 100.0,
-    };
-    final original1RMsRaw = details['original1RMs'] as Map<String, dynamic>?;
-    final original1RMs = original1RMsRaw != null
-        ? <String, double>{
-      'Squat': (original1RMsRaw['Squat'] as num?)?.toDouble() ?? 100.0,
-      'Bench': (original1RMsRaw['Bench'] as num?)?.toDouble() ?? 100.0,
-      'Deadlift': (original1RMsRaw['Deadlift'] as num?)?.toDouble() ?? 100.0,
-      'Overhead': (original1RMsRaw['Overhead'] as num?)?.toDouble() ?? 100.0,
-    }
-        : oneRMs;
+  @override
+  _FiveThreeOneState createState() => _FiveThreeOneState();
+}
 
-    // Adjust 1RMs based on cycles (assume 4 weeks per cycle, increase every 4 weeks)
-    final adjusted1RMs = Map<String, double>.from(oneRMs);
-    final cycleNumber = ((currentWeek - 1) ~/ 4) + 1;
-    final increment = unit == 'kg' ? 2.5 : 5.0;
-    adjusted1RMs.updateAll((key, value) => value + (increment * (cycleNumber - 1)));
+class _FiveThreeOneState extends State<FiveThreeOne> with TickerProviderStateMixin {
+  final ProgramRepository _programRepository = ProgramRepository();
+  Map<String, dynamic>? workoutDetails;
+  late ProgramLogic _programLogic;
+  int _restTime = 60; // Default rest time in seconds
+  int _remainingTime = 0;
+  bool _isTimerRunning = false;
+  late AnimationController _controller;
 
-    final weekInCycle = (currentWeek - 1) % 4 + 1; // 1, 2, 3, 4 (repeats every 4 weeks)
-    // Adjust sessionType to map currentSession 1 to Day 1 (sessionType 0)
-    final sessionType = (currentSession - 1) % 4; // Subtract 1 to align Session 1 with Day 1
+  @override
+  void initState() {
+    super.initState();
+    // Instantiate ProgramLogic with the program map
+    _programLogic = ProgramLogic({
+      'details': widget.program.details,
+      'oneRMs': widget.program.oneRMs,
+      'currentWeek': widget.program.currentWeek,
+      'currentSession': widget.program.currentSession,
+    });
 
-    final List<double> percentages;
-    if (weekInCycle == 1) {
-      percentages = [65, 75, 85]; // 3/3/3+
-    } else if (weekInCycle == 2) {
-      percentages = [70, 80, 90]; // 5/5/5+
-    } else if (weekInCycle == 3) {
-      percentages = [75, 85, 95]; // 3/3/1+
-    } else {
-      percentages = [40, 50, 60]; // Deload week
-    }
-
+    final oneRMs = widget.program.oneRMs;
+    final week = widget.program.currentWeek;
+    final session = widget.program.currentSession;
     final List<Map<String, dynamic>> exercises = [];
-    String lift;
-    switch (sessionType) {
-      case 0:
-        lift = 'Overhead';
-        break;
-      case 1:
-        lift = 'Deadlift';
-        break;
-      case 2:
-        lift = 'Bench';
-        break;
-      case 3:
-        lift = 'Squat';
-        break;
-      default:
-        lift = 'Squat';
+
+    final lift = session == 1
+        ? 'Squat'
+        : session == 2
+        ? 'Bench'
+        : session == 3
+        ? 'Deadlift'
+        : 'Overhead';
+
+    final workingWeight = _programLogic.calculateWorkingWeight(
+      oneRMs[lift] ?? 0.0,
+      0.9,
+      week,
+      3,
+      session,
+    );
+
+    if (week == 1) {
+      exercises.add({'name': lift, 'sets': 1, 'reps': 3, 'weight': workingWeight * 0.65});
+      exercises.add({'name': lift, 'sets': 1, 'reps': 3, 'weight': workingWeight * 0.75});
+      exercises.add({'name': lift, 'sets': 1, 'reps': 3, 'weight': workingWeight * 0.85});
+    } else if (week == 2) {
+      exercises.add({'name': lift, 'sets': 1, 'reps': 3, 'weight': workingWeight * 0.70});
+      exercises.add({'name': lift, 'sets': 1, 'reps': 3, 'weight': workingWeight * 0.80});
+      exercises.add({'name': lift, 'sets': 1, 'reps': 3, 'weight': workingWeight * 0.90});
+    } else if (week == 3) {
+      exercises.add({'name': lift, 'sets': 1, 'reps': 3, 'weight': workingWeight * 0.75});
+      exercises.add({'name': lift, 'sets': 1, 'reps': 3, 'weight': workingWeight * 0.85});
+      exercises.add({'name': lift, 'sets': 1, 'reps': 3, 'weight': workingWeight * 0.95});
     }
 
-    for (int i = 0; i < 3; i++) {
-      exercises.add({
-        'name': lift,
-        'sets': 1,
-        'reps': weekInCycle == 1 ? 3 : (weekInCycle == 2 ? 5 : (weekInCycle == 3 ? (i == 2 ? 1 : 3) : 5)),
-        'weight': ProgramLogic.calculateWorkingWeight(adjusted1RMs[lift]!, percentages[i], unit: unit),
+    workoutDetails = {
+      'week': week,
+      'session': session,
+      'workoutName': '$lift Day',
+      'exercises': exercises,
+      'unit': widget.unit,
+    };
+
+    // Initialize rest timer
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: _restTime),
+    )..addListener(() {
+      setState(() {
+        _remainingTime = (_controller.duration!.inSeconds * (1 - _controller.value)).round();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _startRestTimer() {
+    setState(() {
+      _isTimerRunning = true;
+      _remainingTime = _restTime;
+      _controller.reset();
+      _controller.forward();
+    });
+  }
+
+  void _stopRestTimer() {
+    setState(() {
+      _isTimerRunning = false;
+      _controller.stop();
+    });
+  }
+
+  Future<void> _setRestTime() async {
+    final TextEditingController restTimeController = TextEditingController(text: _restTime.toString());
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set Rest Time'),
+        content: TextField(
+          controller: restTimeController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Rest Time (seconds)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newRestTime = int.tryParse(restTimeController.text);
+              if (newRestTime != null && newRestTime > 0) {
+                Navigator.pop(context, true);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid number of seconds')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      setState(() {
+        _restTime = int.parse(restTimeController.text);
+        _controller.duration = Duration(seconds: _restTime);
       });
     }
+  }
 
-    return {
-      'week': currentWeek,
-      'session': currentSession,
-      'workoutName': 'Day ${sessionType + 1}: $lift (${weekInCycle == 1 ? "3/3/3+" : (weekInCycle == 2 ? "5/5/5+" : (weekInCycle == 3 ? "3/3/1+" : "Deload"))})',
+  Future<void> _completeSession(Map<String, dynamic> workoutDetails) async {
+    final exercises = workoutDetails['exercises'] as List<Map<String, dynamic>>;
+    final workoutName = workoutDetails['workoutName'] as String;
+
+    final workout = Workout(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      programId: widget.program.id,
+      name: workoutName,
+      exercises: exercises,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    await WorkoutRepository().insertWorkout(widget.program.id, workout);
+    await _programLogic.logWorkout(widget.program.id, {
       'exercises': exercises,
-      'unit': unit,
-    };
+      'completed': true,
+    });
+
+    // Update program session and week
+    var updatedProgram = widget.program.copyWith(
+      currentSession: widget.program.currentSession + 1,
+      sessionsCompleted: widget.program.sessionsCompleted + 1,
+    );
+    if (updatedProgram.currentSession > 3) {
+      updatedProgram = updatedProgram.copyWith(
+        currentSession: 1,
+        currentWeek: updatedProgram.currentWeek + 1,
+      );
+    }
+    await _programRepository.updateProgram(updatedProgram);
+
+    AppSnackBar.showSuccess(context, 'Session completed successfully!');
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (workoutDetails == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final exercises = workoutDetails!['exercises'] as List<Map<String, dynamic>>;
+    final workoutName = workoutDetails!['workoutName'] as String;
+
+    return ValueListenableBuilder<Color>(
+      valueListenable: accentColorNotifier,
+      builder: (context, accentColor, child) {
+        return Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: const Color(0xFFB0B7BF),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  workoutName,
+                  style: GoogleFonts.oswald(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: accentColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (exercises.isNotEmpty)
+                  ...exercises.asMap().entries.map<Widget>((entry) {
+                    final index = entry.key;
+                    final exercise = entry.value;
+                    final sets = exercise['sets'] as int;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          exercise['name'],
+                          style: GoogleFonts.roboto(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1C2526),
+                          ),
+                        ),
+                        ...List.generate(sets, (setIndex) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Set ${setIndex + 1}: ${exercise['reps']} reps @ ${exercise['weight']} ${widget.unit}',
+                                        style: GoogleFonts.roboto(
+                                          fontSize: 16,
+                                          color: const Color(0xFF1C2526),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: _isTimerRunning ? _stopRestTimer : _startRestTimer,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: accentColor,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        child: Text(_isTimerRunning ? 'Stop Rest ($_remainingTime s)' : 'Start Rest ($_restTime s)'),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.timer, color: accentColor),
+                                        onPressed: _setRestTime,
+                                        tooltip: 'Set Rest Time',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    );
+                  }).toList()
+                else
+                  Text(
+                    'No exercises logged.',
+                    style: GoogleFonts.roboto(
+                      fontSize: 16,
+                      color: const Color(0xFF808080),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () => _completeSession(workoutDetails!),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentColor,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Complete Session'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

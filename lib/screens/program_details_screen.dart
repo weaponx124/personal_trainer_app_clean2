@@ -28,8 +28,8 @@ class _ProgramDetailsScreenState extends State<ProgramDetailsScreen> {
     super.initState();
     _programFuture = _programRepository.getPrograms().then((programs) {
       final program = programs.firstWhere((p) => p.id == widget.programId, orElse: () => throw Exception('Program not found'));
-      // Instantiate ProgramLogic with no arguments to match the local constructor
-      _programLogic = ProgramLogic();
+      // Instantiate ProgramLogic with the program map
+      _programLogic = ProgramLogic(program.toMap());
       return program;
     });
   }
