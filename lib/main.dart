@@ -39,7 +39,6 @@ ValueNotifier<Color> accentColorNotifier = ValueNotifier<Color>(const Color(0xFF
 late Future<FlutterLocalNotificationsPlugin?> flutterLocalNotificationsPluginFuture;
 
 Future<FlutterLocalNotificationsPlugin?> initializeNotifications() async {
-  // Skip notification initialization on Windows
   if (Platform.isWindows) {
     print('Main: Skipping notification initialization on Windows (unsupported platform).');
     return null;
@@ -58,13 +57,11 @@ Future<FlutterLocalNotificationsPlugin?> initializeNotifications() async {
         print('Main: Received notification response: ${response.payload}');
         if (response.payload != null) {
           if (response.payload!.startsWith('workout_')) {
-            // Navigate to workout screen or program details
             final programId = response.payload!.split('_')[1];
             childScreenNotifier.value = ProgramDetailsScreen(programId: programId);
-            selectedTabIndexNotifier.value = 1; // Active Programs tab
+            selectedTabIndexNotifier.value = 1;
           } else if (response.payload!.startsWith('meal_')) {
-            // Navigate to diet screen
-            selectedTabIndexNotifier.value = 3; // Diet tab
+            selectedTabIndexNotifier.value = 3;
           }
         }
       },
@@ -75,8 +72,6 @@ Future<FlutterLocalNotificationsPlugin?> initializeNotifications() async {
       print('Main: Failed to initialize notifications.');
       return null;
     }
-
-    // Request notification permissions (Android 13+)
     await plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
@@ -95,20 +90,17 @@ void main() async {
     statusBarIconBrightness: Brightness.light,
   ));
 
-  // Initialize timezone
   tz.initializeTimeZones();
   try {
-    final localLocation = tz.getLocation('America/New_York'); // Fallback to a known timezone
+    final localLocation = tz.getLocation('America/New_York');
     tz.setLocalLocation(localLocation);
     print('Main: Timezone set to ${localLocation.name}');
   } catch (e) {
     print('Main: Error setting timezone: $e');
-    // Fallback to UTC if local timezone fails
     tz.setLocalLocation(tz.getLocation('UTC'));
     print('Main: Fallback to UTC timezone');
   }
 
-  // Initialize notifications and store the future
   flutterLocalNotificationsPluginFuture = initializeNotifications();
 
   runApp(const MyApp());
@@ -157,9 +149,9 @@ class MyApp extends StatelessWidget {
                     '/settings': (context) => const MainScreen(initialTab: 0, childScreen: SettingsScreen()),
                     '/scriptures': (context) {
                       final Map<String, dynamic> args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>? ?? {};
-                      print('Scriptures route args: $args'); // Debug log
-                      scriptureArgsNotifier.value = args; // Update global scripture args
-                      return const MainScreen(initialTab: 4); // Redirect to MainScreen with Scriptures tab
+                      print('Scriptures route args: $args');
+                      scriptureArgsNotifier.value = args;
+                      return const MainScreen(initialTab: 4);
                     },
                     '/programs_overview': (context) => const MainScreen(initialTab: 1, childScreen: ProgramsOverviewScreen(programName: '')),
                     '/workout_log': (context) => const MainScreen(initialTab: 5),
@@ -200,10 +192,8 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> _shareCurrentScreen() async {
     if (_selectedIndex == 3) {
-      // DietScreen is active
       await _dietScreenKey.currentState?.shareDietSummary();
     } else if (childScreenNotifier.value is ProgramDetailsScreen) {
-      // ProgramDetailsScreen is active
       await _programDetailsScreenKey.currentState?.shareProgress();
     }
   }
@@ -239,7 +229,7 @@ class _MainScreenState extends State<MainScreen> {
                     backgroundColor: const Color(0xFF1C2526),
                     foregroundColor: const Color(0xFFB0B7BF),
                     actions: [
-                      if (_selectedIndex == 3 || childScreenNotifier.value is ProgramDetailsScreen) // Show share button only for DietScreen and ProgramDetailsScreen
+                      if (_selectedIndex == 3 || childScreenNotifier.value is ProgramDetailsScreen)
                         IconButton(
                           icon: const Icon(Icons.share, color: Color(0xFFB0B7BF)),
                           onPressed: _shareCurrentScreen,
@@ -265,7 +255,7 @@ class _MainScreenState extends State<MainScreen> {
                       setState(() {
                         _selectedIndex = index;
                         selectedTabIndexNotifier.value = index;
-                        childScreenNotifier.value = null; // Clear child screen when switching tabs
+                        childScreenNotifier.value = null;
                       });
                     },
                   ),
