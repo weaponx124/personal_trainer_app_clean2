@@ -3,6 +3,7 @@ import './diet_screen_logic.dart';
 import './meals_tab.dart';
 import './recipes_tab.dart';
 import './shopping_tab.dart';
+import './diet_profile.dart';
 
 class DietScreen extends StatefulWidget {
   const DietScreen({super.key});
@@ -27,6 +28,39 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
     super.dispose();
   }
 
+  void _showProfileDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Diet Profile'),
+        content: SizedBox(
+          height: 200,
+          width: 280,
+          child: ListView.builder(
+            itemCount: DietProfile.profiles.length,
+            itemBuilder: (context, index) {
+              final profile = DietProfile.profiles[index];
+              return ListTile(
+                title: Text(profile.name),
+                subtitle: Text('P: ${profile.proteinGrams.toStringAsFixed(0)}g, C: ${profile.carbsGrams.toStringAsFixed(0)}g, F: ${profile.fatGrams.toStringAsFixed(0)}g'),
+                onTap: () {
+                  _logic.setDietProfile(profile);
+                  Navigator.pop(context);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,6 +74,13 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
             Tab(text: 'Shopping List'),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _showProfileDialog,
+            tooltip: 'Diet Profile',
+          ),
+        ],
       ),
       body: TabBarView(
         controller: _logic.tabController,
