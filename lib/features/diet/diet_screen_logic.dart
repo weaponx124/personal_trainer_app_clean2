@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../core/data/models/meal.dart';
 import '../../core/data/models/recipe.dart';
@@ -12,10 +13,11 @@ class DietScreenLogic {
   List<Recipe> _recipes = [];
   List<ShoppingListItem> _shoppingList = [];
   DateTime _selectedDate = DateTime.now();
-  String _selectedMealType = 'Breakfast';
+  String _selectedMealType = 'Meal 1';
   final ValueNotifier<DietProfile> _dietProfile = ValueNotifier(DietProfile.profiles[0]);
+  int? _customCalories;
+  List<String> _mealNames = ['Breakfast', 'Lunch', 'Dinner'];
 
-  // Mock fallback database
   final List<Map<String, dynamic>> _foodDatabase = [
     {'food': 'Chicken Breast', 'calories': 165.0, 'protein': 31.0, 'carbs': 0.0, 'fat': 3.6, 'sodium': 74.0, 'fiber': 0.0, 'servings': 1.0, 'isRecipe': false},
     {'food': 'Broccoli', 'calories': 35.0, 'protein': 3.0, 'carbs': 7.0, 'fat': 0.4, 'sodium': 33.0, 'fiber': 3.0, 'servings': 1.0, 'isRecipe': false},
@@ -33,10 +35,59 @@ class DietScreenLogic {
   DateTime get selectedDate => _selectedDate;
   String get selectedMealType => _selectedMealType;
   ValueNotifier<DietProfile> get dietProfile => _dietProfile;
+  int? get customCalories => _customCalories;
+  List<String> get mealNames => _mealNames;
 
-  void init() {
+  Future<void> init() async {
     _tabController.addListener(_onTabChanged);
     _loadInitialData();
+    final prefs = await SharedPreferences.getInstance();
+    print('Prefs loaded');
+    _customCalories = prefs.getInt('customCalories');
+    final profileName = prefs.getString('profileName');
+    print('Loaded profileName: $profileName, customCalories: $_customCalories');
+    if (profileName != null) {
+      final profile = DietProfile.profiles.firstWhere(
+            (p) => p.name == profileName,
+        orElse: () => DietProfile.profiles[0],
+      );
+      final customProtein = prefs.getDouble('customProtein');
+      final customCarbs = prefs.getDouble('customCarbs');
+      final customFat = prefs.getDouble('customFat');
+      if (profileName == 'Custom' && customProtein != null && customCarbs != null && customFat != null) {
+        _dietProfile.value = DietProfile(
+          name: 'Custom',
+          proteinPercentage: customProtein,
+          carbsPercentage: customCarbs,
+          fatPercentage: customFat,
+          defaultCalories: _customCalories ?? 2000,
+          scripture: 'Proverbs 16:3 - "Commit to the Lord whatever you do, and he will establish your plans."',
+        );
+      } else {
+        _dietProfile.value = profile;
+      }
+    }
+    final savedMeals = prefs.getString('meals');
+    if (savedMeals != null) {
+      final List<dynamic> jsonList = json.decode(savedMeals);
+      _meals.value = jsonList.map((json) => Meal.fromJson(json)).toList();
+      print('Loaded meals: ${_meals.value.length}');
+    }
+    final savedMealNames = prefs.getStringList('mealNames');
+    if (savedMealNames != null && savedMealNames.isNotEmpty) {
+      _mealNames = savedMealNames;
+      _selectedMealType = _mealNames[0];
+      print('Loaded mealNames: $_mealNames');
+    } else {
+      _mealNames = ['Meal 1', 'Meal 2', 'Meal 3'];
+      _selectedMealType = _mealNames[0];
+      print('Initialized default mealNames: $_mealNames');
+    }
+    if (_customCalories != null) {
+      print('Applied customCalories: $_customCalories');
+    } else {
+      print('No customCalories found, using default: ${_dietProfile.value.defaultCalories}');
+    }
   }
 
   void dispose() {
@@ -64,6 +115,7 @@ class DietScreenLogic {
 
   void deleteMeal(String mealId) {
     _meals.value = _meals.value.where((meal) => meal.id != mealId).toList();
+    _saveMeals();
   }
 
   void editMeal(Meal meal) {}
@@ -85,14 +137,44 @@ class DietScreenLogic {
   }
 
   void setMealType(String? type) {
-    if (type != null) _selectedMealType = type;
+    if (type != null && _mealNames.contains(type)) {
+      _selectedMealType = type;
+    }
   }
 
-  void setDietProfile(DietProfile profile) {
+  Future<void> setDietProfile(DietProfile profile, int customCalories) async {
     _dietProfile.value = profile;
+    _customCalories = customCalories;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('customCalories', customCalories);
+    await prefs.setString('profileName', profile.name);
+    if (profile.name == 'Custom') {
+      await prefs.setDouble('customProtein', profile.proteinPercentage);
+      await prefs.setDouble('customCarbs', profile.carbsPercentage);
+      await prefs.setDouble('customFat', profile.fatPercentage);
+    } else {
+      await prefs.remove('customProtein');
+      await prefs.remove('customCarbs');
+      await prefs.remove('customFat');
+    }
+    print('Saved: customCalories=$customCalories, profileName=${profile.name}');
   }
 
-  // Calculate logged macro totals for the selected date
+  Future<void> setMealNames(List<String> names) async {
+    _mealNames = names.isNotEmpty ? names : ['Meal 1'];
+    _selectedMealType = _mealNames[0];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('mealNames', _mealNames);
+    print('Saved mealNames: $_mealNames');
+  }
+
+  Future<void> _saveMeals() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = _meals.value.map((meal) => meal.toJson()).toList();
+    await prefs.setString('meals', json.encode(jsonList));
+    print('Saved meals: ${_meals.value.length}');
+  }
+
   double get loggedProtein => _meals.value
       .where((meal) => meal.timestamp >= _selectedDate.millisecondsSinceEpoch && meal.timestamp < _selectedDate.add(const Duration(days: 1)).millisecondsSinceEpoch)
       .fold(0.0, (sum, meal) => sum + (meal.protein * meal.servings));
@@ -102,6 +184,8 @@ class DietScreenLogic {
   double get loggedFat => _meals.value
       .where((meal) => meal.timestamp >= _selectedDate.millisecondsSinceEpoch && meal.timestamp < _selectedDate.add(const Duration(days: 1)).millisecondsSinceEpoch)
       .fold(0.0, (sum, meal) => sum + (meal.fat * meal.servings));
+
+  int get effectiveCalories => _customCalories ?? _dietProfile.value.defaultCalories;
 
   FloatingActionButton buildFAB(BuildContext context) {
     switch (_tabController.index) {
@@ -169,6 +253,7 @@ class DietScreenLogic {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
+          backgroundColor: Colors.white, // Light background
           title: const Text('Add Meal'),
           content: SizedBox(
             height: 300,
@@ -176,6 +261,26 @@ class DietScreenLogic {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                DropdownButton<String>(
+                  value: _mealNames.contains(_selectedMealType) ? _selectedMealType : _mealNames[0],
+                  items: _mealNames.map((name) => DropdownMenuItem(
+                    value: name,
+                    child: Text(
+                      name,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setMealType(value);
+                      setState(() {});
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
                 TextField(
                   decoration: const InputDecoration(labelText: 'Search Food'),
                   onChanged: (value) {
@@ -183,7 +288,6 @@ class DietScreenLogic {
                     filteredFoods = _foodDatabase
                         .where((food) => food['food'].toString().toLowerCase().contains(searchQuery.toLowerCase()))
                         .toList();
-                    print('Search: "$searchQuery", Filtered: ${filteredFoods.map((f) => f['food']).toList()}');
                     setState(() {});
                   },
                 ),
@@ -211,6 +315,7 @@ class DietScreenLogic {
                             isRecipe: food['isRecipe'],
                           );
                           _meals.value = [..._meals.value, meal];
+                          _saveMeals();
                           Navigator.pop(context);
                         },
                       );

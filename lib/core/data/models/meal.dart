@@ -72,10 +72,12 @@ class Meal {
     List<Map<String, dynamic>>? ingredientsValue;
     if (map['ingredients'] is String) {
       ingredientsValue = (jsonDecode(map['ingredients'] as String) as List<dynamic>)
-          .cast<Map<String, dynamic>>();
+          .map((item) => item as Map<String, dynamic>)
+          .toList();
     } else {
       ingredientsValue = (map['ingredients'] as List<dynamic>?)
-          ?.cast<Map<String, dynamic>>();
+          ?.map((item) => item as Map<String, dynamic>)
+          .toList();
     }
 
     return Meal(
@@ -94,4 +96,9 @@ class Meal {
       ingredients: ingredientsValue,
     );
   }
+
+  // Added for SharedPreferences JSON compatibility
+  Map<String, dynamic> toJson() => toMap();
+
+  factory Meal.fromJson(Map<String, dynamic> json) => Meal.fromMap(json);
 }

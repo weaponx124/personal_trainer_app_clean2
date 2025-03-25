@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:personal_trainer_app_clean/core/data/models/meal.dart';
 import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/core/data/models/meal.dart';
+import '../diet_screen_logic.dart';
 
 class MealLog extends StatelessWidget {
   final List<Meal> meals;
@@ -13,6 +14,7 @@ class MealLog extends StatelessWidget {
   final String selectedMealType;
   final ValueChanged<String?> onMealTypeChanged;
   final DateTime selectedDate;
+  final DietScreenLogic logic;
 
   const MealLog({
     super.key,
@@ -25,6 +27,7 @@ class MealLog extends StatelessWidget {
     required this.selectedMealType,
     required this.onMealTypeChanged,
     required this.selectedDate,
+    required this.logic,
   });
 
   @override
@@ -50,16 +53,17 @@ class MealLog extends StatelessWidget {
                   children: [
                     Expanded(
                       child: DropdownButton<String>(
-                        value: selectedMealType,
+                        value: logic.mealNames.contains(selectedMealType) ? selectedMealType : logic.mealNames[0],
                         isExpanded: true,
-                        items: <String>['Breakfast', 'Lunch', 'Dinner', 'Snack'].map((String value) {
+                        items: logic.mealNames.map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(
                               value,
                               style: GoogleFonts.roboto(
                                 fontSize: 16,
-                                color: const Color(0xFF1C2526),
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           );
@@ -77,24 +81,6 @@ class MealLog extends StatelessWidget {
                       child: const Text('Log Meal'),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: onAddCustomFood,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Add Custom Food'),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: onAddRecipe,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Create Recipe'),
                 ),
                 const SizedBox(height: 16),
                 dateMeals.isEmpty
