@@ -8,7 +8,7 @@ class DietScreen extends StatefulWidget {
   const DietScreen({super.key});
 
   @override
-  State<DietScreen> createState() => DietScreenState(); // Changed to public
+  State<DietScreen> createState() => DietScreenState();
 }
 
 class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMixin {
@@ -54,7 +54,6 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
   }
 
   Future<void> shareDietSummary() async {
-    // Placeholder for sharing logic
     print('Sharing diet summary...');
   }
 }

@@ -5,18 +5,24 @@ import '../../core/data/models/shopping_list_item.dart';
 
 class DietScreenLogic {
   late TabController _tabController;
-  List<Meal> _meals = [];
+  final ValueNotifier<List<Meal>> _meals = ValueNotifier([]);
   List<Recipe> _recipes = [];
   List<ShoppingListItem> _shoppingList = [];
   DateTime _selectedDate = DateTime.now();
   String _selectedMealType = 'Breakfast';
+
+  final List<Map<String, dynamic>> _foodDatabase = [
+    {'food': 'Chicken Breast', 'calories': 165.0, 'protein': 31.0, 'carbs': 0.0, 'fat': 3.6, 'sodium': 74.0, 'fiber': 0.0, 'servings': 1.0, 'isRecipe': false},
+    {'food': 'Broccoli', 'calories': 35.0, 'protein': 3.0, 'carbs': 7.0, 'fat': 0.4, 'sodium': 33.0, 'fiber': 3.0, 'servings': 1.0, 'isRecipe': false},
+    {'food': 'Avocado', 'calories': 160.0, 'protein': 2.0, 'carbs': 9.0, 'fat': 15.0, 'sodium': 7.0, 'fiber': 7.0, 'servings': 1.0, 'isRecipe': false},
+  ];
 
   DietScreenLogic(TickerProvider vsync) {
     _tabController = TabController(length: 3, vsync: vsync);
   }
 
   TabController get tabController => _tabController;
-  List<Meal> get meals => _meals;
+  ValueNotifier<List<Meal>> get meals => _meals; // Now a ValueNotifier
   List<Recipe> get recipes => _recipes;
   List<ShoppingListItem> get shoppingList => _shoppingList;
   DateTime get selectedDate => _selectedDate;
@@ -30,12 +36,13 @@ class DietScreenLogic {
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _meals.dispose();
   }
 
   void _onTabChanged() {}
 
   void _loadInitialData() {
-    _meals = [];
+    _meals.value = [];
     _recipes = [];
     _shoppingList = [];
   }
@@ -44,21 +51,15 @@ class DietScreenLogic {
     _showAddMealDialog(context);
   }
 
-  void addCustomFood() {
-    // Placeholder for custom food logic
-  }
+  void addCustomFood() {}
 
-  void addRecipe() {
-    // Placeholder for recipe logic
-  }
+  void addRecipe() {}
 
   void deleteMeal(String mealId) {
-    _meals.removeWhere((meal) => meal.id == mealId);
+    _meals.value = _meals.value.where((meal) => meal.id != mealId).toList();
   }
 
-  void editMeal(Meal meal) {
-    // Placeholder for edit logic
-  }
+  void editMeal(Meal meal) {}
 
   void deleteRecipe(String recipeId) {
     _recipes.removeWhere((recipe) => recipe.id == recipeId);
@@ -68,13 +69,9 @@ class DietScreenLogic {
     _shoppingList.add(item);
   }
 
-  void toggleShoppingItem(String itemId, bool value) {
-    // Placeholder for toggle logic
-  }
+  void toggleShoppingItem(String itemId, bool value) {}
 
-  void generateShoppingList() {
-    // Placeholder for generate logic
-  }
+  void generateShoppingList() {}
 
   void clearShoppingList() {
     _shoppingList.clear();
@@ -110,108 +107,71 @@ class DietScreenLogic {
   }
 
   void _showAddMealDialog(BuildContext context) {
-    String food = '';
-    String mealType = _selectedMealType;
-    double calories = 0.0;
-    double protein = 0.0;
-    double carbs = 0.0;
-    double fat = 0.0;
-    double sodium = 0.0;
-    double fiber = 0.0;
-    double servings = 1.0;
-    bool isRecipe = false;
+    String searchQuery = '';
+    List<Map<String, dynamic>> filteredFoods = _foodDatabase;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Meal'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                decoration: const InputDecoration(labelText: 'Food Name'),
-                onChanged: (value) => food = value,
-              ),
-              DropdownButton<String>(
-                value: mealType,
-                items: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
-                    .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-                    .toList(),
-                onChanged: (value) => mealType = value ?? 'Breakfast',
-              ),
-              TextField(
-                decoration: const InputDecoration(labelText: 'Calories'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => calories = double.tryParse(value) ?? 0.0,
-              ),
-              TextField(
-                decoration: const InputDecoration(labelText: 'Protein (g)'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => protein = double.tryParse(value) ?? 0.0,
-              ),
-              TextField(
-                decoration: const InputDecoration(labelText: 'Carbs (g)'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => carbs = double.tryParse(value) ?? 0.0,
-              ),
-              TextField(
-                decoration: const InputDecoration(labelText: 'Fat (g)'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => fat = double.tryParse(value) ?? 0.0,
-              ),
-              TextField(
-                decoration: const InputDecoration(labelText: 'Sodium (mg)'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => sodium = double.tryParse(value) ?? 0.0,
-              ),
-              TextField(
-                decoration: const InputDecoration(labelText: 'Fiber (g)'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => fiber = double.tryParse(value) ?? 0.0,
-              ),
-              TextField(
-                decoration: const InputDecoration(labelText: 'Servings'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => servings = double.tryParse(value) ?? 1.0,
-              ),
-              CheckboxListTile(
-                title: const Text('Is Recipe?'),
-                value: isRecipe,
-                onChanged: (value) => isRecipe = value ?? false,
-              ),
-            ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Add Meal'),
+          content: SizedBox(
+            height: 300,
+            width: 280,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  decoration: const InputDecoration(labelText: 'Search Food'),
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value;
+                      filteredFoods = _foodDatabase
+                          .where((food) => food['food'].toString().toLowerCase().contains(value.toLowerCase()))
+                          .toList();
+                    });
+                  },
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredFoods.length,
+                    itemBuilder: (context, index) {
+                      final food = filteredFoods[index];
+                      return ListTile(
+                        title: Text(food['food']),
+                        subtitle: Text('Calories: ${food['calories']}'),
+                        onTap: () {
+                          final meal = Meal(
+                            id: DateTime.now().toString(),
+                            food: food['food'],
+                            mealType: _selectedMealType,
+                            calories: food['calories'],
+                            protein: food['protein'],
+                            carbs: food['carbs'],
+                            fat: food['fat'],
+                            sodium: food['sodium'],
+                            fiber: food['fiber'],
+                            timestamp: _selectedDate.millisecondsSinceEpoch,
+                            servings: food['servings'],
+                            isRecipe: food['isRecipe'],
+                          );
+                          _meals.value = [..._meals.value, meal]; // Update notifier
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (food.isNotEmpty) {
-                final meal = Meal(
-                  id: DateTime.now().toString(),
-                  food: food,
-                  mealType: mealType,
-                  calories: calories,
-                  protein: protein,
-                  carbs: carbs,
-                  fat: fat,
-                  sodium: sodium,
-                  fiber: fiber,
-                  timestamp: _selectedDate.millisecondsSinceEpoch,
-                  servings: servings,
-                  isRecipe: isRecipe,
-                );
-                _meals.add(meal);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
   }
