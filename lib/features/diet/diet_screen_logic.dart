@@ -251,87 +251,98 @@ class DietScreenLogic {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          backgroundColor: Colors.white, // Light background
-          title: const Text('Add Meal'),
-          content: SizedBox(
-            height: 300,
-            width: 280,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DropdownButton<String>(
-                  value: _mealNames.contains(_selectedMealType) ? _selectedMealType : _mealNames[0],
-                  items: _mealNames.map((name) => DropdownMenuItem(
-                    value: name,
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Add Meal',
+          style: TextStyle(color: Color(0xFF1C2526)), // Dark gray
+        ),
+        content: SizedBox(
+          height: 300,
+          width: 280,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButton<String>(
+                value: _mealNames.contains(_selectedMealType) ? _selectedMealType : _mealNames[0],
+                items: _mealNames.map((name) => DropdownMenuItem(
+                  value: name,
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      color: Color(0xFF1C2526), // Dark gray
+                      fontWeight: FontWeight.bold,
                     ),
-                  )).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setMealType(value);
-                      setState(() {});
-                    }
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Search Food'),
-                  onChanged: (value) {
-                    searchQuery = value;
-                    filteredFoods = _foodDatabase
-                        .where((food) => food['food'].toString().toLowerCase().contains(searchQuery.toLowerCase()))
-                        .toList();
-                    setState(() {});
-                  },
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: filteredFoods.length,
-                    itemBuilder: (context, index) {
-                      final food = filteredFoods[index];
-                      return ListTile(
-                        title: Text(food['food']),
-                        subtitle: Text('Calories: ${food['calories']}'),
-                        onTap: () {
-                          final meal = Meal(
-                            id: DateTime.now().toString(),
-                            food: food['food'],
-                            mealType: _selectedMealType,
-                            calories: food['calories'],
-                            protein: food['protein'],
-                            carbs: food['carbs'],
-                            fat: food['fat'],
-                            sodium: food['sodium'],
-                            fiber: food['fiber'],
-                            timestamp: _selectedDate.millisecondsSinceEpoch,
-                            servings: food['servings'],
-                            isRecipe: food['isRecipe'],
-                          );
-                          _meals.value = [..._meals.value, meal];
-                          _saveMeals();
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
                   ),
+                )).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setMealType(value);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Search Food',
+                  labelStyle: TextStyle(color: Color(0xFF1C2526)), // Dark gray
                 ),
-              ],
+                style: const TextStyle(color: Color(0xFF1C2526)), // Dark gray input text
+                onChanged: (value) {
+                  searchQuery = value;
+                  filteredFoods = _foodDatabase
+                      .where((food) => food['food'].toString().toLowerCase().contains(searchQuery.toLowerCase()))
+                      .toList();
+                },
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: filteredFoods.length,
+                  itemBuilder: (context, index) {
+                    final food = filteredFoods[index];
+                    return ListTile(
+                      title: Text(
+                        food['food'],
+                        style: const TextStyle(color: Color(0xFF1C2526)), // Dark gray
+                      ),
+                      subtitle: Text(
+                        'Calories: ${food['calories']}',
+                        style: const TextStyle(color: Color(0xFF808080)), // Gray
+                      ),
+                      onTap: () {
+                        final meal = Meal(
+                          id: DateTime.now().toString(),
+                          food: food['food'],
+                          mealType: _selectedMealType,
+                          calories: food['calories'],
+                          protein: food['protein'],
+                          carbs: food['carbs'],
+                          fat: food['fat'],
+                          sodium: food['sodium'],
+                          fiber: food['fiber'],
+                          timestamp: _selectedDate.millisecondsSinceEpoch,
+                          servings: food['servings'],
+                          isRecipe: food['isRecipe'],
+                        );
+                        _meals.value = [..._meals.value, meal];
+                        _saveMeals();
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Color(0xFF1C2526)), // Dark gray
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

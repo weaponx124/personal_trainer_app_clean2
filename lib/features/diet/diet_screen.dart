@@ -47,7 +47,10 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Select Diet Profile'),
+          title: const Text(
+            'Select Diet Profile',
+            style: TextStyle(color: Color(0xFF1C2526)), // Dark gray for light background
+          ),
           content: SizedBox(
             height: 400,
             width: 280,
@@ -113,8 +116,14 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
                           scripture: 'Proverbs 16:3 - "Commit to the Lord whatever you do, and he will establish your plans."',
                         );
                         return ListTile(
-                          title: const Text('Custom'),
-                          subtitle: Text('P: ${customProfile.proteinGrams(calories).toStringAsFixed(0)}g, C: ${customProfile.carbsGrams(calories).toStringAsFixed(0)}g, F: ${customProfile.fatGrams(calories).toStringAsFixed(0)}g'),
+                          title: const Text(
+                            'Custom',
+                            style: TextStyle(color: Color(0xFF1C2526)), // Dark gray
+                          ),
+                          subtitle: Text(
+                            'P: ${customProfile.proteinGrams(calories).toStringAsFixed(0)}g, C: ${customProfile.carbsGrams(calories).toStringAsFixed(0)}g, F: ${customProfile.fatGrams(calories).toStringAsFixed(0)}g',
+                            style: const TextStyle(color: Color(0xFF808080)), // Gray
+                          ),
                           onTap: () {
                             _logic.setDietProfile(customProfile, calories);
                             Navigator.pop(context);
@@ -123,8 +132,14 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
                       }
                       final profile = DietProfile.profiles[index - 1];
                       return ListTile(
-                        title: Text(profile.name),
-                        subtitle: Text('P: ${profile.proteinGrams(calories).toStringAsFixed(0)}g, C: ${profile.carbsGrams(calories).toStringAsFixed(0)}g, F: ${profile.fatGrams(calories).toStringAsFixed(0)}g'),
+                        title: Text(
+                          profile.name,
+                          style: const TextStyle(color: Color(0xFF1C2526)), // Dark gray
+                        ),
+                        subtitle: Text(
+                          'P: ${profile.proteinGrams(calories).toStringAsFixed(0)}g, C: ${profile.carbsGrams(calories).toStringAsFixed(0)}g, F: ${profile.fatGrams(calories).toStringAsFixed(0)}g',
+                          style: const TextStyle(color: Color(0xFF808080)), // Gray
+                        ),
                         onTap: () {
                           _logic.setDietProfile(profile, calories);
                           Navigator.pop(context);
@@ -139,7 +154,10 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Color(0xFF1C2526)), // Dark gray
+              ),
             ),
           ],
         ),
@@ -157,7 +175,10 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Set Up Meals'),
+          title: const Text(
+            'Set Up Meals',
+            style: TextStyle(color: Color(0xFF1C2526)), // Dark gray
+          ),
           content: SizedBox(
             height: 400,
             width: 280,
