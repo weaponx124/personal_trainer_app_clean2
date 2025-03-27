@@ -15,28 +15,11 @@ class MealsTab extends StatefulWidget {
 
 class _MealsTabState extends State<MealsTab> {
   @override
-  void initState() {
-    super.initState();
-    // Add listener to rebuild when meals change
-    widget.logic.meals.addListener(_onMealsChanged);
-  }
-
-  @override
-  void dispose() {
-    widget.logic.meals.removeListener(_onMealsChanged);
-    super.dispose();
-  }
-
-  void _onMealsChanged() {
-    setState(() {});
-  }
-
-  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<DietProfile>(
       valueListenable: widget.logic.dietProfile,
       builder: (context, profile, _) {
-        final meals = widget.logic.meals.value;
+        final meals = widget.logic.meals;
         final calories = widget.logic.effectiveCalories;
         final proteinProgress = widget.logic.loggedProtein / profile.proteinGrams(calories);
         final carbsProgress = widget.logic.loggedCarbs / profile.carbsGrams(calories);

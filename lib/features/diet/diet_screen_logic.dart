@@ -9,7 +9,7 @@ import './diet_profile.dart';
 
 class DietScreenLogic {
   late TabController _tabController;
-  final ValueNotifier<List<Meal>> _meals = ValueNotifier([]);
+  List<Meal> _meals = [];
   List<Recipe> _recipes = [];
   List<ShoppingListItem> _shoppingList = [];
   DateTime _selectedDate = DateTime.now();
@@ -19,9 +19,39 @@ class DietScreenLogic {
   List<String> _mealNames = ['Breakfast', 'Lunch', 'Dinner'];
 
   final List<Map<String, dynamic>> _foodDatabase = [
-    {'food': 'Chicken Breast', 'calories': 165.0, 'protein': 31.0, 'carbs': 0.0, 'fat': 3.6, 'sodium': 74.0, 'fiber': 0.0, 'servings': 1.0, 'isRecipe': false},
-    {'food': 'Broccoli', 'calories': 35.0, 'protein': 3.0, 'carbs': 7.0, 'fat': 0.4, 'sodium': 33.0, 'fiber': 3.0, 'servings': 1.0, 'isRecipe': false},
-    {'food': 'Avocado', 'calories': 160.0, 'protein': 2.0, 'carbs': 9.0, 'fat': 15.0, 'sodium': 7.0, 'fiber': 7.0, 'servings': 1.0, 'isRecipe': false},
+    {
+      'food': 'Chicken Breast',
+      'calories': 165.0,
+      'protein': 31.0,
+      'carbs': 0.0,
+      'fat': 3.6,
+      'sodium': 74.0,
+      'fiber': 0.0,
+      'servings': 1.0,
+      'isRecipe': false
+    },
+    {
+      'food': 'Broccoli',
+      'calories': 35.0,
+      'protein': 3.0,
+      'carbs': 7.0,
+      'fat': 0.4,
+      'sodium': 33.0,
+      'fiber': 3.0,
+      'servings': 1.0,
+      'isRecipe': false
+    },
+    {
+      'food': 'Avocado',
+      'calories': 160.0,
+      'protein': 2.0,
+      'carbs': 9.0,
+      'fat': 15.0,
+      'sodium': 7.0,
+      'fiber': 7.0,
+      'servings': 1.0,
+      'isRecipe': false
+    },
   ];
 
   DietScreenLogic(TickerProvider vsync) {
@@ -29,7 +59,7 @@ class DietScreenLogic {
   }
 
   TabController get tabController => _tabController;
-  ValueNotifier<List<Meal>> get meals => _meals;
+  List<Meal> get meals => _meals;
   List<Recipe> get recipes => _recipes;
   List<ShoppingListItem> get shoppingList => _shoppingList;
   DateTime get selectedDate => _selectedDate;
@@ -54,14 +84,18 @@ class DietScreenLogic {
       final customProtein = prefs.getDouble('customProtein');
       final customCarbs = prefs.getDouble('customCarbs');
       final customFat = prefs.getDouble('customFat');
-      if (profileName == 'Custom' && customProtein != null && customCarbs != null && customFat != null) {
+      if (profileName == 'Custom' &&
+          customProtein != null &&
+          customCarbs != null &&
+          customFat != null) {
         _dietProfile.value = DietProfile(
           name: 'Custom',
           proteinPercentage: customProtein,
           carbsPercentage: customCarbs,
           fatPercentage: customFat,
           defaultCalories: _customCalories ?? 2000,
-          scripture: 'Proverbs 16:3 - "Commit to the Lord whatever you do, and he will establish your plans."',
+          scripture:
+          'Proverbs 16:3 - "Commit to the Lord whatever you do, and he will establish your plans."',
         );
       } else {
         _dietProfile.value = profile;
@@ -70,8 +104,8 @@ class DietScreenLogic {
     final savedMeals = prefs.getString('meals');
     if (savedMeals != null) {
       final List<dynamic> jsonList = json.decode(savedMeals);
-      _meals.value = jsonList.map((json) => Meal.fromJson(json)).toList();
-      print('Loaded meals: ${_meals.value.length}');
+      _meals = jsonList.map((json) => Meal.fromJson(json)).toList();
+      print('Loaded meals: ${_meals.length}');
     }
     final savedMealNames = prefs.getStringList('mealNames');
     if (savedMealNames != null && savedMealNames.isNotEmpty) {
@@ -86,21 +120,21 @@ class DietScreenLogic {
     if (_customCalories != null) {
       print('Applied customCalories: $_customCalories');
     } else {
-      print('No customCalories found, using default: ${_dietProfile.value.defaultCalories}');
+      print(
+          'No customCalories found, using default: ${_dietProfile.value.defaultCalories}');
     }
   }
 
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
-    _meals.dispose();
     _dietProfile.dispose();
   }
 
   void _onTabChanged() {}
 
   void _loadInitialData() {
-    _meals.value = [];
+    _meals = [];
     _recipes = [];
     _shoppingList = [];
   }
@@ -109,16 +143,23 @@ class DietScreenLogic {
     _showAddMealDialog(context);
   }
 
-  void addCustomFood() {}
+  void addCustomFood() {
+    // Placeholder implementation
+    print('Add Custom Food placeholder');
+  }
 
-  void addRecipe() {}
+  void addRecipe() {
+    // Already implemented in _showAddRecipeDialog
+  }
 
   void deleteMeal(String mealId) {
-    _meals.value = _meals.value.where((meal) => meal.id != mealId).toList();
+    _meals = _meals.where((meal) => meal.id != mealId).toList();
     _saveMeals();
   }
 
-  void editMeal(Meal meal) {}
+  void editMeal(Meal meal) {
+    // Already implemented as a placeholder
+  }
 
   void deleteRecipe(String recipeId) {
     _recipes.removeWhere((recipe) => recipe.id == recipeId);
@@ -128,9 +169,28 @@ class DietScreenLogic {
     _shoppingList.add(item);
   }
 
-  void toggleShoppingItem(String itemId, bool value) {}
+  void toggleShoppingItem(String itemId, bool value) {
+    _shoppingList = _shoppingList.map((item) {
+      if (item.id == itemId) {
+        return ShoppingListItem(
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          checked: value,
+        );
+      }
+      return item;
+    }).toList();
+  }
 
-  void generateShoppingList() {}
+  void generateShoppingList() {
+    // Placeholder: Generate shopping list based on recipes
+    _shoppingList = [
+      ShoppingListItem(id: '1', name: 'Chicken Breast', quantity: 1.0, checked: false),
+      ShoppingListItem(id: '2', name: 'Broccoli', quantity: 1.0, checked: false),
+      ShoppingListItem(id: '3', name: 'Rice', quantity: 1.0, checked: false),
+    ];
+  }
 
   void clearShoppingList() {
     _shoppingList.clear();
@@ -170,19 +230,28 @@ class DietScreenLogic {
 
   Future<void> _saveMeals() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonList = _meals.value.map((meal) => meal.toJson()).toList();
+    final jsonList = _meals.map((meal) => meal.toJson()).toList();
     await prefs.setString('meals', json.encode(jsonList));
-    print('Saved meals: ${_meals.value.length}');
+    print('Saved meals: ${_meals.length}');
   }
 
-  double get loggedProtein => _meals.value
-      .where((meal) => meal.timestamp >= _selectedDate.millisecondsSinceEpoch && meal.timestamp < _selectedDate.add(const Duration(days: 1)).millisecondsSinceEpoch)
+  double get loggedProtein => _meals
+      .where((meal) =>
+  meal.timestamp >= _selectedDate.millisecondsSinceEpoch &&
+      meal.timestamp <
+          _selectedDate.add(const Duration(days: 1)).millisecondsSinceEpoch)
       .fold(0.0, (sum, meal) => sum + (meal.protein * meal.servings));
-  double get loggedCarbs => _meals.value
-      .where((meal) => meal.timestamp >= _selectedDate.millisecondsSinceEpoch && meal.timestamp < _selectedDate.add(const Duration(days: 1)).millisecondsSinceEpoch)
+  double get loggedCarbs => _meals
+      .where((meal) =>
+  meal.timestamp >= _selectedDate.millisecondsSinceEpoch &&
+      meal.timestamp <
+          _selectedDate.add(const Duration(days: 1)).millisecondsSinceEpoch)
       .fold(0.0, (sum, meal) => sum + (meal.carbs * meal.servings));
-  double get loggedFat => _meals.value
-      .where((meal) => meal.timestamp >= _selectedDate.millisecondsSinceEpoch && meal.timestamp < _selectedDate.add(const Duration(days: 1)).millisecondsSinceEpoch)
+  double get loggedFat => _meals
+      .where((meal) =>
+  meal.timestamp >= _selectedDate.millisecondsSinceEpoch &&
+      meal.timestamp <
+          _selectedDate.add(const Duration(days: 1)).millisecondsSinceEpoch)
       .fold(0.0, (sum, meal) => sum + (meal.fat * meal.servings));
 
   int get effectiveCalories => _customCalories ?? _dietProfile.value.defaultCalories;
@@ -214,7 +283,8 @@ class DietScreenLogic {
 
   Future<List<Map<String, dynamic>>> _fetchFoods(String query) async {
     const apiKey = '4a4f7fd3016e4cedba709f38af5e7b7d';
-    final url = 'https://platform.fatsecret.com/rest/foods/search/v1?method=foods.search&search_expression=$query&format=json&max_results=10';
+    final url =
+        'https://platform.fatsecret.com/rest/foods/search/v1?method=foods.search&search_expression=$query&format=json&max_results=10';
     try {
       final response = await http.get(Uri.parse(url), headers: {
         'Authorization': 'Bearer $apiKey',
@@ -226,7 +296,13 @@ class DietScreenLogic {
         return foods.map((food) {
           return {
             'food': food['food_name'],
-            'calories': double.tryParse(food['food_description']?.split(' - ')[1]?.split(' | ')[0]?.replaceAll('Calories: ', '')?.replaceAll('kcal', '') ?? '0') ?? 0.0,
+            'calories': double.tryParse(food['food_description']
+                ?.split(' - ')[1]
+                ?.split(' | ')[0]
+                ?.replaceAll('Calories: ', '')
+                ?.replaceAll('kcal', '') ??
+                '0') ??
+                0.0,
             'protein': 0.0,
             'carbs': 0.0,
             'fat': 0.0,
@@ -263,7 +339,9 @@ class DietScreenLogic {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButton<String>(
-                value: _mealNames.contains(_selectedMealType) ? _selectedMealType : _mealNames[0],
+                value: _mealNames.contains(_selectedMealType)
+                    ? _selectedMealType
+                    : _mealNames[0],
                 items: _mealNames.map((name) => DropdownMenuItem(
                   value: name,
                   child: Text(
@@ -284,13 +362,16 @@ class DietScreenLogic {
               TextField(
                 decoration: const InputDecoration(
                   labelText: 'Search Food',
-                  labelStyle: TextStyle(color: Color(0xFF1C2526)), // Dark gray
+                  labelStyle: TextStyle(color: Color(0xFF1C2526)),
                 ),
-                style: const TextStyle(color: Color(0xFF1C2526)), // Dark gray input text
+                style: const TextStyle(color: Color(0xFF1C2526)),
                 onChanged: (value) {
                   searchQuery = value;
                   filteredFoods = _foodDatabase
-                      .where((food) => food['food'].toString().toLowerCase().contains(searchQuery.toLowerCase()))
+                      .where((food) => food['food']
+                      .toString()
+                      .toLowerCase()
+                      .contains(searchQuery.toLowerCase()))
                       .toList();
                 },
               ),
@@ -302,11 +383,11 @@ class DietScreenLogic {
                     return ListTile(
                       title: Text(
                         food['food'],
-                        style: const TextStyle(color: Color(0xFF1C2526)), // Dark gray
+                        style: const TextStyle(color: Color(0xFF1C2526)),
                       ),
                       subtitle: Text(
                         'Calories: ${food['calories']}',
-                        style: const TextStyle(color: Color(0xFF808080)), // Gray
+                        style: const TextStyle(color: Color(0xFF808080)),
                       ),
                       onTap: () {
                         final meal = Meal(
@@ -323,7 +404,7 @@ class DietScreenLogic {
                           servings: food['servings'],
                           isRecipe: food['isRecipe'],
                         );
-                        _meals.value = [..._meals.value, meal];
+                        _meals = [..._meals, meal];
                         _saveMeals();
                         Navigator.pop(context);
                       },
@@ -339,7 +420,7 @@ class DietScreenLogic {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'Cancel',
-              style: TextStyle(color: Color(0xFF1C2526)), // Dark gray
+              style: TextStyle(color: Color(0xFF1C2526)),
             ),
           ),
         ],
