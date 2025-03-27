@@ -7,7 +7,6 @@ import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/screens/program_details_widgets.dart';
 import 'package:personal_trainer_app_clean/screens/program_logic.dart';
 import 'package:personal_trainer_app_clean/screens/programs_overview_screen.dart';
-import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -65,85 +64,63 @@ $oneRMsSummary
     return ValueListenableBuilder<Color>(
       valueListenable: accentColorNotifier,
       builder: (context, accentColor, child) {
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0.1,
-                  child: CustomPaint(
-                    painter: CrossPainter(),
-                    child: Container(),
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: FutureBuilder<Program>(
+            future: _programFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError || !snapshot.hasData) {
+                return Center(
+                  child: Text(
+                    'Error loading program: ${snapshot.error}',
+                    style: GoogleFonts.roboto(
+                      fontSize: 16,
+                      color: const Color(0xFF808080),
+                    ),
                   ),
-                ),
-              ),
-              Scaffold(
-                backgroundColor: Colors.transparent,
-                body: FutureBuilder<Program>(
-                  future: _programFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError || !snapshot.hasData) {
-                      return Center(
-                        child: Text(
-                          'Error loading program: ${snapshot.error}',
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF808080),
+                );
+              }
+
+              final program = snapshot.data!;
+              final unit = program.details['unit'] as String? ?? 'lbs';
+
+              return SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ProgramDetailsWidget(program: program.toMap(), unit: unit),
+                      const SizedBox(height: 16),
+                      WorkoutCard(
+                        program: program,
+                        unit: unit,
+                        onTap: () {},
+                        onLogWorkout: (workout) async {},
+                      ),
+                      const SizedBox(height: 16),
+                      ProgramProgressWidget(programId: program.id),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: SizedBox(
+                          width: 150,
+                          child: ElevatedButton(
+                            onPressed: () => _endProgram(program),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                            child: const Text('End Program'),
                           ),
                         ),
-                      );
-                    }
-
-                    final program = snapshot.data!;
-                    final unit = program.details['unit'] as String? ?? 'lbs';
-
-                    return SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            ProgramDetailsWidget(program: program.toMap(), unit: unit),
-                            const SizedBox(height: 16),
-                            WorkoutCard(
-                              program: program,
-                              unit: unit,
-                              onTap: () {},
-                              onLogWorkout: (workout) async {},
-                            ),
-                            const SizedBox(height: 16),
-                            ProgramProgressWidget(programId: program.id),
-                            const SizedBox(height: 16),
-                            Center(
-                              child: SizedBox(
-                                width: 150,
-                                child: ElevatedButton(
-                                  onPressed: () => _endProgram(program),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                  ),
-                                  child: const Text('End Program'),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              );
+            },
           ),
         );
       },

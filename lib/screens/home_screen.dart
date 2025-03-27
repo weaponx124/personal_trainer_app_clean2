@@ -12,7 +12,6 @@ import 'package:personal_trainer_app_clean/main.dart';
 import 'package:personal_trainer_app_clean/screens/program_selection_screen.dart';
 import 'package:personal_trainer_app_clean/screens/settings_screen.dart';
 import 'package:personal_trainer_app_clean/screens/workout_screen.dart';
-import 'package:personal_trainer_app_clean/utils/cross_painter.dart';
 import 'package:personal_trainer_app_clean/widgets/common/loading_indicator.dart';
 import 'package:personal_trainer_app_clean/widgets/common/app_snack_bar.dart';
 
@@ -211,219 +210,197 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, accentColor, child) {
         return Stack(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [const Color(0xFF87CEEB).withOpacity(0.2), const Color(0xFF1C2526)],
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Opacity(
-                      opacity: 0.1,
-                      child: CustomPaint(
-                        painter: CrossPainter(),
-                        child: Container(),
-                      ),
-                    ),
-                  ),
-                  SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+            SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 40.0, bottom: 40.0),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 40.0, bottom: 40.0),
-                            child: Column(
-                              children: [
-                                FadeIn(
-                                  duration: const Duration(milliseconds: 800),
-                                  child: Image.asset(
-                                    'assets/logo_512_transparent.png',
-                                    height: 180,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Seek First, Lift Strong',
-                                  style: Theme.of(context).textTheme.headlineLarge,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                          FadeIn(
+                            duration: const Duration(milliseconds: 800),
+                            child: Image.asset(
+                              'assets/logo_512_transparent.png',
+                              height: 180,
+                              fit: BoxFit.contain,
                             ),
                           ),
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(20.0),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Seek First, Lift Strong',
+                            style: Theme.of(context).textTheme.headlineLarge,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Weekly Stats',
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            FutureBuilder<int>(
+                              future: _weeklyWorkoutsFuture,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const LoadingIndicator();
+                                }
+                                if (snapshot.hasError) {
+                                  return Text(
+                                    'Error loading weekly stats: ${snapshot.error}',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  );
+                                }
+                                final weeklyWorkouts = snapshot.data ?? 0;
+                                return Text(
+                                  'Workouts This Week: $weeklyWorkouts',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: FutureBuilder<Map<String, dynamic>?>(
+                          future: _lastWorkoutFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const LoadingIndicator();
+                            }
+                            if (snapshot.hasError || !snapshot.hasData) {
+                              return Text(
+                                'No Lifts Yet',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              );
+                            }
+                            final lastWorkout = snapshot.data;
+                            return Text(
+                              lastWorkout != null
+                                  ? 'Last Lift: ${lastWorkout['exercise']} ${lastWorkout['weight']} ${widget.unit}'
+                                  : 'No Lifts Yet',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Text(
+                          'Streak: 3 Days', // Placeholder for now
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.fitness_center, size: 24),
+                      label: const Text('Start Today’s Lift'),
+                      onPressed: () async {
+                        childScreenNotifier.value = const WorkoutScreen();
+                        setState(() {
+                          _lastWorkoutFuture = _getLastWorkout();
+                          _weeklyWorkoutsFuture = _getWeeklyWorkoutsCount();
+                        });
+                        await _checkForMilestones();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.list_alt, size: 24),
+                      label: const Text('Choose a Program'),
+                      onPressed: () {
+                        childScreenNotifier.value = const ProgramSelectionScreen();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.settings, size: 24),
+                      label: const Text('Settings'),
+                      onPressed: () async {
+                        childScreenNotifier.value = const SettingsScreen();
+                        if (mounted) setState(() {});
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _dailyScriptureFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const LoadingIndicator();
+                        }
+                        if (snapshot.hasError || !snapshot.hasData) {
+                          return Text(
+                            'Failed to load scripture: ${snapshot.error}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          );
+                        }
+                        final scripture = snapshot.data!;
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: GestureDetector(
+                              onTap: () {
+                                print('Navigating to Scriptures with: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']}');
+                                scriptureArgsNotifier.value = {
+                                  'book': scripture['book'],
+                                  'chapter': scripture['chapter'],
+                                  'verse': scripture['verse'],
+                                };
+                                selectedTabIndexNotifier.value = 4; // Scriptures tab
+                                childScreenNotifier.value = null; // Clear child screen to show tab content
+                              },
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Weekly Stats',
+                                    'Verse of the Day',
                                     style: Theme.of(context).textTheme.headlineMedium,
                                   ),
                                   const SizedBox(height: 8),
-                                  FutureBuilder<int>(
-                                    future: _weeklyWorkoutsFuture,
-                                    builder: (context, snapshot) {
-                                      if (snapshot.connectionState == ConnectionState.waiting) {
-                                        return const LoadingIndicator();
-                                      }
-                                      if (snapshot.hasError) {
-                                        return Text(
-                                          'Error loading weekly stats: ${snapshot.error}',
-                                          style: Theme.of(context).textTheme.bodySmall,
-                                        );
-                                      }
-                                      final weeklyWorkouts = snapshot.data ?? 0;
-                                      return Text(
-                                        'Workouts This Week: $weeklyWorkouts',
-                                        style: Theme.of(context).textTheme.bodyMedium,
-                                      );
-                                    },
+                                  Text(
+                                    '${scripture['book']} ${scripture['chapter']}:${scripture['verse']}',
+                                    style: Theme.of(context).textTheme.headlineMedium,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    scripture['text'],
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                    textAlign: TextAlign.center,
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: FutureBuilder<Map<String, dynamic>?>(
-                                future: _lastWorkoutFuture,
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState == ConnectionState.waiting) {
-                                    return const LoadingIndicator();
-                                  }
-                                  if (snapshot.hasError || !snapshot.hasData) {
-                                    return Text(
-                                      'No Lifts Yet',
-                                      style: Theme.of(context).textTheme.bodyMedium,
-                                    );
-                                  }
-                                  final lastWorkout = snapshot.data;
-                                  return Text(
-                                    lastWorkout != null
-                                        ? 'Last Lift: ${lastWorkout['exercise']} ${lastWorkout['weight']} ${widget.unit}'
-                                        : 'No Lifts Yet',
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: Text(
-                                'Streak: 3 Days', // Placeholder for now
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.fitness_center, size: 24),
-                            label: const Text('Start Today’s Lift'),
-                            onPressed: () async {
-                              childScreenNotifier.value = const WorkoutScreen();
-                              setState(() {
-                                _lastWorkoutFuture = _getLastWorkout();
-                                _weeklyWorkoutsFuture = _getWeeklyWorkoutsCount();
-                              });
-                              await _checkForMilestones();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: accentColor,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.list_alt, size: 24),
-                            label: const Text('Choose a Program'),
-                            onPressed: () {
-                              childScreenNotifier.value = const ProgramSelectionScreen();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: accentColor,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.settings, size: 24),
-                            label: const Text('Settings'),
-                            onPressed: () async {
-                              childScreenNotifier.value = const SettingsScreen();
-                              if (mounted) setState(() {});
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: accentColor,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          FutureBuilder<Map<String, dynamic>>(
-                            future: _dailyScriptureFuture,
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const LoadingIndicator();
-                              }
-                              if (snapshot.hasError || !snapshot.hasData) {
-                                return Text(
-                                  'Failed to load scripture: ${snapshot.error}',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                );
-                              }
-                              final scripture = snapshot.data!;
-                              return Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      print('Navigating to Scriptures with: ${scripture['book']} ${scripture['chapter']}:${scripture['verse']}');
-                                      scriptureArgsNotifier.value = {
-                                        'book': scripture['book'],
-                                        'chapter': scripture['chapter'],
-                                        'verse': scripture['verse'],
-                                      };
-                                      selectedTabIndexNotifier.value = 4; // Scriptures tab
-                                      childScreenNotifier.value = null; // Clear child screen to show tab content
-                                    },
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          'Verse of the Day',
-                                          style: Theme.of(context).textTheme.headlineMedium,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          '${scripture['book']} ${scripture['chapter']}:${scripture['verse']}',
-                                          style: Theme.of(context).textTheme.headlineMedium,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          scripture['text'],
-                                          style: Theme.of(context).textTheme.bodySmall,
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             if (_showCelebration)

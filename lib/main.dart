@@ -22,6 +22,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'dart:io' show Platform;
 import 'package:personal_trainer_app_clean/core/services/database_service.dart';
 import 'package:personal_trainer_app_clean/core/services/network_service.dart';
+import 'package:personal_trainer_app_clean/widgets/common/app_background.dart';
 
 // Global unit state
 ValueNotifier<String> unitNotifier = ValueNotifier<String>('lbs');
@@ -123,16 +124,19 @@ class MyApp extends StatelessWidget {
                 return MaterialApp(
                   title: 'Seek & Lift',
                   theme: AppTheme.lightTheme().copyWith(
+                    scaffoldBackgroundColor: Colors.transparent, // Ensure theme doesn't override
                     colorScheme: AppTheme.lightTheme().colorScheme.copyWith(
                       secondary: accentColor,
                     ),
                   ),
                   darkTheme: AppTheme.darkTheme().copyWith(
+                    scaffoldBackgroundColor: Colors.transparent, // Ensure theme doesn't override
                     colorScheme: AppTheme.darkTheme().colorScheme.copyWith(
                       secondary: accentColor,
                     ),
                   ),
                   themeMode: themeMode,
+                  builder: (context, child) => AppBackground(child: child!),
                   initialRoute: '/splash',
                   routes: {
                     '/splash': (context) => const SplashScreen(),
@@ -212,6 +216,7 @@ class _MainScreenState extends State<MainScreen> {
               builder: (context, childScreen, _) {
                 print('MainScreen: Rendering with selectedIndex: $_selectedIndex');
                 return Scaffold(
+                  backgroundColor: Colors.transparent, // Ensure Scaffold is transparent
                   appBar: AppBar(
                     title: Text(
                       _selectedIndex == 0
@@ -226,8 +231,9 @@ class _MainScreenState extends State<MainScreen> {
                           ? 'Scriptures'
                           : 'Workout Log',
                     ),
-                    backgroundColor: const Color(0xFF1C2526),
+                    backgroundColor: Colors.transparent, // Make AppBar transparent
                     foregroundColor: const Color(0xFFB0B7BF),
+                    elevation: 0, // Remove shadow to blend with background
                     actions: [
                       if (_selectedIndex == 3 || childScreenNotifier.value is ProgramDetailsScreen)
                         IconButton(
