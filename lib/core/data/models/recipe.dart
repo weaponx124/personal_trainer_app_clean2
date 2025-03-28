@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Recipe {
   final String id;
   final String name;
@@ -31,7 +33,7 @@ class Recipe {
       'fat': fat,
       'sodium': sodium,
       'fiber': fiber,
-      'ingredients': ingredients,
+      'ingredients': ingredients, // Store as List<Map<String, dynamic>> for JSON
     };
   }
 
@@ -53,7 +55,15 @@ class Recipe {
       fat: (map['fat'] as num?)?.toDouble() ?? 0.0,
       sodium: (map['sodium'] as num?)?.toDouble() ?? 0.0,
       fiber: (map['fiber'] as num?)?.toDouble() ?? 0.0,
-      ingredients: (map['ingredients'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [],
+      ingredients: (map['ingredients'] as List<dynamic>?)
+          ?.map((item) => Map<String, dynamic>.from(item as Map))
+          .toList() ??
+          [],
     );
   }
+
+  // For SharedPreferences JSON compatibility
+  Map<String, dynamic> toJson() => toMap();
+
+  factory Recipe.fromJson(Map<String, dynamic> json) => Recipe.fromMap(json);
 }

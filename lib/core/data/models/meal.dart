@@ -101,4 +101,37 @@ class Meal {
   Map<String, dynamic> toJson() => toMap();
 
   factory Meal.fromJson(Map<String, dynamic> json) => Meal.fromMap(json);
+
+  // Add copyWith method
+  Meal copyWith({
+    String? id,
+    String? food,
+    String? mealType,
+    double? calories,
+    double? protein,
+    double? carbs,
+    double? fat,
+    double? sodium,
+    double? fiber,
+    int? timestamp,
+    double? servings,
+    bool? isRecipe,
+    List<Map<String, dynamic>>? ingredients,
+  }) {
+    return Meal(
+      id: id ?? this.id,
+      food: food ?? this.food,
+      mealType: mealType ?? this.mealType,
+      calories: calories ?? this.calories,
+      protein: protein ?? this.protein,
+      carbs: carbs ?? this.carbs,
+      fat: fat ?? this.fat,
+      sodium: sodium ?? this.sodium,
+      fiber: fiber ?? this.fiber,
+      timestamp: timestamp ?? this.timestamp,
+      servings: servings ?? this.servings,
+      isRecipe: isRecipe ?? this.isRecipe,
+      ingredients: ingredients ?? this.ingredients,
+    );
+  }
 }

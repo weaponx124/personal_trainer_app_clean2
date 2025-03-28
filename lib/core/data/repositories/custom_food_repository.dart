@@ -1,27 +1,44 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import '../models/custom_food.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import '../../data/models/custom_food.dart';
 
 class CustomFoodRepository {
-  static const String _customFoodsKey = 'custom_foods';
+  Database? _database;
 
-  Future<List<CustomFood>> getCustomFoods() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? customFoodsJson = prefs.getString(_customFoodsKey);
-    if (customFoodsJson == null) return [];
-    final List<dynamic> customFoodsList = jsonDecode(customFoodsJson);
-    return customFoodsList.map((map) => CustomFood.fromMap(map)).toList();
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDatabase();
+    return _database!;
   }
 
-  Future<void> saveCustomFoods(List<CustomFood> customFoods) async {
-    final prefs = await SharedPreferences.getInstance();
-    final customFoodsJson = jsonEncode(customFoods.map((food) => food.toMap()).toList());
-    await prefs.setString(_customFoodsKey, customFoodsJson);
+  Future<Database> _initDatabase() async {
+    String path = join(await getDatabasesPath(), 'custom_foods.db');
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE custom_foods (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            calories REAL,
+            protein REAL,
+            carbs REAL,
+            fat REAL
+          )
+        ''');
+      },
+    );
+  }
+
+  Future<List<CustomFood>> getCustomFoods() async {
+    final db = await database;
+    final results = await db.query('custom_foods');
+    return results.map((map) => CustomFood.fromMap(map)).toList();
   }
 
   Future<void> addCustomFood(CustomFood customFood) async {
-    final customFoods = await getCustomFoods();
-    customFoods.add(customFood);
-    await saveCustomFoods(customFoods);
+    final db = await database;
+    await db.insert('custom_foods', customFood.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
   }
 }

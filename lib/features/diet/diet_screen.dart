@@ -152,8 +152,8 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
   }
 
   void _showMealSetupDialog() {
-    final countController = TextEditingController(text: _logic.mealNames.length.toString());
-    final List<TextEditingController> nameControllers = _logic.mealNames
+    final countController = TextEditingController(text: _logic.mealNames.value.length.toString());
+    final List<TextEditingController> nameControllers = _logic.mealNames.value
         .map((name) => TextEditingController(text: name))
         .toList();
 
@@ -220,6 +220,20 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
     );
   }
 
+  void _showDatePicker() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _logic.selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != _logic.selectedDate) {
+      setState(() {
+        _logic.setSelectedDate(picked);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -228,7 +242,19 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Diet'),
+        title: Row(
+          children: [
+            const Text('Diet'),
+            const SizedBox(width: 16),
+            TextButton(
+              onPressed: _showDatePicker,
+              child: Text(
+                '${_logic.selectedDate.day}/${_logic.selectedDate.month}/${_logic.selectedDate.year}',
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
         bottom: TabBar(
           controller: _logic.tabController,
           tabs: const [
