@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -10,6 +11,9 @@ import 'package:personal_trainer_app_clean/core/data/models/custom_food.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/custom_food_repository.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/shopping_list_repository.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/meal_repository.dart';
+import 'package:personal_trainer_app_clean/core/data/repositories/recipe_repository.dart';
+import 'package:personal_trainer_app_clean/features/diet/custom_food_dialog.dart';
+import './widgets/add_custom_food_dialog.dart';
 import 'dart:convert' show utf8, base64;
 
 class DietScreenLogic {
@@ -27,7 +31,17 @@ class DietScreenLogic {
   final CustomFoodRepository _customFoodRepository = CustomFoodRepository();
   final ShoppingListRepository _shoppingListRepository = ShoppingListRepository();
   final MealRepository _mealRepository = MealRepository();
+  final RecipeRepository _recipeRepository = RecipeRepository();
   String? _fatSecretAccessToken;
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey;
+
+  DietScreenLogic(TickerProvider vsync, this._scaffoldMessengerKey) {
+    _tabController = TabController(length: 3, vsync: vsync);
+  }
+
+  // Public getters for private fields
+  List<CustomFood> get customFoods => _customFoods;
+  CustomFoodRepository get customFoodRepository => _customFoodRepository;
 
   final List<Map<String, dynamic>> _foodDatabase = [
     {
@@ -68,10 +82,6 @@ class DietScreenLogic {
     },
   ];
 
-  DietScreenLogic(TickerProvider vsync) {
-    _tabController = TabController(length: 3, vsync: vsync);
-  }
-
   TabController get tabController => _tabController;
   ValueNotifier<List<Meal>> get meals => _meals;
   ValueNotifier<List<Recipe>> get recipes => _recipes;
@@ -90,6 +100,8 @@ class DietScreenLogic {
     _loadInitialData();
     // Migrate meals from SharedPreferences to SQLite
     await _mealRepository.migrateFromSharedPreferences();
+    // Migrate recipes from SharedPreferences to SQLite
+    await _recipeRepository.migrateFromSharedPreferences();
     final prefs = await SharedPreferences.getInstance();
     print('Prefs loaded');
     _customCalories = prefs.getInt('customCalories');
@@ -131,31 +143,15 @@ class DietScreenLogic {
       print('Error loading meals from repository: $e');
       _meals.value = [];
     }
-    // Load recipes
-    final savedRecipes = prefs.getString('recipes');
-    print('Raw saved recipes from SharedPreferences: $savedRecipes');
-    if (savedRecipes != null && savedRecipes.isNotEmpty) {
-      try {
-        final List<dynamic> jsonList = json.decode(savedRecipes);
-        print('Decoded recipes JSON: $jsonList');
-        _recipes.value = jsonList.map((json) {
-          try {
-            return Recipe.fromJson(json as Map<String, dynamic>);
-          } catch (e) {
-            print('Error parsing recipe from JSON: $json, error: $e');
-            return null;
-          }
-        }).where((recipe) => recipe != null).cast<Recipe>().toList();
-        print('Loaded recipes: ${_recipes.value.length}');
-        for (var recipe in _recipes.value) {
-          print('Loaded recipe: ${recipe.toJson()}');
-        }
-      } catch (e) {
-        print('Error loading recipes from SharedPreferences: $e');
-        _recipes.value = [];
+    // Load recipes from repository
+    try {
+      _recipes.value = await _recipeRepository.getRecipes();
+      print('Loaded recipes from repository: ${_recipes.value.length}');
+      for (var recipe in _recipes.value) {
+        print('Loaded recipe: ${recipe.toJson()}');
       }
-    } else {
-      print('No saved recipes found in SharedPreferences or empty string');
+    } catch (e) {
+      print('Error loading recipes from repository: $e');
       _recipes.value = [];
     }
     // Load shopping list from repository
@@ -196,12 +192,13 @@ class DietScreenLogic {
         'protein': customFood.protein,
         'carbs': customFood.carbs,
         'fat': customFood.fat,
-        'sodium': 0.0,
-        'fiber': 0.0,
+        'sodium': customFood.sodium,
+        'fiber': customFood.fiber,
         'servings': 1.0,
         'isRecipe': false,
       });
     }
+    print('Initialized allFoods with ${allFoods.length} items: $allFoods');
   }
 
   Future<void> _fetchFatSecretAccessToken() async {
@@ -350,112 +347,86 @@ class DietScreenLogic {
       builder: (context) => _AddMealDialog(
         logic: this,
         onMealAdded: (meal) async {
+          print('DietScreenLogic: Adding meal: ${meal.toJson()}');
           _meals.value = [..._meals.value, meal];
           await _mealRepository.insertMeal(meal);
+          Navigator.pop(context);
+          // Schedule SnackBar after the dialog is popped
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('Meal "${meal.food}" added successfully!'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          });
         },
       ),
     );
   }
 
   void addCustomFood(BuildContext context) {
-    final nameController = TextEditingController();
-    final measurementController = TextEditingController();
-    final caloriesController = TextEditingController();
-    final proteinController = TextEditingController();
-    final carbsController = TextEditingController();
-    final fatController = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Custom Food'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Food Name'),
-              ),
-              TextField(
-                controller: measurementController,
-                decoration: const InputDecoration(labelText: 'Measurement (e.g., 4oz, 1 cup)'),
-              ),
-              TextField(
-                controller: caloriesController,
-                decoration: const InputDecoration(labelText: 'Calories (kcal)'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: proteinController,
-                decoration: const InputDecoration(labelText: 'Protein (g)'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: carbsController,
-                decoration: const InputDecoration(labelText: 'Carbs (g)'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: fatController,
-                decoration: const InputDecoration(labelText: 'Fat (g)'),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final name = nameController.text;
-              final measurement = measurementController.text;
-              final calories = double.tryParse(caloriesController.text) ?? 0.0;
-              final protein = double.tryParse(proteinController.text) ?? 0.0;
-              final carbs = double.tryParse(carbsController.text) ?? 0.0;
-              final fat = double.tryParse(fatController.text) ?? 0.0;
-
-              if (name.isNotEmpty) {
-                final customFood = CustomFood(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: name,
-                  calories: calories,
-                  protein: protein,
-                  carbs: carbs,
-                  fat: fat,
-                );
-                _customFoods.add(customFood);
-                await _customFoodRepository.addCustomFood(customFood);
-                // Add to allFoods with measurement
-                allFoods.add({
-                  'food': customFood.name,
-                  'measurement': measurement.isNotEmpty ? measurement : 'Per serving',
-                  'calories': customFood.calories,
-                  'protein': customFood.protein,
-                  'carbs': customFood.carbs,
-                  'fat': customFood.fat,
-                  'sodium': 0.0,
-                  'fiber': 0.0,
-                  'servings': 1.0,
-                  'isRecipe': false,
-                });
-                Navigator.pop(context);
-                // Show confirmation
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Custom food "$name" added successfully!'),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
+      builder: (context) => AddCustomFoodDialog(
+        onSave: (customFoodMap) async {
+          final customFood = CustomFood(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            name: customFoodMap['name'] as String,
+            calories: customFoodMap['calories'] as double,
+            protein: customFoodMap['protein'] as double,
+            carbs: customFoodMap['carbs'] as double,
+            fat: customFoodMap['fat'] as double,
+            sodium: customFoodMap['sodium'] as double,
+            fiber: customFoodMap['fiber'] as double,
+          );
+          try {
+            _customFoods.add(customFood);
+            await _customFoodRepository.addCustomFood(customFood);
+            allFoods.add({
+              'food': customFood.name,
+              'measurement': 'Per serving',
+              'calories': customFood.calories,
+              'protein': customFood.protein,
+              'carbs': customFood.carbs,
+              'fat': customFood.fat,
+              'sodium': customFood.sodium,
+              'fiber': customFood.fiber,
+              'servings': 1.0,
+              'isRecipe': false,
+            });
+            Navigator.pop(context);
+            // Schedule SnackBar after the dialog is popped
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scaffoldMessengerKey.currentState?.showSnackBar(
+                SnackBar(
+                  content: Text('Custom food "${customFood.name}" added successfully!'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            });
+          } catch (e) {
+            print('Error adding custom food: $e');
+            // Schedule error SnackBar after the dialog is popped
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scaffoldMessengerKey.currentState?.showSnackBar(
+                SnackBar(
+                  content: Text('Failed to add custom food: $e'),
+                  duration: const Duration(seconds: 2),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            });
+          }
+        },
       ),
+    );
+  }
+
+  void manageCustomFoods(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => CustomFoodDialog(logic: this),
     );
   }
 
@@ -469,6 +440,7 @@ class DietScreenLogic {
       builder: (context) => _AddMealDialog(
         logic: this,
         onMealAdded: (updatedMeal) async {
+          print('DietScreenLogic: Updating meal: ${updatedMeal.toJson()}');
           _meals.value = _meals.value.map((m) {
             if (m.id == meal.id) {
               return updatedMeal.copyWith(id: meal.id, timestamp: meal.timestamp);
@@ -476,6 +448,16 @@ class DietScreenLogic {
             return m;
           }).toList();
           await _mealRepository.insertMeal(updatedMeal); // Use insertMeal for updates (it handles conflicts)
+          Navigator.pop(context);
+          // Schedule SnackBar after the dialog is popped
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('Meal "${updatedMeal.food}" updated successfully!'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          });
         },
         initialMeal: meal,
       ),
@@ -702,8 +684,24 @@ class DietScreenLogic {
                     }
                     return r;
                   }).toList();
-                  await _saveRecipes();
+                  await _recipeRepository.updateRecipe(updatedRecipe);
                   Navigator.pop(context);
+                  // Schedule SnackBar after the dialog is popped
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scaffoldMessengerKey.currentState?.showSnackBar(
+                      SnackBar(
+                        content: Text('Recipe "${updatedRecipe.name}" updated successfully!'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  });
+                } else {
+                  // Schedule SnackBar after the dialog is popped
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scaffoldMessengerKey.currentState?.showSnackBar(
+                      const SnackBar(content: Text('Please enter a recipe name and add at least one ingredient')),
+                    );
+                  });
                 }
               },
               child: const Text('Save'),
@@ -721,7 +719,7 @@ class DietScreenLogic {
 
   void deleteRecipe(String recipeId) async {
     _recipes.value = _recipes.value.where((recipe) => recipe.id != recipeId).toList();
-    await _saveRecipes();
+    await _recipeRepository.deleteRecipe(recipeId);
   }
 
   void addShoppingItem(ShoppingListItem item) async {
@@ -840,31 +838,6 @@ class DietScreenLogic {
     print('Saved mealNames: ${_mealNames.value}');
   }
 
-  Future<void> _saveRecipes() async {
-    final prefs = await SharedPreferences.getInstance();
-    try {
-      final jsonList = _recipes.value.map((recipe) {
-        try {
-          final json = recipe.toJson();
-          print('Serialized recipe to JSON: $json');
-          return json;
-        } catch (e) {
-          print('Error serializing recipe to JSON: $recipe, error: $e');
-          return null;
-        }
-      }).where((json) => json != null).toList();
-      final jsonString = json.encode(jsonList);
-      print('Saving recipes JSON string to SharedPreferences: $jsonString');
-      await prefs.setString('recipes', jsonString);
-      print('Saved recipes: ${_recipes.value.length}');
-      for (var recipe in _recipes.value) {
-        print('Saved recipe: ${recipe.toJson()}');
-      }
-    } catch (e) {
-      print('Error saving recipes to SharedPreferences: $e');
-    }
-  }
-
   // Helper method to get meals for a specific date
   List<Meal> getMealsForDate(DateTime date) {
     final startOfDay = DateTime(date.year, date.month, date.day).millisecondsSinceEpoch;
@@ -914,8 +887,19 @@ class DietScreenLogic {
       builder: (context) => _AddMealDialog(
         logic: this,
         onMealAdded: (meal) async {
+          print('DietScreenLogic: Adding meal from _showAddMealDialog: ${meal.toJson()}');
           _meals.value = [..._meals.value, meal];
           await _mealRepository.insertMeal(meal);
+          Navigator.pop(context);
+          // Schedule SnackBar after the dialog is popped
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('Meal "${meal.food}" added successfully!'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          });
         },
       ),
     );
@@ -1112,8 +1096,25 @@ class DietScreenLogic {
                     ingredients: ingredients,
                   );
                   _recipes.value = [..._recipes.value, recipe];
-                  await _saveRecipes();
+                  await _recipeRepository.addRecipe(recipe);
+                  print('DietScreenLogic: Added recipe: ${recipe.toJson()}');
                   Navigator.pop(context);
+                  // Schedule SnackBar after the dialog is popped
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scaffoldMessengerKey.currentState?.showSnackBar(
+                      SnackBar(
+                        content: Text('Recipe "${recipe.name}" added successfully!'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  });
+                } else {
+                  // Schedule SnackBar after the dialog is popped
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scaffoldMessengerKey.currentState?.showSnackBar(
+                      const SnackBar(content: Text('Please enter a recipe name and add at least one ingredient')),
+                    );
+                  });
                 }
               },
               child: const Text('Save'),
@@ -1169,7 +1170,7 @@ class _AddMealDialogState extends State<_AddMealDialog> with SingleTickerProvide
     _tabController = TabController(length: 2, vsync: this);
     // Initialize allFoods with _foodDatabase and _customFoods
     allFoods = List.from(widget.logic.foodDatabase);
-    for (var customFood in widget.logic._customFoods) {
+    for (var customFood in widget.logic.customFoods) {
       allFoods.add({
         'food': customFood.name,
         'measurement': 'Per serving', // Default measurement for custom foods
@@ -1177,8 +1178,8 @@ class _AddMealDialogState extends State<_AddMealDialog> with SingleTickerProvide
         'protein': customFood.protein,
         'carbs': customFood.carbs,
         'fat': customFood.fat,
-        'sodium': 0.0,
-        'fiber': 0.0,
+        'sodium': customFood.sodium,
+        'fiber': customFood.fiber,
         'servings': 1.0,
         'isRecipe': false,
       });
@@ -1210,7 +1211,7 @@ class _AddMealDialogState extends State<_AddMealDialog> with SingleTickerProvide
 
     // Combine _foodDatabase, _customFoods, and API results
     List<Map<String, dynamic>> combinedFoods = List.from(widget.logic.foodDatabase);
-    for (var customFood in widget.logic._customFoods) {
+    for (var customFood in widget.logic.customFoods) {
       combinedFoods.add({
         'food': customFood.name,
         'measurement': 'Per serving', // Default measurement for custom foods
@@ -1218,8 +1219,8 @@ class _AddMealDialogState extends State<_AddMealDialog> with SingleTickerProvide
         'protein': customFood.protein,
         'carbs': customFood.carbs,
         'fat': customFood.fat,
-        'sodium': 0.0,
-        'fiber': 0.0,
+        'sodium': customFood.sodium,
+        'fiber': customFood.fiber,
         'servings': 1.0,
         'isRecipe': false,
       });
@@ -1343,21 +1344,21 @@ class _AddMealDialogState extends State<_AddMealDialog> with SingleTickerProvide
                               onTap: () {
                                 final meal = Meal(
                                   id: DateTime.now().toString(),
-                                  food: food['food'],
+                                  food: food['food'] as String,
                                   mealType: widget.logic.selectedMealType,
-                                  calories: food['calories'],
-                                  protein: food['protein'],
-                                  carbs: food['carbs'],
-                                  fat: food['fat'],
-                                  sodium: food['sodium'],
-                                  fiber: food['fiber'],
+                                  calories: (food['calories'] as num?)?.toDouble() ?? 0.0,
+                                  protein: (food['protein'] as num?)?.toDouble() ?? 0.0,
+                                  carbs: (food['carbs'] as num?)?.toDouble() ?? 0.0,
+                                  fat: (food['fat'] as num?)?.toDouble() ?? 0.0,
+                                  sodium: (food['sodium'] as num?)?.toDouble() ?? 0.0,
+                                  fiber: (food['fiber'] as num?)?.toDouble() ?? 0.0,
                                   timestamp: widget.logic.selectedDate.millisecondsSinceEpoch,
-                                  servings: food['servings'],
-                                  isRecipe: food['isRecipe'],
+                                  servings: (food['servings'] as num?)?.toDouble() ?? 1.0,
+                                  isRecipe: (food['isRecipe'] as bool?) ?? false,
                                   ingredients: null,
                                 );
+                                print('DietScreenLogic: Created meal from food: ${meal.toJson()}');
                                 widget.onMealAdded(meal);
-                                Navigator.pop(context);
                               },
                             );
                           },
@@ -1423,8 +1424,8 @@ class _AddMealDialogState extends State<_AddMealDialog> with SingleTickerProvide
                                 isRecipe: true,
                                 ingredients: recipe.ingredients,
                               );
+                              print('DietScreenLogic: Created meal from recipe: ${meal.toJson()}');
                               widget.onMealAdded(meal);
-                              Navigator.pop(context);
                             },
                           );
                         },

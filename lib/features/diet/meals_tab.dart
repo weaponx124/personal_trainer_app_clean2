@@ -129,8 +129,10 @@ class _MealsTabState extends State<MealsTab> {
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8.0,
+                      runSpacing: 8.0,
                       children: [
                         ElevatedButton(
                           onPressed: () => widget.logic.addCustomFood(context),
@@ -139,6 +141,14 @@ class _MealsTabState extends State<MealsTab> {
                             foregroundColor: Colors.white,
                           ),
                           child: const Text('Add Custom Food'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => widget.logic.manageCustomFoods(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Manage Custom Foods'),
                         ),
                         ElevatedButton(
                           onPressed: () => widget.logic.addRecipe(context),

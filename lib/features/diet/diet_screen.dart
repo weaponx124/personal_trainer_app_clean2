@@ -16,11 +16,12 @@ class DietScreen extends StatefulWidget {
 class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMixin {
   late DietScreenLogic _logic;
   bool _isLoading = true;
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>(); // Added for SnackBar
 
   @override
   void initState() {
     super.initState();
-    _logic = DietScreenLogic(this);
+    _logic = DietScreenLogic(this, _scaffoldMessengerKey); // Pass the GlobalKey to DietScreenLogic
     _initLogic();
   }
 
@@ -239,61 +240,64 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Text('Diet'),
-            const SizedBox(width: 16),
-            TextButton(
-              onPressed: _showDatePicker,
-              child: Text(
-                '${_logic.selectedDate.day}/${_logic.selectedDate.month}/${_logic.selectedDate.year}',
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+    return ScaffoldMessenger(
+      key: _scaffoldMessengerKey, // Assign the GlobalKey to ScaffoldMessenger
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Row(
+            children: [
+              const Text('Diet'),
+              const SizedBox(width: 16),
+              TextButton(
+                onPressed: _showDatePicker,
+                child: Text(
+                  '${_logic.selectedDate.day}/${_logic.selectedDate.month}/${_logic.selectedDate.year}',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
+            ],
+          ),
+          bottom: TabBar(
+            controller: _logic.tabController,
+            tabs: const [
+              Tab(text: 'Meals'),
+              Tab(text: 'Recipes'),
+              Tab(text: 'Shopping List'),
+            ],
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.fastfood),
+              onPressed: _showMealSetupDialog,
+              tooltip: 'Set Up Meals',
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: _showProfileDialog,
+              tooltip: 'Diet Profile',
             ),
           ],
         ),
-        bottom: TabBar(
+        body: TabBarView(
           controller: _logic.tabController,
-          tabs: const [
-            Tab(text: 'Meals'),
-            Tab(text: 'Recipes'),
-            Tab(text: 'Shopping List'),
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: MealsTab(logic: _logic),
+            ),
+            Material(
+              color: Colors.transparent,
+              child: RecipesTab(logic: _logic),
+            ),
+            Material(
+              color: Colors.transparent,
+              child: ShoppingTab(logic: _logic),
+            ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.fastfood),
-            onPressed: _showMealSetupDialog,
-            tooltip: 'Set Up Meals',
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: _showProfileDialog,
-            tooltip: 'Diet Profile',
-          ),
-        ],
+        floatingActionButton: _logic.buildFAB(context),
       ),
-      body: TabBarView(
-        controller: _logic.tabController,
-        children: [
-          Material(
-            color: Colors.transparent,
-            child: MealsTab(logic: _logic),
-          ),
-          Material(
-            color: Colors.transparent,
-            child: RecipesTab(logic: _logic),
-          ),
-          Material(
-            color: Colors.transparent,
-            child: ShoppingTab(logic: _logic),
-          ),
-        ],
-      ),
-      floatingActionButton: _logic.buildFAB(context),
     );
   }
 

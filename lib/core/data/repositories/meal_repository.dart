@@ -1,86 +1,110 @@
-import 'package:personal_trainer_app_clean/core/data/models/meal.dart';
-import 'package:personal_trainer_app_clean/core/services/database_service.dart';
-import 'package:personal_trainer_app_clean/core/utils/locator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
 import 'dart:convert';
+import '../models/meal.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MealRepository {
-  final DatabaseService _databaseService = getIt<DatabaseService>();
+  Database? _database;
+
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDatabase();
+    return _database!;
+  }
+
+  Future<Database> _initDatabase() async {
+    String path = join(await getDatabasesPath(), 'meals.db');
+    try {
+      return await openDatabase(
+        path,
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE meals (
+              id TEXT PRIMARY KEY,
+              food TEXT,
+              mealType TEXT,
+              calories REAL,
+              protein REAL,
+              carbs REAL,
+              fat REAL,
+              sodium REAL,
+              fiber REAL,
+              timestamp INTEGER,
+              servings REAL,
+              isRecipe INTEGER,
+              ingredients TEXT
+            )
+          ''');
+          print('MealRepository: Created meals table in SQLite.');
+        },
+        onOpen: (db) {
+          print('MealRepository: Opened meals database.');
+        },
+      );
+    } catch (e, stackTrace) {
+      print('MealRepository: Error initializing database: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
 
   Future<List<Meal>> getMeals() async {
     try {
-      return await _databaseService.getMeals();
-    } catch (e) {
-      print('Error loading meals: $e');
+      final db = await database;
+      final results = await db.query('meals');
+      final meals = results.map((map) => Meal.fromMap(map)).toList();
+      print('MealRepository: Loaded ${meals.length} meals from SQLite: ${meals.map((m) => m.toJson()).toList()}');
+      return meals;
+    } catch (e, stackTrace) {
+      print('MealRepository: Error loading meals from SQLite: $e');
+      print('Stack trace: $stackTrace');
       return [];
     }
   }
 
   Future<void> insertMeal(Meal meal) async {
-    // Validate required fields before saving
-    if (meal.food.isEmpty) throw Exception('Meal food cannot be empty');
-    if (meal.mealType.isEmpty) throw Exception('Meal mealType cannot be empty');
-
-    final mealWithId = Meal(
-      id: Uuid().v4(),
-      food: meal.food,
-      mealType: meal.mealType,
-      calories: meal.calories,
-      protein: meal.protein,
-      carbs: meal.carbs,
-      fat: meal.fat,
-      sodium: meal.sodium,
-      fiber: meal.fiber,
-      timestamp: meal.timestamp,
-      servings: meal.servings,
-      isRecipe: meal.isRecipe,
-      ingredients: meal.ingredients,
-    );
-
     try {
-      await _databaseService.insertMeal(mealWithId);
-    } catch (e) {
-      print('Error inserting meal: $e');
+      final db = await database;
+      await db.insert('meals', meal.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+      print('MealRepository: Inserted meal into SQLite: ${meal.toJson()}');
+    } catch (e, stackTrace) {
+      print('MealRepository: Error inserting meal into SQLite: $e');
+      print('Stack trace: $stackTrace');
       throw Exception('Failed to insert meal: $e');
     }
   }
 
   Future<void> deleteMeal(String mealId) async {
     try {
-      await _databaseService.deleteMeal(mealId);
-    } catch (e) {
-      print('Error deleting meal: $e');
+      final db = await database;
+      await db.delete('meals', where: 'id = ?', whereArgs: [mealId]);
+      print('MealRepository: Deleted meal with ID: $mealId');
+    } catch (e, stackTrace) {
+      print('MealRepository: Error deleting meal from SQLite: $e');
+      print('Stack trace: $stackTrace');
       throw Exception('Failed to delete meal: $e');
     }
   }
 
-  Future<void> clearMeals() async {
-    try {
-      await _databaseService.clearMeals();
-    } catch (e) {
-      print('Error clearing meals: $e');
-      throw Exception('Failed to clear meals: $e');
-    }
-  }
-
-  // Migrate existing data from SharedPreferences to SQLite (one-time operation)
   Future<void> migrateFromSharedPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final mealsJson = prefs.getString('meals') ?? '[]';
       final List<dynamic> mealsList = jsonDecode(mealsJson);
-      final meals = mealsList.map((data) => Meal.fromMap(data)).toList();
+      final meals = mealsList.map((data) => Meal.fromJson(data)).toList();
 
       for (var meal in meals) {
-        await _databaseService.insertMeal(meal);
+        await insertMeal(meal);
       }
       print('MealRepository: Migrated ${meals.length} meals from SharedPreferences to SQLite.');
 
       // Clear SharedPreferences after migration
       await prefs.remove('meals');
-    } catch (e) {
-      print('Error migrating meals from SharedPreferences: $e');
+    } catch (e, stackTrace) {
+      print('MealRepository: Error migrating meals from SharedPreferences to SQLite: $e');
+      print('Stack trace: $stackTrace');
     }
   }
 }

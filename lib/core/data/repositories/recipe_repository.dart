@@ -1,23 +1,60 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
 import 'dart:convert';
-import 'package:personal_trainer_app_clean/core/data/models/recipe.dart';
+import '../models/recipe.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RecipeRepository {
-  static const String _recipesKey = 'recipes';
+  Database? _database;
+
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDatabase();
+    return _database!;
+  }
+
+  Future<Database> _initDatabase() async {
+    String path = join(await getDatabasesPath(), 'recipes.db');
+    try {
+      return await openDatabase(
+        path,
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE recipes (
+              id TEXT PRIMARY KEY,
+              name TEXT,
+              calories REAL,
+              protein REAL,
+              carbs REAL,
+              fat REAL,
+              sodium REAL,
+              fiber REAL,
+              ingredients TEXT
+            )
+          ''');
+          print('RecipeRepository: Created recipes table in SQLite.');
+        },
+        onOpen: (db) {
+          print('RecipeRepository: Opened recipes database.');
+        },
+      );
+    } catch (e, stackTrace) {
+      print('RecipeRepository: Error initializing database: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
 
   Future<List<Recipe>> getRecipes() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final recipesJson = prefs.getString(_recipesKey);
-      print('Recipes JSON from SharedPreferences: $recipesJson');
-      if (recipesJson == null) return [];
-      final recipesList = jsonDecode(recipesJson) as List<dynamic>;
-      final recipes = recipesList.map((recipe) => Recipe.fromMap(recipe as Map<String, dynamic>)).toList();
-      print('Loaded recipes: ${recipes.map((r) => r.toMap()).toList()}');
+      final db = await database;
+      final results = await db.query('recipes');
+      final recipes = results.map((map) => Recipe.fromMap(map)).toList();
+      print('RecipeRepository: Loaded ${recipes.length} recipes from SQLite: ${recipes.map((r) => r.toMap()).toList()}');
       return recipes;
     } catch (e, stackTrace) {
-      print('Error loading recipes: $e');
+      print('RecipeRepository: Error loading recipes from SQLite: $e');
       print('Stack trace: $stackTrace');
       // Clear recipes to prevent future errors
       await clearRecipes();
@@ -25,50 +62,82 @@ class RecipeRepository {
     }
   }
 
-  Future<void> addRecipe(Map<String, dynamic> recipeMap) async {
+  Future<void> addRecipe(Recipe recipe) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final recipes = await getRecipes();
-      final recipe = Recipe(
-        id: Uuid().v4(),
-        name: recipeMap['name'] as String,
-        calories: (recipeMap['calories'] as num).toDouble(),
-        protein: (recipeMap['protein'] as num).toDouble(),
-        carbs: (recipeMap['carbs'] as num).toDouble(),
-        fat: (recipeMap['fat'] as num).toDouble(),
-        sodium: (recipeMap['sodium'] as num).toDouble(),
-        fiber: (recipeMap['fiber'] as num).toDouble(),
-        ingredients: (recipeMap['ingredients'] as List<dynamic>).cast<Map<String, dynamic>>(),
-      );
-      recipes.add(recipe);
-      print('Adding recipe: ${recipe.toMap()}');
-      print('Updated recipes list: ${recipes.map((r) => r.toMap()).toList()}');
-      await prefs.setString(_recipesKey, jsonEncode(recipes.map((r) => r.toMap()).toList()));
-      print('Saved recipes to SharedPreferences: ${prefs.getString(_recipesKey)}');
+      final db = await database;
+      await db.insert('recipes', recipe.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+      print('RecipeRepository: Added recipe to SQLite: ${recipe.toMap()}');
     } catch (e, stackTrace) {
-      print('Error saving recipe: $e');
+      print('RecipeRepository: Error adding recipe to SQLite: $e');
       print('Stack trace: $stackTrace');
-      throw Exception('Failed to save recipe: $e');
+      throw Exception('Failed to add recipe: $e');
+    }
+  }
+
+  Future<void> updateRecipe(Recipe recipe) async {
+    try {
+      final db = await database;
+      await db.update(
+        'recipes',
+        recipe.toMap(),
+        where: 'id = ?',
+        whereArgs: [recipe.id],
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      print('RecipeRepository: Updated recipe in SQLite: ${recipe.toMap()}');
+    } catch (e, stackTrace) {
+      print('RecipeRepository: Error updating recipe in SQLite: $e');
+      print('Stack trace: $stackTrace');
+      throw Exception('Failed to update recipe: $e');
     }
   }
 
   Future<void> deleteRecipe(String recipeId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final recipes = await getRecipes();
-      final updatedRecipes = recipes.where((r) => r.id != recipeId).toList();
-      await prefs.setString(_recipesKey, jsonEncode(updatedRecipes.map((r) => r.toMap()).toList()));
-      print('Deleted recipe with ID: $recipeId');
+      final db = await database;
+      await db.delete(
+        'recipes',
+        where: 'id = ?',
+        whereArgs: [recipeId],
+      );
+      print('RecipeRepository: Deleted recipe with ID from SQLite: $recipeId');
     } catch (e, stackTrace) {
-      print('Error deleting recipe: $e');
+      print('RecipeRepository: Error deleting recipe from SQLite: $e');
       print('Stack trace: $stackTrace');
       throw Exception('Failed to delete recipe: $e');
     }
   }
 
   Future<void> clearRecipes() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_recipesKey);
-    print('Cleared all recipes from SharedPreferences');
+    try {
+      final db = await database;
+      await db.delete('recipes');
+      print('RecipeRepository: Cleared all recipes from SQLite');
+    } catch (e, stackTrace) {
+      print('RecipeRepository: Error clearing recipes from SQLite: $e');
+      print('Stack trace: $stackTrace');
+      throw Exception('Failed to clear recipes: $e');
+    }
+  }
+
+  // Migrate existing recipes from SharedPreferences to SQLite (one-time operation)
+  Future<void> migrateFromSharedPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final recipesJson = prefs.getString('recipes') ?? '[]';
+      final List<dynamic> recipesList = jsonDecode(recipesJson);
+      final recipes = recipesList.map((data) => Recipe.fromMap(data)).toList();
+
+      for (var recipe in recipes) {
+        await addRecipe(recipe);
+      }
+      print('RecipeRepository: Migrated ${recipes.length} recipes from SharedPreferences to SQLite.');
+
+      // Clear SharedPreferences after migration
+      await prefs.remove('recipes');
+    } catch (e, stackTrace) {
+      print('RecipeRepository: Error migrating recipes from SharedPreferences to SQLite: $e');
+      print('Stack trace: $stackTrace');
+    }
   }
 }

@@ -5,6 +5,8 @@ class CustomFood {
   final double protein;
   final double carbs;
   final double fat;
+  final double sodium;
+  final double fiber;
 
   CustomFood({
     required this.id,
@@ -13,6 +15,8 @@ class CustomFood {
     required this.protein,
     required this.carbs,
     required this.fat,
+    required this.sodium,
+    required this.fiber,
   });
 
   // For SharedPreferences serialization (JSON)
@@ -24,6 +28,8 @@ class CustomFood {
       protein: (json['protein'] as num?)?.toDouble() ?? 0.0,
       carbs: (json['carbs'] as num?)?.toDouble() ?? 0.0,
       fat: (json['fat'] as num?)?.toDouble() ?? 0.0,
+      sodium: (json['sodium'] as num?)?.toDouble() ?? 0.0,
+      fiber: (json['fiber'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -35,6 +41,8 @@ class CustomFood {
       'protein': protein,
       'carbs': carbs,
       'fat': fat,
+      'sodium': sodium,
+      'fiber': fiber,
     };
   }
 
@@ -47,6 +55,8 @@ class CustomFood {
       protein: (map['protein'] as num?)?.toDouble() ?? 0.0,
       carbs: (map['carbs'] as num?)?.toDouble() ?? 0.0,
       fat: (map['fat'] as num?)?.toDouble() ?? 0.0,
+      sodium: (map['sodium'] as num?)?.toDouble() ?? 0.0,
+      fiber: (map['fiber'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -58,6 +68,8 @@ class CustomFood {
       'protein': protein,
       'carbs': carbs,
       'fat': fat,
+      'sodium': sodium,
+      'fiber': fiber,
     };
   }
 }

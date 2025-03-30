@@ -23,6 +23,55 @@ class Recipe {
     required this.ingredients,
   });
 
+  factory Recipe.fromJson(Map<String, dynamic> json) {
+    return Recipe(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? 'Unknown Recipe',
+      calories: (json['calories'] as num?)?.toDouble() ?? 0.0,
+      protein: (json['protein'] as num?)?.toDouble() ?? 0.0,
+      carbs: (json['carbs'] as num?)?.toDouble() ?? 0.0,
+      fat: (json['fat'] as num?)?.toDouble() ?? 0.0,
+      sodium: (json['sodium'] as num?)?.toDouble() ?? 0.0,
+      fiber: (json['fiber'] as num?)?.toDouble() ?? 0.0,
+      ingredients: (json['ingredients'] as List<dynamic>?)
+          ?.map((item) => Map<String, dynamic>.from(item as Map))
+          .toList() ??
+          [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+      'sodium': sodium,
+      'fiber': fiber,
+      'ingredients': ingredients,
+    };
+  }
+
+  factory Recipe.fromMap(Map<String, dynamic> map) {
+    return Recipe(
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? 'Unknown Recipe',
+      calories: (map['calories'] as num?)?.toDouble() ?? 0.0,
+      protein: (map['protein'] as num?)?.toDouble() ?? 0.0,
+      carbs: (map['carbs'] as num?)?.toDouble() ?? 0.0,
+      fat: (map['fat'] as num?)?.toDouble() ?? 0.0,
+      sodium: (map['sodium'] as num?)?.toDouble() ?? 0.0,
+      fiber: (map['fiber'] as num?)?.toDouble() ?? 0.0,
+      ingredients: (map['ingredients'] != null && map['ingredients'] is String)
+          ? (jsonDecode(map['ingredients']) as List<dynamic>)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList()
+          : [],
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -33,37 +82,7 @@ class Recipe {
       'fat': fat,
       'sodium': sodium,
       'fiber': fiber,
-      'ingredients': ingredients, // Store as List<Map<String, dynamic>> for JSON
+      'ingredients': jsonEncode(ingredients), // Serialize ingredients to JSON string
     };
   }
-
-  factory Recipe.fromMap(Map<String, dynamic> map) {
-    // Provide default values for required String fields if they are null
-    final String id = map['id'] as String? ?? 'unknown_id';
-    final String name = map['name'] as String? ?? 'Unknown Recipe';
-
-    // Log warnings if any required field is null
-    if (map['id'] == null) print('Warning: Recipe map has null id: $map');
-    if (map['name'] == null) print('Warning: Recipe map has null name: $map');
-
-    return Recipe(
-      id: id,
-      name: name,
-      calories: (map['calories'] as num?)?.toDouble() ?? 0.0,
-      protein: (map['protein'] as num?)?.toDouble() ?? 0.0,
-      carbs: (map['carbs'] as num?)?.toDouble() ?? 0.0,
-      fat: (map['fat'] as num?)?.toDouble() ?? 0.0,
-      sodium: (map['sodium'] as num?)?.toDouble() ?? 0.0,
-      fiber: (map['fiber'] as num?)?.toDouble() ?? 0.0,
-      ingredients: (map['ingredients'] as List<dynamic>?)
-          ?.map((item) => Map<String, dynamic>.from(item as Map))
-          .toList() ??
-          [],
-    );
-  }
-
-  // For SharedPreferences JSON compatibility
-  Map<String, dynamic> toJson() => toMap();
-
-  factory Recipe.fromJson(Map<String, dynamic> json) => Recipe.fromMap(json);
 }
