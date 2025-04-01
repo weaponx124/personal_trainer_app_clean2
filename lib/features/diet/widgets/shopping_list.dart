@@ -19,6 +19,7 @@ class ShoppingList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('ShoppingList: Rebuilding with ${shoppingList.length} items');
     return ValueListenableBuilder<Color>(
       valueListenable: accentColorNotifier,
       builder: (context, accentColor, child) {
@@ -58,29 +59,27 @@ class ShoppingList extends StatelessWidget {
                   itemCount: shoppingList.length,
                   itemBuilder: (context, index) {
                     final item = shoppingList[index];
+                    print('ShoppingList: Rendering item ${item.id}: ${item.toJson()}');
                     return Card(
-                      child: CheckboxListTile(
+                      child: ListTile(
+                        key: ValueKey(item.id),
                         title: Text(
-                          item.name,
+                          '${item.name}: ${item.quantity.toStringAsFixed(1)} ${item.servingSizeUnit ?? 'serving'}',
                           style: GoogleFonts.roboto(
                             fontSize: 16,
                             color: const Color(0xFF1C2526),
+                            decoration: item.checked ? TextDecoration.lineThrough : TextDecoration.none,
                           ),
                         ),
-                        subtitle: Text(
-                          'Quantity: ${item.quantity}',
-                          style: GoogleFonts.roboto(
-                            fontSize: 14,
-                            color: const Color(0xFF808080),
-                          ),
+                        trailing: Checkbox(
+                          value: item.checked,
+                          onChanged: (bool? value) {
+                            if (value != null) {
+                              onToggle(item.id, value);
+                            }
+                          },
+                          activeColor: accentColor,
                         ),
-                        value: item.checked,
-                        onChanged: (bool? value) {
-                          if (value != null) {
-                            onToggle(item.id, value);
-                          }
-                        },
-                        activeColor: accentColor,
                       ),
                     );
                   },

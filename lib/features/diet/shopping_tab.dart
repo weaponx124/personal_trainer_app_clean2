@@ -11,7 +11,7 @@ class ShoppingTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<List<ShoppingListItem>>(
-      valueListenable: logic.shoppingList,
+      valueListenable: logic.stateManager.shoppingList,
       builder: (context, shoppingList, _) {
         return ShoppingList(
           shoppingList: shoppingList,

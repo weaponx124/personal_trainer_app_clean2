@@ -5,6 +5,7 @@ import './meals_tab.dart';
 import './recipes_tab.dart';
 import './shopping_tab.dart';
 import './diet_profile.dart';
+import './diet_state_manager.dart';
 
 class DietScreen extends StatefulWidget {
   const DietScreen({super.key});
@@ -16,12 +17,17 @@ class DietScreen extends StatefulWidget {
 class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMixin {
   late DietScreenLogic _logic;
   bool _isLoading = true;
-  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>(); // Added for SnackBar
+  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
     super.initState();
-    _logic = DietScreenLogic(this, _scaffoldMessengerKey); // Pass the GlobalKey to DietScreenLogic
+    final stateManager = DietStateManager(); // Create a single instance
+    _logic = DietScreenLogic(
+      vsync: this,
+      scaffoldMessengerKey: _scaffoldMessengerKey,
+      stateManager: stateManager,
+    );
     _initLogic();
   }
 
@@ -38,7 +44,7 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
 
   void _showProfileDialog() {
     final caloriesController = TextEditingController(
-      text: (_logic.customCalories ?? _logic.dietProfile.value.defaultCalories).toString(),
+      text: (_logic.stateManager.customCalories ?? _logic.stateManager.dietProfile.value.defaultCalories).toString(),
     );
     final proteinController = TextEditingController();
     final carbsController = TextEditingController();
@@ -153,8 +159,8 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
   }
 
   void _showMealSetupDialog() {
-    final countController = TextEditingController(text: _logic.mealNames.value.length.toString());
-    final List<TextEditingController> nameControllers = _logic.mealNames.value
+    final countController = TextEditingController(text: _logic.stateManager.mealNames.value.length.toString());
+    final List<TextEditingController> nameControllers = _logic.stateManager.mealNames.value
         .map((name) => TextEditingController(text: name))
         .toList();
 
@@ -224,13 +230,15 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
   void _showDatePicker() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _logic.selectedDate,
+      initialDate: _logic.stateManager.selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
-    if (picked != null && picked != _logic.selectedDate) {
+    if (picked != null && picked != _logic.stateManager.selectedDate) {
       setState(() {
-        _logic.setSelectedDate(picked);
+        // Normalize the picked date to the start of the day
+        final normalizedDate = DateTime(picked.year, picked.month, picked.day);
+        _logic.setSelectedDate(normalizedDate);
       });
     }
   }
@@ -241,7 +249,7 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
       return const Center(child: CircularProgressIndicator());
     }
     return ScaffoldMessenger(
-      key: _scaffoldMessengerKey, // Assign the GlobalKey to ScaffoldMessenger
+      key: _scaffoldMessengerKey,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
@@ -252,7 +260,7 @@ class DietScreenState extends State<DietScreen> with SingleTickerProviderStateMi
               TextButton(
                 onPressed: _showDatePicker,
                 child: Text(
-                  '${_logic.selectedDate.day}/${_logic.selectedDate.month}/${_logic.selectedDate.year}',
+                  '${_logic.stateManager.selectedDate.day}/${_logic.stateManager.selectedDate.month}/${_logic.stateManager.selectedDate.year}',
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),

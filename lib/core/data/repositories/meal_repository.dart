@@ -18,7 +18,7 @@ class MealRepository {
     try {
       return await openDatabase(
         path,
-        version: 1,
+        version: 2, // Increment the version to trigger onUpgrade
         onCreate: (db, version) async {
           await db.execute('''
             CREATE TABLE meals (
@@ -34,10 +34,17 @@ class MealRepository {
               timestamp INTEGER,
               servings REAL,
               isRecipe INTEGER,
-              ingredients TEXT
+              ingredients TEXT,
+              servingSizeUnit TEXT
             )
           ''');
           print('MealRepository: Created meals table in SQLite.');
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await db.execute('ALTER TABLE meals ADD COLUMN servingSizeUnit TEXT');
+            print('MealRepository: Added servingSizeUnit column to meals table.');
+          }
         },
         onOpen: (db) {
           print('MealRepository: Opened meals database.');
@@ -85,6 +92,18 @@ class MealRepository {
       print('MealRepository: Error deleting meal from SQLite: $e');
       print('Stack trace: $stackTrace');
       throw Exception('Failed to delete meal: $e');
+    }
+  }
+
+  Future<void> clearMeals() async {
+    try {
+      final db = await database;
+      await db.delete('meals');
+      print('MealRepository: Cleared all meals from SQLite');
+    } catch (e, stackTrace) {
+      print('MealRepository: Error clearing meals from SQLite: $e');
+      print('Stack trace: $stackTrace');
+      throw Exception('Failed to clear meals: $e');
     }
   }
 

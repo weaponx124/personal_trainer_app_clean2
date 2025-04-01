@@ -1,6 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'dart:convert';
 import '../models/custom_food.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CustomFoodRepository {
   Database? _database;
@@ -26,18 +28,17 @@ class CustomFoodRepository {
               protein REAL,
               carbs REAL,
               fat REAL,
-              sodium REAL,  -- Added sodium column
-              fiber REAL    -- Added fiber column
+              sodium REAL,
+              fiber REAL,
+              servingSizeUnit TEXT
             )
           ''');
           print('CustomFoodRepository: Created custom_foods table in SQLite.');
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
-            // Add sodium and fiber columns to existing table
-            await db.execute('ALTER TABLE custom_foods ADD COLUMN sodium REAL DEFAULT 0.0');
-            await db.execute('ALTER TABLE custom_foods ADD COLUMN fiber REAL DEFAULT 0.0');
-            print('CustomFoodRepository: Migrated custom_foods table to version 2 (added sodium and fiber columns).');
+            await db.execute('ALTER TABLE custom_foods ADD COLUMN servingSizeUnit TEXT');
+            print('CustomFoodRepository: Added servingSizeUnit column to custom_foods table.');
           }
         },
         onOpen: (db) {
@@ -55,9 +56,9 @@ class CustomFoodRepository {
     try {
       final db = await database;
       final results = await db.query('custom_foods');
-      final foods = results.map((map) => CustomFood.fromMap(map)).toList();
-      print('CustomFoodRepository: Loaded ${foods.length} custom foods from SQLite: ${foods.map((f) => f.toMap()).toList()}');
-      return foods;
+      final customFoods = results.map((map) => CustomFood.fromMap(map)).toList();
+      print('CustomFoodRepository: Loaded ${customFoods.length} custom foods from SQLite: ${customFoods.map((f) => f.toJson()).toList()}');
+      return customFoods;
     } catch (e, stackTrace) {
       print('CustomFoodRepository: Error loading custom foods from SQLite: $e');
       print('Stack trace: $stackTrace');
@@ -65,49 +66,47 @@ class CustomFoodRepository {
     }
   }
 
-  Future<void> addCustomFood(CustomFood food) async {
+  Future<void> addCustomFood(CustomFood customFood) async {
     try {
       final db = await database;
-      await db.insert('custom_foods', food.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
-      print('CustomFoodRepository: Added custom food to SQLite: ${food.toMap()}');
+      await db.insert('custom_foods', customFood.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+      print('CustomFoodRepository: Inserted custom food into SQLite: ${customFood.toJson()}');
     } catch (e, stackTrace) {
-      print('CustomFoodRepository: Error adding custom food to SQLite: $e');
+      print('CustomFoodRepository: Error inserting custom food into SQLite: $e');
       print('Stack trace: $stackTrace');
-      throw Exception('Failed to add custom food: $e');
-    }
-  }
-
-  Future<void> updateCustomFood(CustomFood food) async {
-    try {
-      final db = await database;
-      await db.update(
-        'custom_foods',
-        food.toMap(),
-        where: 'id = ?',
-        whereArgs: [food.id],
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      print('CustomFoodRepository: Updated custom food in SQLite: ${food.toMap()}');
-    } catch (e, stackTrace) {
-      print('CustomFoodRepository: Error updating custom food in SQLite: $e');
-      print('Stack trace: $stackTrace');
-      throw Exception('Failed to update custom food: $e');
+      throw Exception('Failed to insert custom food: $e');
     }
   }
 
   Future<void> deleteCustomFood(String foodId) async {
     try {
       final db = await database;
-      await db.delete(
-        'custom_foods',
-        where: 'id = ?',
-        whereArgs: [foodId],
-      );
+      await db.delete('custom_foods', where: 'id = ?', whereArgs: [foodId]);
       print('CustomFoodRepository: Deleted custom food with ID: $foodId');
     } catch (e, stackTrace) {
       print('CustomFoodRepository: Error deleting custom food from SQLite: $e');
       print('Stack trace: $stackTrace');
       throw Exception('Failed to delete custom food: $e');
+    }
+  }
+
+  Future<void> migrateFromSharedPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final customFoodsJson = prefs.getString('custom_foods') ?? '[]';
+      final List<dynamic> customFoodsList = jsonDecode(customFoodsJson);
+      final customFoods = customFoodsList.map((data) => CustomFood.fromJson(data)).toList();
+
+      for (var customFood in customFoods) {
+        await addCustomFood(customFood);
+      }
+      print('CustomFoodRepository: Migrated ${customFoods.length} custom foods from SharedPreferences to SQLite.');
+
+      // Clear SharedPreferences after migration
+      await prefs.remove('custom_foods');
+    } catch (e, stackTrace) {
+      print('CustomFoodRepository: Error migrating custom foods from SharedPreferences to SQLite: $e');
+      print('Stack trace: $stackTrace');
     }
   }
 }

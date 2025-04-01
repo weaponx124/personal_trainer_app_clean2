@@ -12,7 +12,7 @@ class RecipesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<List<Recipe>>(
-      valueListenable: logic.recipes,
+      valueListenable: logic.stateManager.recipes,
       builder: (context, recipes, _) {
         return SavedRecipes(
           recipes: recipes,
