@@ -52,12 +52,14 @@ class _AddMealDialogState extends State<AddMealDialog> {
             sodium: widget.initialMeal!.sodium,
             fiber: widget.initialMeal!.fiber,
             ingredients: widget.initialMeal!.ingredients ?? [],
+            quantityPerServing: 1.0,
           ),
         );
         _selectedItem = {
           'food': recipe.id,
           'name': recipe.name,
           'measurement': recipe.servingSizeUnit ?? 'serving',
+          'quantityPerServing': recipe.quantityPerServing,
           'calories': recipe.calories,
           'protein': recipe.protein,
           'carbs': recipe.carbs,
@@ -75,6 +77,7 @@ class _AddMealDialogState extends State<AddMealDialog> {
           orElse: () => {
             'food': widget.initialMeal!.food,
             'measurement': 'serving',
+            'quantityPerServing': 1.0,
             'calories': widget.initialMeal!.calories,
             'protein': widget.initialMeal!.protein,
             'carbs': widget.initialMeal!.carbs,
@@ -97,7 +100,8 @@ class _AddMealDialogState extends State<AddMealDialog> {
       combinedItems.add({
         'food': recipe.id, // Use the recipe ID as the identifier
         'name': recipe.name, // Display the recipe name
-        'measurement': recipe.servingSizeUnit ?? 'serving', // Use servingSizeUnit from Recipe
+        'measurement': recipe.servingSizeUnit ?? 'serving',
+        'quantityPerServing': recipe.quantityPerServing,
         'calories': recipe.calories,
         'protein': recipe.protein,
         'carbs': recipe.carbs,
@@ -120,7 +124,7 @@ class _AddMealDialogState extends State<AddMealDialog> {
         style: const TextStyle(color: Color(0xFF1C2526)),
       ),
       content: SizedBox(
-        height: 500, // Adjusted height after removing field
+        height: 500,
         width: 350,
         child: SingleChildScrollView(
           child: Column(

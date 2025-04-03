@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:personal_trainer_app_clean/core/data/models/recipe.dart';
 import '../diet_state_manager.dart';
 import '../fat_secret_service.dart';
@@ -23,7 +24,8 @@ class AddRecipeDialog extends StatefulWidget {
 
 class _AddRecipeDialogState extends State<AddRecipeDialog> {
   final nameController = TextEditingController();
-  final servingSizeUnitController = TextEditingController(); // New field for serving size unit
+  final servingSizeUnitController = TextEditingController();
+  final quantityPerServingController = TextEditingController();
   final List<Map<String, dynamic>> ingredients = [];
   String searchQuery = '';
   List<Map<String, dynamic>> filteredFoods = [];
@@ -42,6 +44,7 @@ class _AddRecipeDialogState extends State<AddRecipeDialog> {
     if (widget.initialRecipe != null) {
       nameController.text = widget.initialRecipe!.name;
       servingSizeUnitController.text = widget.initialRecipe!.servingSizeUnit ?? '';
+      quantityPerServingController.text = widget.initialRecipe!.quantityPerServing.toString();
       ingredients.addAll(widget.initialRecipe!.ingredients);
       totalCalories = widget.initialRecipe!.calories;
       totalProtein = widget.initialRecipe!.protein;
@@ -49,6 +52,8 @@ class _AddRecipeDialogState extends State<AddRecipeDialog> {
       totalFat = widget.initialRecipe!.fat;
       totalSodium = widget.initialRecipe!.sodium;
       totalFiber = widget.initialRecipe!.fiber;
+    } else {
+      quantityPerServingController.text = '1.0';
     }
   }
 
@@ -57,7 +62,7 @@ class _AddRecipeDialogState extends State<AddRecipeDialog> {
     return AlertDialog(
       title: Text(widget.initialRecipe != null ? 'Edit Recipe' : 'Add Recipe'),
       content: SizedBox(
-        height: 450,
+        height: 500,
         width: 300,
         child: SingleChildScrollView(
           child: Column(
@@ -69,7 +74,13 @@ class _AddRecipeDialogState extends State<AddRecipeDialog> {
               ),
               TextField(
                 controller: servingSizeUnitController,
-                decoration: const InputDecoration(labelText: 'Serving Size Unit (e.g., 1 bowl)'),
+                decoration: const InputDecoration(labelText: 'Serving Size Unit (e.g., bowl)'),
+              ),
+              TextField(
+                controller: quantityPerServingController,
+                decoration: const InputDecoration(labelText: 'Quantity per Serving (e.g., 1 for 1 bowl)'),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
               ),
               const SizedBox(height: 16),
               const Text('Add Ingredient from Food Database'),
@@ -150,6 +161,7 @@ class _AddRecipeDialogState extends State<AddRecipeDialog> {
                                   controller: servingsController,
                                   decoration: const InputDecoration(labelText: 'Servings'),
                                   keyboardType: TextInputType.number,
+                                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                                 ),
                               ],
                             ),
@@ -171,6 +183,7 @@ class _AddRecipeDialogState extends State<AddRecipeDialog> {
                                     'sodium': food['sodium'],
                                     'fiber': food['fiber'],
                                     'servings': servings,
+                                    'quantityPerServing': food['quantityPerServing'],
                                   });
                                 },
                                 child: const Text('Add'),
@@ -255,6 +268,7 @@ class _AddRecipeDialogState extends State<AddRecipeDialog> {
                 fiber: totalFiber,
                 ingredients: ingredients,
                 servingSizeUnit: servingSizeUnitController.text.isNotEmpty ? servingSizeUnitController.text : 'serving',
+                quantityPerServing: double.tryParse(quantityPerServingController.text) ?? 1.0,
               );
               widget.onRecipeAdded(recipe);
             } else {

@@ -9,7 +9,8 @@ class CustomFood {
   final double fat;
   final double sodium;
   final double fiber;
-  final String? servingSizeUnit; // New field for serving size unit
+  final String? servingSizeUnit;
+  final double quantityPerServing; // New field for quantity per serving
 
   CustomFood({
     required this.id,
@@ -21,6 +22,7 @@ class CustomFood {
     required this.sodium,
     required this.fiber,
     this.servingSizeUnit,
+    this.quantityPerServing = 1.0, // Default to 1 unit per serving
   });
 
   Map<String, dynamic> toMap() {
@@ -34,6 +36,7 @@ class CustomFood {
       'sodium': sodium,
       'fiber': fiber,
       'servingSizeUnit': servingSizeUnit,
+      'quantityPerServing': quantityPerServing,
     };
   }
 
@@ -48,6 +51,7 @@ class CustomFood {
       sodium: map['sodium'] as double,
       fiber: map['fiber'] as double,
       servingSizeUnit: map['servingSizeUnit'] as String?,
+      quantityPerServing: map['quantityPerServing'] as double? ?? 1.0,
     );
   }
 

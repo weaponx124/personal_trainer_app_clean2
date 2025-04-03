@@ -18,7 +18,7 @@ class ShoppingListRepository {
     try {
       return await openDatabase(
         path,
-        version: 2, // Increment the version to trigger onUpgrade
+        version: 3, // Increment the version to trigger onUpgrade
         onCreate: (db, version) async {
           await db.execute('''
             CREATE TABLE shopping_list (
@@ -26,7 +26,8 @@ class ShoppingListRepository {
               name TEXT,
               quantity REAL,
               checked INTEGER,
-              servingSizeUnit TEXT
+              servingSizeUnit TEXT,
+              quantityPerServing REAL
             )
           ''');
           print('ShoppingListRepository: Created shopping_list table in SQLite.');
@@ -35,6 +36,10 @@ class ShoppingListRepository {
           if (oldVersion < 2) {
             await db.execute('ALTER TABLE shopping_list ADD COLUMN servingSizeUnit TEXT');
             print('ShoppingListRepository: Added servingSizeUnit column to shopping_list table.');
+          }
+          if (oldVersion < 3) {
+            await db.execute('ALTER TABLE shopping_list ADD COLUMN quantityPerServing REAL');
+            print('ShoppingListRepository: Added quantityPerServing column to shopping_list table.');
           }
         },
         onOpen: (db) {

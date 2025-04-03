@@ -19,7 +19,7 @@ class RecipeRepository {
       print('RecipeRepository: Initializing database at path: $path');
       return await openDatabase(
         path,
-        version: 2,
+        version: 3, // Increment the version to trigger onUpgrade
         onCreate: (db, version) async {
           await db.execute('''
             CREATE TABLE recipes (
@@ -32,7 +32,8 @@ class RecipeRepository {
               sodium REAL,
               fiber REAL,
               ingredients TEXT,
-              servingSizeUnit TEXT
+              servingSizeUnit TEXT,
+              quantityPerServing REAL
             )
           ''');
           print('RecipeRepository: Created recipes table in SQLite.');
@@ -41,6 +42,10 @@ class RecipeRepository {
           if (oldVersion < 2) {
             await db.execute('ALTER TABLE recipes ADD COLUMN servingSizeUnit TEXT');
             print('RecipeRepository: Added servingSizeUnit column to recipes table.');
+          }
+          if (oldVersion < 3) {
+            await db.execute('ALTER TABLE recipes ADD COLUMN quantityPerServing REAL');
+            print('RecipeRepository: Added quantityPerServing column to recipes table.');
           }
         },
         onOpen: (db) {

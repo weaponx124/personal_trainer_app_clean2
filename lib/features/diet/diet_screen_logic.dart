@@ -24,6 +24,7 @@ class DietScreenLogic {
   final ShoppingListManager _shoppingListManager;
   final CustomFoodManager _customFoodManager;
   final ProfileManager _profileManager;
+  late ValueNotifier<int> _tabIndexNotifier; // Added ValueNotifier for tab index
 
   DietScreenLogic({
     required TickerProvider vsync,
@@ -55,6 +56,7 @@ class DietScreenLogic {
         ),
         _profileManager = ProfileManager(stateManager) {
     _tabController = TabController(length: 3, vsync: vsync);
+    _tabIndexNotifier = ValueNotifier<int>(0); // Initialize with index 0
     print('DietScreenLogic: Initialized with stateManager meals: ${_stateManager.meals.value.length}');
   }
 
@@ -63,6 +65,8 @@ class DietScreenLogic {
 
   Future<void> init() async {
     _tabController.addListener(_onTabChanged);
+    // Set initial index
+    _tabIndexNotifier.value = _tabController.index;
     await _customFoodManager.loadCustomFoods();
     await _fatSecretService.fetchFatSecretAccessToken();
     _stateManager.resetData();
@@ -80,10 +84,14 @@ class DietScreenLogic {
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _tabIndexNotifier.dispose(); // Dispose of the ValueNotifier
     _stateManager.dispose();
   }
 
-  void _onTabChanged() {}
+  void _onTabChanged() {
+    print('DietScreenLogic: Tab changed to index: ${_tabController.index}');
+    _tabIndexNotifier.value = _tabController.index; // Update the ValueNotifier
+  }
 
   void addMeal(BuildContext context) => _mealManager.addMeal(context);
 
@@ -109,6 +117,8 @@ class DietScreenLogic {
 
   void clearShoppingList() => _shoppingListManager.clearShoppingList();
 
+  void showAddShoppingItemDialog(BuildContext context) => _shoppingListManager.showAddShoppingItemDialog(context);
+
   void setMealType(String? type) {
     if (type != null && _stateManager.mealNames.value.contains(type)) {
       _stateManager.selectedMealType = type;
@@ -123,32 +133,38 @@ class DietScreenLogic {
 
   Future<void> setMealNames(List<String> names) => _profileManager.setMealNames(names);
 
-  FloatingActionButton buildFAB(BuildContext context) {
-    switch (_tabController.index) {
-      case 0:
-        return FloatingActionButton(
-          onPressed: () => _mealManager.showAddMealDialog(context),
-          tooltip: 'Add Meal to Log',
-          child: const Icon(Icons.restaurant_menu),
-        );
-      case 1:
-        return FloatingActionButton(
-          onPressed: () => _recipeManager.addRecipe(context),
-          tooltip: 'Add Recipe',
-          child: const Icon(Icons.add),
-        );
-      case 2:
-        return FloatingActionButton(
-          onPressed: () => _shoppingListManager.showAddShoppingItemDialog(context),
-          tooltip: 'Add Shopping Item',
-          child: const Icon(Icons.add),
-        );
-      default:
-        return FloatingActionButton(
-          onPressed: () {},
-          child: const Icon(Icons.error),
-        );
-    }
+  Widget buildFAB(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: _tabIndexNotifier, // Use the ValueNotifier
+      builder: (context, index, child) {
+        print('DietScreenLogic: Building FAB for tab index: $index');
+        switch (index) {
+          case 0:
+            return FloatingActionButton(
+              onPressed: () => _mealManager.showAddMealDialog(context),
+              tooltip: 'Add Meal to Log',
+              child: const Icon(Icons.restaurant_menu),
+            );
+          case 1:
+            return FloatingActionButton(
+              onPressed: () => _recipeManager.addRecipe(context),
+              tooltip: 'Add Recipe',
+              child: const Icon(Icons.add),
+            );
+          case 2:
+            return FloatingActionButton(
+              onPressed: () => showAddShoppingItemDialog(context),
+              tooltip: 'Add Shopping Item',
+              child: const Icon(Icons.add),
+            );
+          default:
+            return FloatingActionButton(
+              onPressed: () {},
+              child: const Icon(Icons.error),
+            );
+        }
+      },
+    );
   }
 
   Future<List<FoodItem>> getFoodMacros(String query) async {

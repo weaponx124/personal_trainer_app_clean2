@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:personal_trainer_app_clean/core/data/models/meal.dart';
 import 'package:personal_trainer_app_clean/core/data/models/recipe.dart';
 import 'package:personal_trainer_app_clean/core/data/models/custom_food.dart';
-import 'package:personal_trainer_app_clean/core/data/models/shopping_list_item.dart';
+import 'package:personal_trainer_app_clean/core/data/models/shopping_list_item.dart'; // Added import
 import 'package:personal_trainer_app_clean/features/diet/diet_profile.dart';
 
 class DietStateManager {
@@ -35,7 +35,8 @@ class DietStateManager {
   final List<Map<String, dynamic>> foodDatabase = const [
     {
       'food': 'Chicken Breast',
-      'measurement': '4oz',
+      'measurement': 'oz',
+      'quantityPerServing': 4.0, // 1 serving = 4 oz
       'calories': 165.0,
       'protein': 31.0,
       'carbs': 0.0,
@@ -47,7 +48,8 @@ class DietStateManager {
     },
     {
       'food': 'Broccoli',
-      'measurement': '1 cup',
+      'measurement': 'cup',
+      'quantityPerServing': 1.0, // 1 serving = 1 cup
       'calories': 35.0,
       'protein': 3.0,
       'carbs': 7.0,
@@ -59,7 +61,8 @@ class DietStateManager {
     },
     {
       'food': 'Avocado',
-      'measurement': '1 medium',
+      'measurement': 'medium',
+      'quantityPerServing': 1.0, // 1 serving = 1 medium avocado
       'calories': 160.0,
       'protein': 2.0,
       'carbs': 9.0,
@@ -76,7 +79,8 @@ class DietStateManager {
     for (var customFood in customFoods) {
       allFoods.add({
         'food': customFood.name,
-        'measurement': customFood.servingSizeUnit ?? 'serving', // Use servingSizeUnit from CustomFood
+        'measurement': customFood.servingSizeUnit ?? 'serving',
+        'quantityPerServing': customFood.quantityPerServing,
         'calories': customFood.calories,
         'protein': customFood.protein,
         'carbs': customFood.carbs,

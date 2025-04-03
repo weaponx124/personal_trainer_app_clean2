@@ -4,6 +4,7 @@ import 'package:personal_trainer_app_clean/core/data/models/recipe.dart';
 import 'package:personal_trainer_app_clean/core/data/models/shopping_list_item.dart';
 import 'package:personal_trainer_app_clean/core/data/repositories/shopping_list_repository.dart';
 import 'package:personal_trainer_app_clean/features/diet/diet_state_manager.dart';
+import 'package:personal_trainer_app_clean/features/diet/widgets/add_shopping_item_dialog.dart';
 
 class ShoppingListManager {
   final ShoppingListRepository _shoppingListRepository;
@@ -34,12 +35,13 @@ class ShoppingListManager {
   void addShoppingItem(ShoppingListItem item) async {
     _stateManager.shoppingList.value = [..._stateManager.shoppingList.value, item];
     await _shoppingListRepository.saveShoppingList(_stateManager.shoppingList.value);
+    print('ShoppingListManager: Added shopping item: ${item.toJson()}');
   }
 
   void toggleShoppingItem(String itemId, bool value) async {
     print('Toggling shopping item with ID: $itemId to checked: $value');
     _stateManager.shoppingList.value = _stateManager.shoppingList.value.map((item) {
-      if (item.id == itemId) {
+      if (item!.id == itemId) {
         print('Found matching item: ${item.toJson()}');
         return ShoppingListItem(
           id: item.id,
@@ -47,11 +49,12 @@ class ShoppingListManager {
           quantity: item.quantity,
           checked: value,
           servingSizeUnit: item.servingSizeUnit,
+          quantityPerServing: item.quantityPerServing,
         );
       }
       return item;
     }).toList();
-    print('Updated shopping list: ${_stateManager.shoppingList.value.map((i) => i.toJson()).toList()}');
+    print('Updated shopping list: ${_stateManager.shoppingList.value.map((i) => i!.toJson()).toList()}');
     await _shoppingListRepository.saveShoppingList(_stateManager.shoppingList.value);
   }
 
@@ -67,7 +70,7 @@ class ShoppingListManager {
 
     final Map<String, Map<String, dynamic>> ingredientQuantities = {};
     for (var meal in mealsInPeriod) {
-      final servings = meal.servings;
+      final mealServings = meal.servings;
       if (meal.isRecipe) {
         final recipe = _stateManager.recipes.value.firstWhere(
               (r) => r.id == meal.food,
@@ -81,38 +84,50 @@ class ShoppingListManager {
             sodium: meal.sodium,
             fiber: meal.fiber,
             ingredients: [],
+            quantityPerServing: 1.0,
           ),
         );
         for (var ingredient in recipe.ingredients) {
           final foodName = ingredient['food'] as String;
-          final ingredientServings = (ingredient['servings'] as double) * servings;
+          final ingredientServingsPerRecipeServing = ingredient['servings'] as double;
+          final ingredientServings = ingredientServingsPerRecipeServing * mealServings;
           final measurement = ingredient['measurement'] as String;
+          final quantityPerServing = ingredient['quantityPerServing'] as double? ?? 1.0;
           if (!ingredientQuantities.containsKey(foodName)) {
             ingredientQuantities[foodName] = {
-              'quantity': 0.0,
+              'totalQuantity': 0.0,
               'servingSizeUnit': measurement,
+              'quantityPerServing': quantityPerServing,
             };
           }
-          ingredientQuantities[foodName]!['quantity'] = (ingredientQuantities[foodName]!['quantity'] as double) + ingredientServings;
+          // Accumulate the total quantity in the unit
+          ingredientQuantities[foodName]!['totalQuantity'] = (ingredientQuantities[foodName]!['totalQuantity'] as double) + (ingredientServings * quantityPerServing);
         }
       } else {
         final foodName = meal.food;
-        // Look up the food in foodDatabase or allFoods to get the measurement
+        // Look up the food in foodDatabase or allFoods to get the measurement and quantity per serving
         final foodEntry = _stateManager.allFoods.firstWhere(
               (f) => f['food'] == foodName,
           orElse: () => _stateManager.foodDatabase.firstWhere(
                 (f) => f['food'] == foodName,
-            orElse: () => {'food': foodName, 'measurement': 'serving'},
+            orElse: () => {
+              'food': foodName,
+              'measurement': 'serving',
+              'quantityPerServing': 1.0,
+            },
           ),
         );
         final measurement = foodEntry['measurement'] as String;
+        final quantityPerServing = foodEntry['quantityPerServing'] as double? ?? 1.0;
         if (!ingredientQuantities.containsKey(foodName)) {
           ingredientQuantities[foodName] = {
-            'quantity': 0.0,
+            'totalQuantity': 0.0,
             'servingSizeUnit': measurement,
+            'quantityPerServing': quantityPerServing,
           };
         }
-        ingredientQuantities[foodName]!['quantity'] = (ingredientQuantities[foodName]!['quantity'] as double) + servings;
+        // Accumulate the total quantity in the unit
+        ingredientQuantities[foodName]!['totalQuantity'] = (ingredientQuantities[foodName]!['totalQuantity'] as double) + (mealServings * quantityPerServing);
       }
     }
 
@@ -122,18 +137,9 @@ class ShoppingListManager {
     _stateManager.shoppingList.value = ingredientQuantities.entries.map((entry) {
       final foodName = entry.key;
       final data = entry.value;
-      final totalServings = data['quantity'] as double;
+      final totalQuantity = data['totalQuantity'] as double;
       final servingSizeUnit = data['servingSizeUnit'] as String;
-      // Look up the food to get the quantity per serving
-      final foodEntry = _stateManager.allFoods.firstWhere(
-            (f) => f['food'] == foodName,
-        orElse: () => _stateManager.foodDatabase.firstWhere(
-              (f) => f['food'] == foodName,
-          orElse: () => {'food': foodName, 'measurement': 'serving', 'servings': 1.0},
-        ),
-      );
-      final servingsPerUnit = foodEntry['servings'] as double? ?? 1.0;
-      final totalQuantity = totalServings * servingsPerUnit; // Scale the quantity by the servings per unit
+      final quantityPerServing = data['quantityPerServing'] as double;
       final uniqueId = '$baseTimestamp-${counter++}'; // Ensure unique ID
       return ShoppingListItem(
         id: uniqueId,
@@ -141,6 +147,7 @@ class ShoppingListManager {
         quantity: totalQuantity,
         checked: false,
         servingSizeUnit: servingSizeUnit,
+        quantityPerServing: quantityPerServing,
       );
     }).toList();
     await _shoppingListRepository.saveShoppingList(_stateManager.shoppingList.value);
@@ -154,10 +161,19 @@ class ShoppingListManager {
   void showAddShoppingItemDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => const AlertDialog(
-        title: Text('Add Shopping Item'),
-        content: Text('Placeholder for shopping item input form'),
-        actions: [],
+      builder: (context) => AddShoppingItemDialog(
+        onItemAdded: (item) async {
+          addShoppingItem(item);
+          // Removed Navigator.pop(context) to avoid double pop
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scaffoldMessengerKey.currentState?.showSnackBar(
+              SnackBar(
+                content: Text('Shopping item "${item.name}" added successfully!'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          });
+        },
       ),
     );
   }

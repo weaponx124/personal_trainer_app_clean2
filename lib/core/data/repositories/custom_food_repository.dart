@@ -18,7 +18,7 @@ class CustomFoodRepository {
     try {
       return await openDatabase(
         path,
-        version: 2, // Increment the version to trigger onUpgrade
+        version: 3, // Increment the version to trigger onUpgrade
         onCreate: (db, version) async {
           await db.execute('''
             CREATE TABLE custom_foods (
@@ -30,7 +30,8 @@ class CustomFoodRepository {
               fat REAL,
               sodium REAL,
               fiber REAL,
-              servingSizeUnit TEXT
+              servingSizeUnit TEXT,
+              quantityPerServing REAL
             )
           ''');
           print('CustomFoodRepository: Created custom_foods table in SQLite.');
@@ -39,6 +40,10 @@ class CustomFoodRepository {
           if (oldVersion < 2) {
             await db.execute('ALTER TABLE custom_foods ADD COLUMN servingSizeUnit TEXT');
             print('CustomFoodRepository: Added servingSizeUnit column to custom_foods table.');
+          }
+          if (oldVersion < 3) {
+            await db.execute('ALTER TABLE custom_foods ADD COLUMN quantityPerServing REAL');
+            print('CustomFoodRepository: Added quantityPerServing column to custom_foods table.');
           }
         },
         onOpen: (db) {

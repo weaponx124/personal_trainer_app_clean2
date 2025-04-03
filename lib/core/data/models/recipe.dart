@@ -11,6 +11,7 @@ class Recipe {
   final double fiber;
   final List<Map<String, dynamic>> ingredients;
   final String? servingSizeUnit;
+  final double quantityPerServing; // New field for quantity per serving
 
   Recipe({
     required this.id,
@@ -23,6 +24,7 @@ class Recipe {
     required this.fiber,
     required this.ingredients,
     this.servingSizeUnit,
+    this.quantityPerServing = 1.0, // Default to 1 unit per serving
   });
 
   Map<String, dynamic> toMap() {
@@ -35,8 +37,9 @@ class Recipe {
       'fat': fat,
       'sodium': sodium,
       'fiber': fiber,
-      'ingredients': jsonEncode(ingredients), // Encode ingredients as JSON string
+      'ingredients': jsonEncode(ingredients),
       'servingSizeUnit': servingSizeUnit,
+      'quantityPerServing': quantityPerServing,
     };
   }
 
@@ -53,7 +56,8 @@ class Recipe {
       ingredients: map['ingredients'] != null
           ? (jsonDecode(map['ingredients']) as List<dynamic>).cast<Map<String, dynamic>>()
           : [],
-      servingSizeUnit: map['servingSizeUnit'] as String?,
+      servingSizeUnit: map[' servingSizeUnit'] as String?,
+      quantityPerServing: map['quantityPerServing'] as double? ?? 1.0,
     );
   }
 
@@ -72,6 +76,7 @@ class Recipe {
     double? fiber,
     List<Map<String, dynamic>>? ingredients,
     String? servingSizeUnit,
+    double? quantityPerServing,
   }) {
     return Recipe(
       id: id ?? this.id,
@@ -84,6 +89,7 @@ class Recipe {
       fiber: fiber ?? this.fiber,
       ingredients: ingredients ?? this.ingredients,
       servingSizeUnit: servingSizeUnit ?? this.servingSizeUnit,
+      quantityPerServing: quantityPerServing ?? this.quantityPerServing,
     );
   }
 }

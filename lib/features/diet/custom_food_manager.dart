@@ -47,6 +47,7 @@ class CustomFoodManager {
             sodium: customFoodMap['sodium'] as double,
             fiber: customFoodMap['fiber'] as double,
             servingSizeUnit: customFoodMap['servingSizeUnit'] as String,
+            quantityPerServing: customFoodMap['quantityPerServing'] as double,
           );
           try {
             print('CustomFoodManager: Adding custom food: ${customFood.toJson()}');
@@ -56,6 +57,7 @@ class CustomFoodManager {
             _stateManager.allFoods.add({
               'food': customFood.name,
               'measurement': customFood.servingSizeUnit ?? 'serving',
+              'quantityPerServing': customFood.quantityPerServing,
               'calories': customFood.calories,
               'protein': customFood.protein,
               'carbs': customFood.carbs,
@@ -107,6 +109,7 @@ class CustomFoodManager {
             sodium: customFoodMap['sodium'] as double,
             fiber: customFoodMap['fiber'] as double,
             servingSizeUnit: customFoodMap['servingSizeUnit'] as String,
+            quantityPerServing: customFoodMap['quantityPerServing'] as double,
           );
           try {
             print('CustomFoodManager: Updating custom food: ${updatedFood.toJson()}');
@@ -116,7 +119,7 @@ class CustomFoodManager {
               }
               return f;
             }).toList();
-            await _customFoodRepository.addCustomFood(updatedFood); // Use addCustomFood for updates (it handles conflicts)
+            await _customFoodRepository.addCustomFood(updatedFood);
             print('CustomFoodManager: Updated custom food in repository');
             _stateManager.initializeAllFoods(_stateManager.customFoods);
             Navigator.pop(context);

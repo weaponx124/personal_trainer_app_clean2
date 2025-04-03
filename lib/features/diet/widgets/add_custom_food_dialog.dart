@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart'; // Added import
 import 'package:personal_trainer_app_clean/core/data/models/custom_food.dart';
 
 class AddCustomFoodDialog extends StatelessWidget {
@@ -22,6 +22,9 @@ class AddCustomFoodDialog extends StatelessWidget {
     final sodiumController = TextEditingController(text: initialCustomFood != null ? initialCustomFood!.sodium.toString() : '');
     final fiberController = TextEditingController(text: initialCustomFood != null ? initialCustomFood!.fiber.toString() : '');
     final servingSizeUnitController = TextEditingController(text: initialCustomFood?.servingSizeUnit ?? '');
+    final quantityPerServingController = TextEditingController(
+      text: initialCustomFood != null ? initialCustomFood!.quantityPerServing.toString() : '1.0',
+    );
 
     return AlertDialog(
       title: Text(
@@ -29,7 +32,7 @@ class AddCustomFoodDialog extends StatelessWidget {
         style: const TextStyle(color: Color(0xFF1C2526)),
       ),
       content: SizedBox(
-        height: 450, // Increased height to accommodate new field
+        height: 500,
         width: 280,
         child: SingleChildScrollView(
           child: Column(
@@ -41,7 +44,13 @@ class AddCustomFoodDialog extends StatelessWidget {
               ),
               TextField(
                 controller: servingSizeUnitController,
-                decoration: const InputDecoration(labelText: 'Serving Size Unit (e.g., 4 oz)'),
+                decoration: const InputDecoration(labelText: 'Serving Size Unit (e.g., oz)'),
+              ),
+              TextField(
+                controller: quantityPerServingController,
+                decoration: const InputDecoration(labelText: 'Quantity per Serving (e.g., 4 for 4 oz)'),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
               ),
               TextField(
                 controller: caloriesController,
@@ -102,6 +111,7 @@ class AddCustomFoodDialog extends StatelessWidget {
               'sodium': double.tryParse(sodiumController.text) ?? 0.0,
               'fiber': double.tryParse(fiberController.text) ?? 0.0,
               'servingSizeUnit': servingSizeUnitController.text.isNotEmpty ? servingSizeUnitController.text : 'serving',
+              'quantityPerServing': double.tryParse(quantityPerServingController.text) ?? 1.0,
             };
             onSave(customFoodMap);
           },

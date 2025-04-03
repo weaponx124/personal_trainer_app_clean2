@@ -5,7 +5,8 @@ class ShoppingListItem {
   final String name;
   final double quantity;
   final bool checked;
-  final String? servingSizeUnit; // New field for serving size unit
+  final String? servingSizeUnit;
+  final double quantityPerServing; // New field for quantity per serving
 
   ShoppingListItem({
     required this.id,
@@ -13,6 +14,7 @@ class ShoppingListItem {
     required this.quantity,
     required this.checked,
     this.servingSizeUnit,
+    this.quantityPerServing = 1.0, // Default to 1 unit per serving
   });
 
   Map<String, dynamic> toMap() {
@@ -22,6 +24,7 @@ class ShoppingListItem {
       'quantity': quantity,
       'checked': checked ? 1 : 0,
       'servingSizeUnit': servingSizeUnit,
+      'quantityPerServing': quantityPerServing,
     };
   }
 
@@ -32,6 +35,7 @@ class ShoppingListItem {
       quantity: map['quantity'] as double,
       checked: (map['checked'] as int) == 1,
       servingSizeUnit: map['servingSizeUnit'] as String?,
+      quantityPerServing: map['quantityPerServing'] as double? ?? 1.0,
     );
   }
 
