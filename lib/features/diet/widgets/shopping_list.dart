@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/shopping_list_item.dart';
 import 'package:personal_trainer_app_clean/main.dart';
 
-class ShoppingList extends StatelessWidget {
+class ShoppingList extends StatefulWidget {
   final List<ShoppingListItem> shoppingList;
   final Function(String, bool) onToggle;
   final VoidCallback onGenerate;
@@ -18,11 +18,41 @@ class ShoppingList extends StatelessWidget {
   });
 
   @override
+  State<ShoppingList> createState() => _ShoppingListState();
+}
+
+class _ShoppingListState extends State<ShoppingList> {
+  String _sortOption = 'Name'; // Default sort option
+
+  List<ShoppingListItem> _sortShoppingList(List<ShoppingListItem> items) {
+    final sortedItems = List<ShoppingListItem>.from(items);
+    switch (_sortOption) {
+      case 'Name':
+        sortedItems.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case 'Quantity (Asc)':
+        sortedItems.sort((a, b) => a.quantity.compareTo(b.quantity));
+        break;
+      case 'Quantity (Desc)':
+        sortedItems.sort((a, b) => b.quantity.compareTo(a.quantity));
+        break;
+      case 'Checked':
+        sortedItems.sort((a, b) {
+          if (a.checked == b.checked) return 0;
+          return a.checked ? 1 : -1; // Checked items at the bottom
+        });
+        break;
+    }
+    return sortedItems;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    print('ShoppingList: Rebuilding with ${shoppingList.length} items');
+    print('ShoppingList: Rebuilding with ${widget.shoppingList.length} items');
     return ValueListenableBuilder<Color>(
       valueListenable: accentColorNotifier,
       builder: (context, accentColor, child) {
+        final sortedList = _sortShoppingList(widget.shoppingList);
         return SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -33,52 +63,68 @@ class ShoppingList extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     ElevatedButton(
-                      onPressed: onGenerate,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: accentColor,
-                        foregroundColor: Colors.white,
-                      ),
+                      onPressed: widget.onGenerate,
                       child: const Text('Generate List'),
                     ),
                     ElevatedButton(
-                      onPressed: onClear,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey,
-                        foregroundColor: Colors.white,
-                      ),
+                      onPressed: widget.onClear,
                       child: const Text('Clear List'),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                shoppingList.isEmpty
-                    ? const Center(child: Text('Shopping list is empty.'))
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Sort by: ',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    DropdownButton<String>(
+                      value: _sortOption,
+                      items: const [
+                        DropdownMenuItem(value: 'Name', child: Text('Name')),
+                        DropdownMenuItem(value: 'Quantity (Asc)', child: Text('Quantity (Asc)')),
+                        DropdownMenuItem(value: 'Quantity (Desc)', child: Text('Quantity (Desc)')),
+                        DropdownMenuItem(value: 'Checked', child: Text('Checked')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _sortOption = value;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                sortedList.isEmpty
+                    ? Center(child: Text('Shopping list is empty.', style: Theme.of(context).textTheme.bodyMedium))
                     : ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: shoppingList.length,
+                  itemCount: sortedList.length,
                   itemBuilder: (context, index) {
-                    final item = shoppingList[index];
+                    final item = sortedList[index];
                     print('ShoppingList: Rendering item ${item.id}: ${item.toJson()}');
                     return Card(
+                      color: item.checked ? Colors.grey[700] : null, // Darker grey for checked items in dark mode
                       child: ListTile(
                         key: ValueKey(item.id),
+                        leading: GestureDetector(
+                          onTap: () {
+                            widget.onToggle(item.id, !item.checked);
+                          },
+                          child: item.checked
+                              ? const Icon(Icons.check_circle, color: Colors.green)
+                              : const Icon(Icons.circle_outlined, color: Colors.grey),
+                        ),
                         title: Text(
                           '${item.name}: ${item.quantity.toStringAsFixed(1)} ${item.servingSizeUnit ?? 'serving'}',
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF1C2526),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             decoration: item.checked ? TextDecoration.lineThrough : TextDecoration.none,
                           ),
-                        ),
-                        trailing: Checkbox(
-                          value: item.checked,
-                          onChanged: (bool? value) {
-                            if (value != null) {
-                              onToggle(item.id, value);
-                            }
-                          },
-                          activeColor: accentColor,
                         ),
                       ),
                     );

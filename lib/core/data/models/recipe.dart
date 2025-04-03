@@ -56,7 +56,7 @@ class Recipe {
       ingredients: map['ingredients'] != null
           ? (jsonDecode(map['ingredients']) as List<dynamic>).cast<Map<String, dynamic>>()
           : [],
-      servingSizeUnit: map[' servingSizeUnit'] as String?,
+      servingSizeUnit: map['servingSizeUnit'] as String?, // Fixed typo: removed extra space
       quantityPerServing: map['quantityPerServing'] as double? ?? 1.0,
     );
   }

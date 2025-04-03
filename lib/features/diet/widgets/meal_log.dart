@@ -65,178 +65,145 @@ class MealLog extends StatelessWidget {
                 }
                 print('MealLog: Meal groups: ${mealGroups.keys.toList()}');
 
-                return Container(
-                  color: Colors.grey[200], // Apply grey background
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          dateMeals.isEmpty && mealNames.isEmpty
-                              ? Center(
-                            child: Text(
-                              'No meals logged for ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}.',
-                              style: GoogleFonts.roboto(
-                                fontSize: 16,
-                                color: const Color(0xFF1C2526),
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        dateMeals.isEmpty && mealNames.isEmpty
+                            ? Center(
+                          child: Text(
+                            'No meals logged for ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        )
+                            : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: mealNames.length,
+                          itemBuilder: (context, index) {
+                            final mealType = mealNames[index];
+                            final groupMeals = mealGroups[mealType] ?? [];
+                            final totalCalories = groupMeals.fold<double>(
+                              0.0,
+                                  (sum, meal) => sum + (meal.calories * meal.servings),
+                            );
+                            print('MealLog: Rendering meal type: $mealType with ${groupMeals.length} meals');
+                            return ExpansionTile(
+                              title: Text(
+                                '$mealType (${groupMeals.length})',
+                                style: Theme.of(context).textTheme.titleMedium,
                               ),
-                            ),
-                          )
-                              : ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: mealNames.length,
-                            itemBuilder: (context, index) {
-                              final mealType = mealNames[index];
-                              final groupMeals = mealGroups[mealType] ?? [];
-                              final totalCalories = groupMeals.fold<double>(
-                                0.0,
-                                    (sum, meal) => sum + (meal.calories * meal.servings),
-                              );
-                              print('MealLog: Rendering meal type: $mealType with ${groupMeals.length} meals');
-                              return ExpansionTile(
-                                title: Text(
-                                  '$mealType (${groupMeals.length})',
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 16,
-                                    color: const Color(0xFF1C2526),
-                                    fontWeight: FontWeight.bold,
+                              subtitle: Text(
+                                'Total: ${totalCalories.toStringAsFixed(1)} kcal',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              children: groupMeals.isEmpty
+                                  ? [
+                                ListTile(
+                                  title: Text(
+                                    'No foods added to this meal.',
+                                    style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ),
-                                subtitle: Text(
-                                  'Total: ${totalCalories.toStringAsFixed(1)} kcal',
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 14,
-                                    color: const Color(0xFF808080),
-                                  ),
-                                ),
-                                children: groupMeals.isEmpty
-                                    ? [
-                                  const ListTile(
-                                    title: Text(
-                                      'No foods added to this meal.',
-                                      style: TextStyle(color: Color(0xFF808080)),
-                                    ),
-                                  ),
-                                ]
-                                    : groupMeals.map((meal) {
-                                  String displayName = meal.food;
-                                  String measurement = 'serving'; // Default for recipes and custom foods
-                                  if (meal.isRecipe) {
-                                    final recipe = logic.stateManager.recipes.value.firstWhere(
-                                          (r) => r.id == meal.food,
-                                      orElse: () => Recipe(
-                                        id: meal.food,
-                                        name: 'Unknown Recipe',
-                                        calories: meal.calories,
-                                        protein: meal.protein,
-                                        carbs: meal.carbs,
-                                        fat: meal.fat,
-                                        sodium: meal.sodium,
-                                        fiber: meal.fiber,
-                                        ingredients: [],
-                                      ),
-                                    );
-                                    displayName = recipe.name;
-                                    measurement = recipe.servingSizeUnit ?? 'serving';
-                                  } else {
-                                    // Look up the food in foodDatabase or allFoods to get the measurement
-                                    final foodEntry = logic.stateManager.allFoods.firstWhere(
-                                          (f) => f['food'] == meal.food,
-                                      orElse: () => logic.stateManager.foodDatabase.firstWhere(
-                                            (f) => f['food'] == meal.food,
-                                        orElse: () => {'food': meal.food, 'measurement': 'serving'},
-                                      ),
-                                    );
-                                    measurement = foodEntry['measurement'] as String;
-                                  }
-                                  // Use the user-specified servingSizeUnit if available
-                                  final displayMeasurement = meal.servingSizeUnit ?? measurement;
-                                  // Scale the nutritional values by the number of servings
-                                  final scaledCalories = meal.calories * meal.servings;
-                                  final scaledProtein = meal.protein * meal.servings;
-                                  final scaledCarbs = meal.carbs * meal.servings;
-                                  final scaledFat = meal.fat * meal.servings;
-                                  final scaledSodium = meal.sodium * meal.servings;
-                                  final scaledFiber = meal.fiber * meal.servings;
-                                  return Card(
-                                    child: ListTile(
-                                      title: Text(
-                                        '$displayName $displayMeasurement (${meal.servings.toStringAsFixed(1)} servings)',
-                                        style: GoogleFonts.roboto(
-                                          fontSize: 16,
-                                          color: const Color(0xFF1C2526),
-                                        ),
-                                      ),
-                                      subtitle: Wrap(
-                                        spacing: 8.0,
-                                        children: [
-                                          Text(
-                                            '${scaledCalories.toStringAsFixed(1)} kcal',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF808080),
-                                            ),
-                                          ),
-                                          Text(
-                                            '${scaledProtein.toStringAsFixed(1)}g protein',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF808080),
-                                            ),
-                                          ),
-                                          Text(
-                                            '${scaledCarbs.toStringAsFixed(1)}g carbs',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF808080),
-                                            ),
-                                          ),
-                                          Text(
-                                            '${scaledFat.toStringAsFixed(1)}g fat',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF808080),
-                                            ),
-                                          ),
-                                          Text(
-                                            '${scaledSodium.toStringAsFixed(1)}mg sodium',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF808080),
-                                            ),
-                                          ),
-                                          Text(
-                                            '${scaledFiber.toStringAsFixed(1)}g fiber',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 14,
-                                              color: const Color(0xFF808080),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(Icons.edit, color: accentColor),
-                                            onPressed: () => onEdit(meal),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(Icons.delete, color: accentColor),
-                                            onPressed: () => onDelete(meal.id),
-                                          ),
-                                        ],
-                                      ),
+                              ]
+                                  : groupMeals.map((meal) {
+                                String displayName = meal.food;
+                                String measurement = 'serving'; // Default for recipes and custom foods
+                                if (meal.isRecipe) {
+                                  final recipe = logic.stateManager.recipes.value.firstWhere(
+                                        (r) => r.id == meal.food,
+                                    orElse: () => Recipe(
+                                      id: meal.food,
+                                      name: 'Unknown Recipe',
+                                      calories: meal.calories,
+                                      protein: meal.protein,
+                                      carbs: meal.carbs,
+                                      fat: meal.fat,
+                                      sodium: meal.sodium,
+                                      fiber: meal.fiber,
+                                      ingredients: [],
+                                      quantityPerServing: 1.0,
                                     ),
                                   );
-                                }).toList(),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                                  displayName = recipe.name;
+                                  measurement = recipe.servingSizeUnit ?? 'serving';
+                                } else {
+                                  // Look up the food in foodDatabase or allFoods to get the measurement
+                                  final foodEntry = logic.stateManager.allFoods.firstWhere(
+                                        (f) => f['food'] == meal.food,
+                                    orElse: () => logic.stateManager.foodDatabase.firstWhere(
+                                          (f) => f['food'] == meal.food,
+                                      orElse: () => {'food': meal.food, 'measurement': 'serving'},
+                                    ),
+                                  );
+                                  measurement = foodEntry['measurement'] as String;
+                                }
+                                // Use the user-specified servingSizeUnit if available
+                                final displayMeasurement = meal.servingSizeUnit ?? measurement;
+                                // Scale the nutritional values by the number of servings
+                                final scaledCalories = meal.calories * meal.servings;
+                                final scaledProtein = meal.protein * meal.servings;
+                                final scaledCarbs = meal.carbs * meal.servings;
+                                final scaledFat = meal.fat * meal.servings;
+                                final scaledSodium = meal.sodium * meal.servings;
+                                final scaledFiber = meal.fiber * meal.servings;
+                                return Card(
+                                  child: ListTile(
+                                    title: Text(
+                                      '$displayName $displayMeasurement (${meal.servings.toStringAsFixed(1)} servings)',
+                                      style: Theme.of(context).textTheme.bodyMedium,
+                                    ),
+                                    subtitle: Wrap(
+                                      spacing: 8.0,
+                                      children: [
+                                        Text(
+                                          '${scaledCalories.toStringAsFixed(1)} kcal',
+                                          style: Theme.of(context).textTheme.titleSmall,
+                                        ),
+                                        Text(
+                                          '${scaledProtein.toStringAsFixed(1)}g protein',
+                                          style: Theme.of(context).textTheme.titleSmall,
+                                        ),
+                                        Text(
+                                          '${scaledCarbs.toStringAsFixed(1)}g carbs',
+                                          style: Theme.of(context).textTheme.titleSmall,
+                                        ),
+                                        Text(
+                                          '${scaledFat.toStringAsFixed(1)}g fat',
+                                          style: Theme.of(context).textTheme.titleSmall,
+                                        ),
+                                        Text(
+                                          '${scaledSodium.toStringAsFixed(1)}mg sodium',
+                                          style: Theme.of(context).textTheme.titleSmall,
+                                        ),
+                                        Text(
+                                          '${scaledFiber.toStringAsFixed(1)}g fiber',
+                                          style: Theme.of(context).textTheme.titleSmall,
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit),
+                                          onPressed: () => onEdit(meal),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete),
+                                          onPressed: () => onDelete(meal.id),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 );

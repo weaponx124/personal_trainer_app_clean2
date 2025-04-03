@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/core/theme/app_theme.dart';
 
 class DailySummary extends StatelessWidget {
   final double dailyCalories;
@@ -45,9 +45,6 @@ class DailySummary extends StatelessWidget {
               children: [
                 // Calories
                 Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: const Color(0xFFB0B7BF),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -55,25 +52,17 @@ class DailySummary extends StatelessWidget {
                       children: [
                         Text(
                           'Calories',
-                          style: GoogleFonts.oswald(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: accentColor,
-                          ),
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
                           value: dailyCalories / calorieGoal,
-                          backgroundColor: const Color(0xFF808080),
-                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.redAccent),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '${dailyCalories.toStringAsFixed(1)} / ${calorieGoal.toStringAsFixed(1)} kcal',
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF1C2526),
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
                     ),
@@ -82,9 +71,6 @@ class DailySummary extends StatelessWidget {
                 const SizedBox(height: 16),
                 // Macros
                 Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: const Color(0xFFB0B7BF),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -92,11 +78,7 @@ class DailySummary extends StatelessWidget {
                       children: [
                         Text(
                           'Macros',
-                          style: GoogleFonts.oswald(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: accentColor,
-                          ),
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -108,24 +90,17 @@ class DailySummary extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Protein',
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 16,
-                                      color: const Color(0xFF1C2526),
-                                    ),
+                                    style: Theme.of(context).textTheme.bodyMedium,
                                   ),
                                   const SizedBox(height: 4),
                                   LinearProgressIndicator(
                                     value: dailyProtein / proteinGoal,
-                                    backgroundColor: const Color(0xFF808080),
-                                    valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.proteinColor),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${dailyProtein.toStringAsFixed(1)} / ${proteinGoal.toStringAsFixed(1)} g',
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 14,
-                                      color: const Color(0xFF1C2526),
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ],
                               ),
@@ -137,24 +112,17 @@ class DailySummary extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Carbs',
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 16,
-                                      color: const Color(0xFF1C2526),
-                                    ),
+                                    style: Theme.of(context).textTheme.bodyMedium,
                                   ),
                                   const SizedBox(height: 4),
                                   LinearProgressIndicator(
                                     value: dailyCarbs / carbsGoal,
-                                    backgroundColor: const Color(0xFF808080),
-                                    valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.carbsColor),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${dailyCarbs.toStringAsFixed(1)} / ${carbsGoal.toStringAsFixed(1)} g',
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 14,
-                                      color: const Color(0xFF1C2526),
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ],
                               ),
@@ -166,24 +134,17 @@ class DailySummary extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Fat',
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 16,
-                                      color: const Color(0xFF1C2526),
-                                    ),
+                                    style: Theme.of(context).textTheme.bodyMedium,
                                   ),
                                   const SizedBox(height: 4),
                                   LinearProgressIndicator(
                                     value: dailyFat / fatGoal,
-                                    backgroundColor: const Color(0xFF808080),
-                                    valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.fatColor),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${dailyFat.toStringAsFixed(1)} / ${fatGoal.toStringAsFixed(1)} g',
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 14,
-                                      color: const Color(0xFF1C2526),
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ],
                               ),
@@ -197,35 +158,24 @@ class DailySummary extends StatelessWidget {
                 const SizedBox(height: 16),
                 // Water Intake
                 Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  color: const Color(0xFFB0B7BF),
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(16.0), // Fixed typo: 'the' to 'const'
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Water Intake',
-                          style: GoogleFonts.oswald(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: accentColor,
-                          ),
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
                           value: dailyWater / waterGoal,
-                          backgroundColor: const Color(0xFF808080),
-                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.redAccent),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '${dailyWater.toStringAsFixed(1)} / ${waterGoal.toStringAsFixed(1)} oz',
-                          style: GoogleFonts.roboto(
-                            fontSize: 16,
-                            color: const Color(0xFF1C2526),
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 16),
                         Center(
@@ -233,10 +183,6 @@ class DailySummary extends StatelessWidget {
                             icon: const Icon(Icons.local_drink),
                             label: const Text('Add Water'),
                             onPressed: onAddWater,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: accentColor,
-                              foregroundColor: Colors.white,
-                            ),
                           ),
                         ),
                       ],

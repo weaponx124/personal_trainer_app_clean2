@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:personal_trainer_app_clean/core/theme/app_theme.dart';
 import './diet_screen_logic.dart';
 import './diet_profile.dart';
 import '../../core/data/models/meal.dart';
@@ -61,16 +61,13 @@ class _MealsTabState extends State<MealsTab> {
                             profile.scripture,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               fontStyle: FontStyle.italic,
-                              color: const Color(0xFF1C2526),
                             ),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Daily Goals (${profile.name})',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: const Color(0xFF1C2526),
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 8),
                           Row(
@@ -82,12 +79,11 @@ class _MealsTabState extends State<MealsTab> {
                                   children: [
                                     Text(
                                       'Protein: ${loggedProtein.toStringAsFixed(1)} / ${profile.proteinGrams(calories).toStringAsFixed(1)}g',
-                                      style: const TextStyle(color: Color(0xFF1C2526)),
+                                      style: Theme.of(context).textTheme.bodyMedium,
                                     ),
                                     LinearProgressIndicator(
                                       value: proteinProgress.clamp(0.0, 1.0),
-                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
-                                      backgroundColor: Colors.grey[300],
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.proteinColor),
                                     ),
                                   ],
                                 ),
@@ -99,12 +95,11 @@ class _MealsTabState extends State<MealsTab> {
                                   children: [
                                     Text(
                                       'Carbs: ${loggedCarbs.toStringAsFixed(1)} / ${profile.carbsGrams(calories).toStringAsFixed(1)}g',
-                                      style: const TextStyle(color: Color(0xFF1C2526)),
+                                      style: Theme.of(context).textTheme.bodyMedium,
                                     ),
                                     LinearProgressIndicator(
                                       value: carbsProgress.clamp(0.0, 1.0),
-                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-                                      backgroundColor: Colors.grey[300],
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.carbsColor),
                                     ),
                                   ],
                                 ),
@@ -116,12 +111,11 @@ class _MealsTabState extends State<MealsTab> {
                                   children: [
                                     Text(
                                       'Fat: ${loggedFat.toStringAsFixed(1)} / ${profile.fatGrams(calories).toStringAsFixed(1)}g',
-                                      style: const TextStyle(color: Color(0xFF1C2526)),
+                                      style: Theme.of(context).textTheme.bodyMedium,
                                     ),
                                     LinearProgressIndicator(
                                       value: fatProgress.clamp(0.0, 1.0),
-                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
-                                      backgroundColor: Colors.grey[300],
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.fatColor),
                                     ),
                                   ],
                                 ),
@@ -142,26 +136,14 @@ class _MealsTabState extends State<MealsTab> {
                     children: [
                       ElevatedButton(
                         onPressed: () => widget.logic.addCustomFood(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                        ),
                         child: const Text('Add Custom Food'),
                       ),
                       ElevatedButton(
                         onPressed: () => widget.logic.manageCustomFoods(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                        ),
                         child: const Text('Manage Custom Foods'),
-                      ),
+                      ), // Added comma here
                       ElevatedButton(
                         onPressed: () => widget.logic.addRecipe(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                        ),
                         child: const Text('Create Recipe'),
                       ),
                     ],
