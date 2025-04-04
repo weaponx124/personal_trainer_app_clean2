@@ -28,6 +28,8 @@ dependencies:
   connectivity_plus: ^5.0.2
   sqflite_common_ffi: ^2.3.0
   http: ^1.2.1
+  oauth1: ^2.0.0
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:

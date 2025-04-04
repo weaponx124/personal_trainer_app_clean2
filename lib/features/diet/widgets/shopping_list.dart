@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:personal_trainer_app_clean/core/data/models/shopping_list_item.dart';
 import 'package:personal_trainer_app_clean/main.dart';
+import 'package:personal_trainer_app_clean/core/theme/app_theme.dart'; // Ensure this import is present
 
 class ShoppingList extends StatefulWidget {
   final List<ShoppingListItem> shoppingList;
@@ -55,7 +56,7 @@ class _ShoppingListState extends State<ShoppingList> {
         final sortedList = _sortShoppingList(widget.shoppingList);
         return SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(Theme.of(context).mediumPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -72,7 +73,7 @@ class _ShoppingListState extends State<ShoppingList> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: Theme.of(context).mediumSpacing),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -98,7 +99,7 @@ class _ShoppingListState extends State<ShoppingList> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: Theme.of(context).mediumSpacing),
                 sortedList.isEmpty
                     ? Center(child: Text('Shopping list is empty.', style: Theme.of(context).textTheme.bodyMedium))
                     : ListView.builder(
@@ -109,7 +110,7 @@ class _ShoppingListState extends State<ShoppingList> {
                     final item = sortedList[index];
                     print('ShoppingList: Rendering item ${item.id}: ${item.toJson()}');
                     return Card(
-                      color: item.checked ? Colors.grey[700] : null, // Darker grey for checked items in dark mode
+                      color: item.checked ? Theme.of(context).colorScheme.checkedBackground : null,
                       child: ListTile(
                         key: ValueKey(item.id),
                         leading: GestureDetector(
@@ -117,8 +118,8 @@ class _ShoppingListState extends State<ShoppingList> {
                             widget.onToggle(item.id, !item.checked);
                           },
                           child: item.checked
-                              ? const Icon(Icons.check_circle, color: Colors.green)
-                              : const Icon(Icons.circle_outlined, color: Colors.grey),
+                              ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.checkedIcon)
+                              : Icon(Icons.circle_outlined, color: Theme.of(context).colorScheme.uncheckedIcon),
                         ),
                         title: Text(
                           '${item.name}: ${item.quantity.toStringAsFixed(1)} ${item.servingSizeUnit ?? 'serving'}',

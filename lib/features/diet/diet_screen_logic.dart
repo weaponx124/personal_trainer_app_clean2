@@ -68,7 +68,8 @@ class DietScreenLogic {
     // Set initial index
     _tabIndexNotifier.value = _tabController.index;
     await _customFoodManager.loadCustomFoods();
-    await _fatSecretService.fetchFatSecretAccessToken();
+    // Removed: await _fatSecretService.fetchFatSecretAccessToken();
+    // No need to fetch an access token with OAuth 1.0; the FatSecretService handles authentication internally
     _stateManager.resetData();
     await _mealManager.loadMeals();
     print('DietScreenLogic: After loading meals, stateManager meals: ${_stateManager.meals.value.length}');
@@ -121,7 +122,7 @@ class DietScreenLogic {
 
   void setMealType(String? type) {
     if (type != null && _stateManager.mealNames.value.contains(type)) {
-      _stateManager.selectedMealType = type;
+      _stateManager.selectedMealType = type; // Fixed syntax: removed non-breaking space and typo 'W'
     }
   }
 

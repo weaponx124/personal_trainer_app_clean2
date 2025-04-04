@@ -35,7 +35,11 @@ ValueNotifier<int> selectedTabIndexNotifier = ValueNotifier<int>(0);
 // Global child screen state
 ValueNotifier<Widget?> childScreenNotifier = ValueNotifier<Widget?>(null);
 // Global accent color state
-ValueNotifier<Color> accentColorNotifier = ValueNotifier<Color>(const Color(0xFFB22222));
+ValueNotifier<Color> accentColorNotifier = ValueNotifier<Color>(AppTheme.redAccent);
+// Global primary color state
+ValueNotifier<Color> primaryColorNotifier = ValueNotifier<Color>(AppTheme.matteBlack);
+// Global surface color state
+ValueNotifier<Color> surfaceColorNotifier = ValueNotifier<Color>(AppTheme.silver);
 // Global notification plugin
 late Future<FlutterLocalNotificationsPlugin?> flutterLocalNotificationsPluginFuture;
 
@@ -121,44 +125,58 @@ class MyApp extends StatelessWidget {
             return ValueListenableBuilder<Color>(
               valueListenable: accentColorNotifier,
               builder: (context, accentColor, child) {
-                return MaterialApp(
-                  title: 'Seek & Lift',
-                  theme: AppTheme.lightTheme().copyWith(
-                    scaffoldBackgroundColor: Colors.transparent, // Ensure theme doesn't override
-                    colorScheme: AppTheme.lightTheme().colorScheme.copyWith(
-                      secondary: accentColor,
-                    ),
-                  ),
-                  darkTheme: AppTheme.darkTheme().copyWith(
-                    scaffoldBackgroundColor: Colors.transparent, // Ensure theme doesn't override
-                    colorScheme: AppTheme.darkTheme().colorScheme.copyWith(
-                      secondary: accentColor,
-                    ),
-                  ),
-                  themeMode: themeMode,
-                  builder: (context, child) => AppBackground(child: child!),
-                  initialRoute: '/splash',
-                  routes: {
-                    '/splash': (context) => const SplashScreen(),
-                    '/main': (context) => const MainScreen(),
-                    '/workout': (context) => const MainScreen(childScreen: workout.WorkoutScreen()),
-                    '/body_weight_progress': (context) => const MainScreen(initialTab: 2, childScreen: BodyWeightProgressScreen()),
-                    '/profile': (context) => const MainScreen(initialTab: 0, childScreen: ProfileScreen()),
-                    '/program_selection': (context) => const MainScreen(initialTab: 1, childScreen: programs.ProgramSelectionScreen()),
-                    '/program_details': (context) {
-                      final String programId = ModalRoute.of(context)!.settings.arguments as String;
-                      return MainScreen(initialTab: 1, childScreen: ProgramDetailsScreen(programId: programId));
-                    },
-                    '/custom_program_form': (context) => const MainScreen(initialTab: 1, childScreen: CustomProgramForm()),
-                    '/settings': (context) => const MainScreen(initialTab: 0, childScreen: SettingsScreen()),
-                    '/scriptures': (context) {
-                      final Map<String, dynamic> args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>? ?? {};
-                      print('Scriptures route args: $args');
-                      scriptureArgsNotifier.value = args;
-                      return const MainScreen(initialTab: 4);
-                    },
-                    '/programs_overview': (context) => const MainScreen(initialTab: 1, childScreen: ProgramsOverviewScreen(programName: '')),
-                    '/workout_log': (context) => const MainScreen(initialTab: 5),
+                return ValueListenableBuilder<Color>(
+                  valueListenable: primaryColorNotifier,
+                  builder: (context, primaryColor, child) {
+                    return ValueListenableBuilder<Color>(
+                      valueListenable: surfaceColorNotifier,
+                      builder: (context, surfaceColor, child) {
+                        return MaterialApp(
+                          title: 'Seek & Lift',
+                          theme: AppTheme.lightTheme().copyWith(
+                            scaffoldBackgroundColor: Colors.transparent,
+                            colorScheme: AppTheme.lightTheme().colorScheme.copyWith(
+                              primary: primaryColor,
+                              secondary: accentColor,
+                              surface: surfaceColor,
+                            ),
+                          ),
+                          darkTheme: AppTheme.darkTheme().copyWith(
+                            scaffoldBackgroundColor: Colors.transparent,
+                            colorScheme: AppTheme.darkTheme().colorScheme.copyWith(
+                              primary: primaryColor,
+                              secondary: accentColor,
+                              surface: surfaceColor,
+                            ),
+                          ),
+                          themeMode: themeMode,
+                          builder: (context, child) => AppBackground(child: child!),
+                          initialRoute: '/splash',
+                          routes: {
+                            '/splash': (context) => const SplashScreen(),
+                            '/main': (context) => const MainScreen(),
+                            '/workout': (context) => const MainScreen(childScreen: workout.WorkoutScreen()),
+                            '/body_weight_progress': (context) => const MainScreen(initialTab: 2, childScreen: BodyWeightProgressScreen()),
+                            '/profile': (context) => const MainScreen(initialTab: 0, childScreen: ProfileScreen()),
+                            '/program_selection': (context) => const MainScreen(initialTab: 1, childScreen: programs.ProgramSelectionScreen()),
+                            '/program_details': (context) {
+                              final String programId = ModalRoute.of(context)!.settings.arguments as String;
+                              return MainScreen(initialTab: 1, childScreen: ProgramDetailsScreen(programId: programId));
+                            },
+                            '/custom_program_form': (context) => const MainScreen(initialTab: 1, childScreen: CustomProgramForm()),
+                            '/settings': (context) => const MainScreen(initialTab: 0, childScreen: SettingsScreen()),
+                            '/scriptures': (context) {
+                              final Map<String, dynamic> args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>? ?? {};
+                              print('Scriptures route args: $args');
+                              scriptureArgsNotifier.value = args;
+                              return const MainScreen(initialTab: 4);
+                            },
+                            '/programs_overview': (context) => const MainScreen(initialTab: 1, childScreen: ProgramsOverviewScreen(programName: '')),
+                            '/workout_log': (context) => const MainScreen(initialTab: 5),
+                          },
+                        );
+                      },
+                    );
                   },
                 );
               },

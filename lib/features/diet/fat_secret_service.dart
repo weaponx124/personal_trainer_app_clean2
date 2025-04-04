@@ -1,17 +1,23 @@
 import 'package:http/http.dart' as http;
-import 'dart:convert' show utf8, base64, json;
+import 'dart:convert' show json, utf8, base64;
 
 class FatSecretService {
-  String? _fatSecretAccessToken;
+  // OAuth 2.0 credentials from FatSecret developer portal
+  static const String _clientId = '4a4f7fd3016e4cedba709f38af5e7b7d';
+  static const String _clientSecret = '71fb8f19082240338143a374dab2ff39';
 
-  Future<void> fetchFatSecretAccessToken() async {
-    const clientId = '4a4f7fd3016e4cedba709f38af5e7b7d';
-    const clientSecret = 'e1796e15fba294a3a59a88642f3e975a';
+  String? _accessToken;
+
+  FatSecretService() {
+    print('FatSecretService: Initializing FatSecretService...');
+  }
+
+  Future<void> fetchAccessToken() async {
     const tokenUrl = 'https://oauth.fatsecret.com/connect/token';
-
-    final auth = base64.encode(utf8.encode('$clientId:$clientSecret'));
+    final auth = base64.encode(utf8.encode('$_clientId:$_clientSecret'));
 
     try {
+      print('FatSecretService: Fetching access token...');
       final response = await http.post(
         Uri.parse(tokenUrl),
         headers: {
@@ -24,99 +30,103 @@ class FatSecretService {
         },
       );
 
-      print('FatSecret Token Response: ${response.statusCode} - ${response.body}');
+      print('FatSecretService: Token Response: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        _fatSecretAccessToken = data['access_token'];
-        print('FatSecret Access Token: $_fatSecretAccessToken');
+        _accessToken = data['access_token'];
+        print('FatSecretService: Access Token: $_accessToken');
       } else {
-        print('Failed to fetch FatSecret access token: ${response.statusCode} - ${response.body}');
+        print('FatSecretService: Failed to fetch access token: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to fetch access token: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Error fetching FatSecret access token: $e');
+      print('FatSecretService: Error fetching access token: $e');
+      throw Exception('Error fetching access token: $e');
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchFoods(String query) async {
-    if (_fatSecretAccessToken == null) {
-      print('No FatSecret access token available. Attempting to fetch a new one.');
-      await fetchFatSecretAccessToken();
-      if (_fatSecretAccessToken == null) {
-        print('Failed to obtain FatSecret access token. Using mock response.');
-        return [
-          {
-            'food': 'Apple',
-            'measurement': '1 medium',
-            'calories': 95.0,
-            'protein': 0.5,
-            'carbs': 25.0,
-            'fat': 0.3,
-            'sodium': 1.0,
-            'fiber': 4.4,
-            'servings': 1.0,
-            'isRecipe': false,
-          },
-          {
-            'food': 'Banana',
-            'measurement': '1 medium',
-            'calories': 90.0,
-            'protein': 1.1,
-            'carbs': 23.0,
-            'fat': 0.3,
-            'sodium': 1.0,
-            'fiber': 2.6,
-            'servings': 1.0,
-            'isRecipe': false,
-          },
-        ];
-      }
+    if (_accessToken == null) {
+      await fetchAccessToken();
     }
 
-    final url =
-        'https://platform.fatsecret.com/rest/foods/search/v1?method=foods.search&search_expression=$query&format=json&max_results=10';
+    final uri = Uri.parse('https://platform.fatsecret.com/rest/server.api').replace(
+      queryParameters: {
+        'method': 'foods.search',
+        'search_expression': query,
+        'format': 'json',
+        'max_results': '10',
+      },
+    );
+
     try {
+      print('FatSecretService: Making request to URI: $uri');
       final response = await http.get(
-        Uri.parse(url),
+        uri,
         headers: {
-          'Authorization': 'Bearer $_fatSecretAccessToken',
+          'Authorization': 'Bearer $_accessToken',
         },
       );
-      print('FatSecret Response: ${response.statusCode} - ${response.body}');
+      print('FatSecretService: Response: ${response.statusCode} - ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['error'] != null) {
-          print('FatSecret API Error: ${data['error']}');
-          return [];
+          print('FatSecretService: API Error: ${data['error']}');
+          throw Exception('API Error: ${data['error']}');
         }
         final foods = data['foods']?['food'] as List? ?? [];
+        print('FatSecretService: Foods: $foods');
+
         return foods.map((food) {
+          print('FatSecretService: Processing food: ${food['food_name']}');
+          print('FatSecretService: Food description: ${food['food_description']}');
+
+          // Handle different response formats
           final description = food['food_description']?.split(' - ')[0] ?? 'Per serving';
+          final nutritionString = food['food_description']?.split(' - ')[1] ?? '';
+          print('FatSecretService: Nutrition string: $nutritionString');
+
+          // Flexible parsing of nutritional data
+          double parseNutrition(String key, String text) {
+            print('FatSecretService: Parsing $key from text: $text');
+            // Use regex to extract the numerical value after the key
+            final regex = RegExp('$key:\\s*([0-9.]+)\\s*(kcal|g|mg)?');
+            final match = regex.firstMatch(text);
+            final result = match != null ? double.tryParse(match.group(1) ?? '0.0') ?? 0.0 : 0.0;
+            print('FatSecretService: Parsed $key: $result');
+            return result;
+          }
+
+          // Extract macros using the entire nutrition string
+          final calories = parseNutrition('Calories', nutritionString);
+          final protein = parseNutrition('Protein', nutritionString);
+          final carbs = parseNutrition('Carbs', nutritionString);
+          final fat = parseNutrition('Fat', nutritionString);
+          final sodium = parseNutrition('Sodium', nutritionString);
+          final fiber = parseNutrition('Fiber', nutritionString);
+
           return {
             'food': food['food_name'],
             'measurement': description,
-            'calories': double.tryParse(food['food_description']
-                ?.split(' - ')[1]
-                ?.split(' | ')[0]
-                ?.replaceAll('Calories: ', '')
-                ?.replaceAll('kcal', '') ??
-                '0') ??
-                0.0,
-            'protein': 0.0,
-            'carbs': 0.0,
-            'fat': 0.0,
-            'sodium': 0.0,
-            'fiber': 0.0,
+            'quantityPerServing': 1.0,
+            'calories': calories,
+            'protein': protein,
+            'carbs': carbs,
+            'fat': fat,
+            'sodium': sodium,
+            'fiber': fiber,
             'servings': 1.0,
             'isRecipe': food['food_type'] == 'Recipe',
           };
         }).toList();
       } else {
-        print('API Failed with status: ${response.statusCode} - ${response.body}');
-        return [];
+        print('FatSecretService: API Failed with status: ${response.statusCode} - ${response.body}');
+        throw Exception('API Failed with status: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Error fetching FatSecret foods: $e');
-      return [];
+      print('FatSecretService: Error fetching foods: $e');
+      throw Exception('Error fetching foods: $e');
     }
   }
 }

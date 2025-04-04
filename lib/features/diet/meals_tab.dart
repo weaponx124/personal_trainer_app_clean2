@@ -50,10 +50,10 @@ class _MealsTabState extends State<MealsTab> {
             return Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: EdgeInsets.all(Theme.of(context).smallPadding),
                   child: Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: EdgeInsets.all(Theme.of(context).smallPadding),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -64,12 +64,12 @@ class _MealsTabState extends State<MealsTab> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: Theme.of(context).mediumSpacing),
                           Text(
                             'Daily Goals (${profile.name})',
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: Theme.of(context).mediumSpacing),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -83,12 +83,12 @@ class _MealsTabState extends State<MealsTab> {
                                     ),
                                     LinearProgressIndicator(
                                       value: proteinProgress.clamp(0.0, 1.0),
-                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.proteinColor),
+                                      valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.proteinColor),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: Theme.of(context).mediumSpacing),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,12 +99,12 @@ class _MealsTabState extends State<MealsTab> {
                                     ),
                                     LinearProgressIndicator(
                                       value: carbsProgress.clamp(0.0, 1.0),
-                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.carbsColor),
+                                      valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.carbsColor),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: Theme.of(context).mediumSpacing),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,7 +115,7 @@ class _MealsTabState extends State<MealsTab> {
                                     ),
                                     LinearProgressIndicator(
                                       value: fatProgress.clamp(0.0, 1.0),
-                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.fatColor),
+                                      valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.fatColor),
                                     ),
                                   ],
                                 ),
@@ -128,11 +128,11 @@ class _MealsTabState extends State<MealsTab> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: EdgeInsets.all(Theme.of(context).smallPadding),
                   child: Wrap(
                     alignment: WrapAlignment.center,
-                    spacing: 8.0,
-                    runSpacing: 8.0,
+                    spacing: Theme.of(context).mediumSpacing,
+                    runSpacing: Theme.of(context).mediumSpacing,
                     children: [
                       ElevatedButton(
                         onPressed: () => widget.logic.addCustomFood(context),
@@ -141,7 +141,7 @@ class _MealsTabState extends State<MealsTab> {
                       ElevatedButton(
                         onPressed: () => widget.logic.manageCustomFoods(context),
                         child: const Text('Manage Custom Foods'),
-                      ), // Added comma here
+                      ),
                       ElevatedButton(
                         onPressed: () => widget.logic.addRecipe(context),
                         child: const Text('Create Recipe'),

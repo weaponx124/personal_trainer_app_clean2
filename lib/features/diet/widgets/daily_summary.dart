@@ -39,14 +39,14 @@ class DailySummary extends StatelessWidget {
       builder: (context, accentColor, child) {
         return SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(Theme.of(context).mediumPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Calories
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(Theme.of(context).mediumPadding),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -54,12 +54,12 @@ class DailySummary extends StatelessWidget {
                           'Calories',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: Theme.of(context).mediumSpacing),
                         LinearProgressIndicator(
                           value: dailyCalories / calorieGoal,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.redAccent),
+                          valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.secondary),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: Theme.of(context).mediumSpacing),
                         Text(
                           '${dailyCalories.toStringAsFixed(1)} / ${calorieGoal.toStringAsFixed(1)} kcal',
                           style: Theme.of(context).textTheme.bodyMedium,
@@ -68,11 +68,11 @@ class DailySummary extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: Theme.of(context).largeSpacing),
                 // Macros
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(Theme.of(context).mediumPadding),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -80,7 +80,7 @@ class DailySummary extends StatelessWidget {
                           'Macros',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: Theme.of(context).mediumSpacing),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -92,12 +92,12 @@ class DailySummary extends StatelessWidget {
                                     'Protein',
                                     style: Theme.of(context).textTheme.bodyMedium,
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: Theme.of(context).smallSpacing),
                                   LinearProgressIndicator(
                                     value: dailyProtein / proteinGoal,
-                                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.proteinColor),
+                                    valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.proteinColor),
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: Theme.of(context).smallSpacing),
                                   Text(
                                     '${dailyProtein.toStringAsFixed(1)} / ${proteinGoal.toStringAsFixed(1)} g',
                                     style: Theme.of(context).textTheme.bodySmall,
@@ -105,7 +105,7 @@ class DailySummary extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: Theme.of(context).mediumSpacing),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,12 +114,12 @@ class DailySummary extends StatelessWidget {
                                     'Carbs',
                                     style: Theme.of(context).textTheme.bodyMedium,
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: Theme.of(context).smallSpacing),
                                   LinearProgressIndicator(
                                     value: dailyCarbs / carbsGoal,
-                                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.carbsColor),
+                                    valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.carbsColor),
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: Theme.of(context).smallSpacing),
                                   Text(
                                     '${dailyCarbs.toStringAsFixed(1)} / ${carbsGoal.toStringAsFixed(1)} g',
                                     style: Theme.of(context).textTheme.bodySmall,
@@ -127,7 +127,7 @@ class DailySummary extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: Theme.of(context).mediumSpacing),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,12 +136,12 @@ class DailySummary extends StatelessWidget {
                                     'Fat',
                                     style: Theme.of(context).textTheme.bodyMedium,
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: Theme.of(context).smallSpacing),
                                   LinearProgressIndicator(
                                     value: dailyFat / fatGoal,
-                                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.fatColor),
+                                    valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.fatColor),
                                   ),
-                                  const SizedBox(height: 4),
+                                  SizedBox(height: Theme.of(context).smallSpacing),
                                   Text(
                                     '${dailyFat.toStringAsFixed(1)} / ${fatGoal.toStringAsFixed(1)} g',
                                     style: Theme.of(context).textTheme.bodySmall,
@@ -155,11 +155,11 @@ class DailySummary extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: Theme.of(context).largeSpacing),
                 // Water Intake
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0), // Fixed typo: 'the' to 'const'
+                    padding: EdgeInsets.all(Theme.of(context).mediumPadding),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -167,17 +167,17 @@ class DailySummary extends StatelessWidget {
                           'Water Intake',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: Theme.of(context).mediumSpacing),
                         LinearProgressIndicator(
                           value: dailyWater / waterGoal,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.redAccent),
+                          valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.secondary),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: Theme.of(context).mediumSpacing),
                         Text(
                           '${dailyWater.toStringAsFixed(1)} / ${waterGoal.toStringAsFixed(1)} oz',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: Theme.of(context).largeSpacing),
                         Center(
                           child: ElevatedButton.icon(
                             icon: const Icon(Icons.local_drink),

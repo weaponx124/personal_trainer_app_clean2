@@ -1,15 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// Extend ColorScheme to include all theme colors
+extension CustomColorScheme on ColorScheme {
+  // Progress indicator colors
+  /// Color for protein progress indicators (e.g., in MealsTab, DailySummary)
+  Color get proteinColor => brightness == Brightness.light ? const Color(0xFF4CAF50) : const Color(0xFF81C784); // Green
+
+  /// Color for carbs progress indicators (e.g., in MealsTab, DailySummary)
+  Color get carbsColor => brightness == Brightness.light ? const Color(0xFF2196F3) : const Color(0xFF64B5F6); // Blue
+
+  /// Color for fat progress indicators (e.g., in MealsTab, DailySummary)
+  Color get fatColor => brightness == Brightness.light ? const Color(0xFFFFA500) : const Color(0xFFFFB300); // Orange
+
+  // UI element colors
+  /// Background color for checked items (e.g., in ShoppingList)
+  Color get checkedBackground => brightness == Brightness.light ? const Color(0xFFE0E0E0) : const Color(0xFF424242); // Grey
+
+  /// Icon color for checked items (e.g., in ShoppingList)
+  Color get checkedIcon => brightness == Brightness.light ? const Color(0xFF4CAF50) : const Color(0xFF81C784); // Green
+
+  /// Icon color for unchecked items (e.g., in ShoppingList)
+  Color get uncheckedIcon => brightness == Brightness.light ? const Color(0xFF808080) : const Color(0xFFB0B7BF); // Grey
+}
+
+// Extend ThemeData for custom properties
+extension CustomThemeData on ThemeData {
+  // Spacing values
+  /// Small padding for tight spaces (e.g., between elements within a card)
+  double get smallPadding => 8.0;
+
+  /// Medium padding for standard spacing (e.g., card padding)
+  double get mediumPadding => 16.0;
+
+  /// Large padding for wider spacing (e.g., section separators)
+  double get largePadding => 24.0;
+
+  /// Small spacing for tight gaps (e.g., between text and progress indicators)
+  double get smallSpacing => 4.0;
+
+  /// Medium spacing for standard gaps (e.g., between elements in a list)
+  double get mediumSpacing => 8.0;
+
+  /// Large spacing for wider gaps (e.g., between sections)
+  double get largeSpacing => 16.0;
+}
+
 class AppTheme {
+  // Core colors
+  /// Primary color used for backgrounds and text (e.g., scaffold background, primary text)
   static const Color matteBlack = Color(0xFF1C2526);
+
+  /// Accent color used for buttons, icons, and highlights (e.g., ElevatedButton, FAB)
   static const Color redAccent = Color(0xFFB22222);
+
+  /// Surface color used for cards and backgrounds (e.g., Card background)
   static const Color silver = Color(0xFFB0B7BF);
+
+  /// Secondary text color (e.g., subtitles, nutritional details)
   static const Color darkGray = Color(0xFF808080);
+
+  /// Light blue color used in the background gradient (e.g., AppBackground)
   static const Color lightBlue = Color(0xFF87CEEB);
-  static const Color proteinColor = Colors.green; // Made const
-  static const Color carbsColor = Colors.blue; // Made const
-  static const Color fatColor = Colors.orange; // Made const
 
   static ThemeData lightTheme() {
     final colorScheme = ColorScheme.light(
@@ -87,8 +139,8 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: colorScheme.surface,
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: redAccent,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: colorScheme.secondary,
         linearMinHeight: 8,
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -181,8 +233,8 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: colorScheme.surface,
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: redAccent,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: colorScheme.secondary,
         linearMinHeight: 8,
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
